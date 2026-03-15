@@ -1,0 +1,19 @@
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Runtime state
+server-state.json
+
+# Node / package managers
+node_modules/
+npm-debug.log*
+
+# Nested prototype app
+mercatus-next/node_modules/
+mercatus-next/.next/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

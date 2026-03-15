@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercatus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <div class="mobile-frame">
+      <section id="auth-gate" class="auth-gate">
+        <div class="auth-card">
+          <div class="brand-lockup auth-lockup">
+            <div class="brand-mark" aria-hidden="true">
+              <span></span>
+              <span></span>
+            </div>
+            <div>
+              <p class="eyebrow">Projection market</p>
+              <h1>Mercatus</h1>
+            </div>
+          </div>
+          <div class="auth-copy">
+            <h2>Enter a username</h2>
+            <p>Mercatus is a play-money market where users trade weekly NRL Fantasy player score projections. The crowd moves each player line up or down, and every position settles against the official final fantasy score using the line you entered at.</p>
+            <p>Use a unique username to enter Mercatus. No password required for this stage.</p>
+          </div>
+          <form id="auth-form" class="stack-form auth-form">
+            <label>
+              Username
+              <input id="auth-username" name="authUsername" type="text" maxlength="24" placeholder="Johnny" required>
+            </label>
+            <button class="primary-button" type="submit">Enter Mercatus</button>
+            <p id="auth-feedback" class="feedback" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <div id="app-content" class="app-content">
+      <header class="app-header">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <p class="eyebrow">Projection market</p>
+            <h1>Mercatus</h1>
+          </div>
+        </div>
+        <div id="header-balance" class="header-balance"></div>
+      </header>
+
+      <section class="screen" data-screen="search">
+        <div class="screen-scroll">
+          <section class="section-block search-block">
+            <div class="section-heading compact-heading">
+              <div>
+                <p class="eyebrow">Search</p>
+                <h3>Find a player market</h3>
+              </div>
+            </div>
+            <label class="search-label">
+              <input id="search-input" type="search" placeholder="Search player, team, or position">
+            </label>
+            <div id="search-results" class="list-stack"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen active" data-screen="markets">
+        <div id="markets-screen-scroll" class="screen-scroll">
+          <section id="selected-market-panel" class="market-centre-note"></section>
+
+          <section class="market-list-section">
+            <div class="market-list-toolbar">
+              <div id="team-toggle" class="team-toggle"></div>
+            </div>
+            <div class="market-list-header">
+              <span>Player</span>
+              <span>Projection</span>
+            </div>
+            <div id="markets-list" class="markets-list"></div>
+          </section>
+
+          <section class="discovery-section secondary-discovery-section">
+            <div class="section-heading compact-heading">
+              <div>
+                <p class="eyebrow">Featured</p>
+                <h3>Top projections today</h3>
+              </div>
+            </div>
+            <div id="featured-rail" class="discovery-rail"></div>
+            <div class="section-heading compact-heading">
+              <div>
+                <p class="eyebrow">Momentum</p>
+                <h3>Biggest line moves</h3>
+              </div>
+            </div>
+            <div id="movers-rail" class="discovery-rail compact"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="leaderboard">
+        <div class="screen-scroll">
+          <section class="hero-strip portfolio-strip premium-leaderboard-strip">
+            <div class="leaderboard-title-row">
+              <div>
+                <p class="eyebrow">Mercatus</p>
+                <h2>Leaderboard</h2>
+              </div>
+              <div id="leaderboard-balance-pill" class="portfolio-balance-pill"></div>
+            </div>
+            <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
+          </section>
+
+          <section class="section-block leaderboard-controls-block">
+            <div class="section-heading compact-heading leaderboard-controls-heading">
+              <div>
+                <p class="eyebrow">View and sort</p>
+                <h3>Community rankings</h3>
+              </div>
+            </div>
+            <div class="leaderboard-controls">
+              <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
+              <div class="leaderboard-scope-row">
+                <button class="portfolio-chip active" type="button">All time</button>
+                <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="section-block leaderboard-list-block">
+            <div id="leaderboard-list" class="list-stack"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="portfolio">
+        <div class="screen-scroll">
+          <section class="hero-strip portfolio-strip premium-portfolio-strip">
+            <div class="portfolio-title-row">
+              <div>
+                <p class="eyebrow">Mercatus</p>
+                <h2>Portfolio</h2>
+              </div>
+              <div id="portfolio-balance-pill" class="portfolio-balance-pill"></div>
+            </div>
+            <div id="portfolio-summary" class="portfolio-summary-grid"></div>
+          </section>
+
+          <section class="section-block portfolio-controls-block">
+            <div class="section-heading compact-heading portfolio-controls-heading">
+              <div>
+                <p class="eyebrow">View and sort</p>
+                <h3>Positions</h3>
+              </div>
+            </div>
+            <div class="portfolio-controls">
+              <div id="portfolio-filters" class="portfolio-chip-row"></div>
+              <button id="portfolio-sort-button" class="portfolio-sort-button" type="button"></button>
+            </div>
+          </section>
+
+          <section class="section-block portfolio-list-block">
+            <div id="portfolio-list" class="portfolio-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="profile">
+        <div class="screen-scroll">
+          <section class="hero-strip profile-strip">
+            <p class="eyebrow">Profile</p>
+            <h2>Demo account</h2>
+          </section>
+
+          <section class="section-block">
+            <form class="stack-form">
+              <label>
+                Username
+                <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
+              </label>
+            </form>
+            <div id="profile-summary" class="summary-grid single-column"></div>
+            <button id="logout-button" class="secondary-button" type="button">Log out</button>
+          </section>
+
+          <section class="section-block dev-entry">
+            <div>
+              <p class="eyebrow">Tools</p>
+              <h3>Admin access</h3>
+              <p class="section-meta">Kept out of the main user flow so the product feels consumer-ready.</p>
+            </div>
+            <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
+          </section>
+        </div>
+      </section>
+
+      <nav class="bottom-nav" aria-label="User navigation">
+        <button class="nav-button active" type="button" data-screen-target="markets">
+          <span class="nav-icon nav-icon-markets"></span>
+          <span class="nav-label">Markets</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+        </button>
+        <button class="nav-button" type="button" data-screen-target="portfolio">
+          <span class="nav-icon nav-icon-portfolio"></span>
+          <span class="nav-label">Portfolio</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+        </button>
+        <button class="nav-button" type="button" data-screen-target="leaderboard">
+          <span class="nav-icon nav-icon-leaderboard"></span>
+          <span class="nav-label">Leaderboard</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+        </button>
+        <button class="nav-button" type="button" data-screen-target="profile">
+          <span class="nav-icon nav-icon-profile"></span>
+          <span class="nav-label">Profile</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+        </button>
+      </nav>
+      </div>
+    </div>
+
+    <aside id="admin-shell" class="admin-shell" aria-hidden="true">
+      <div class="admin-shell-head">
+        <div>
+          <p class="eyebrow">Admin tools</p>
+          <h2>Round controls</h2>
+        </div>
+        <button id="close-admin-button" class="ghost-button" type="button">Close</button>
+      </div>
+
+      <section class="admin-panel">
+        <div class="admin-grid">
+          <form id="opening-line-form" class="stack-form">
+            <div>
+              <p class="panel-label">Line management</p>
+              <p class="section-meta">Set opening lines or override current projection lines.</p>
+            </div>
+            <label>
+              Player market
+              <select id="opening-market" name="marketId" required></select>
+            </label>
+            <label>
+              Opening line
+              <input id="opening-line-input" name="openingLine" type="number" step="0.5" min="0" required>
+            </label>
+            <label>
+              Current line
+              <input id="current-line-input" name="currentLine" type="number" step="0.5" min="0" required>
+            </label>
+            <button class="secondary-button" type="submit">Save lines</button>
+            <p id="opening-feedback" class="feedback" aria-live="polite"></p>
+          </form>
+
+          <form id="settlement-form" class="stack-form">
+            <div>
+              <p class="panel-label">Settlement</p>
+              <p class="section-meta">Resolve stored positions against the final NRL Fantasy score.</p>
+            </div>
+            <label>
+              Player market
+              <select id="settlement-market" name="marketId" required></select>
+            </label>
+            <label>
+              Final fantasy score
+              <input id="final-score-input" name="finalScore" type="number" step="0.1" min="0" placeholder="71.0" required>
+            </label>
+            <button class="primary-button" type="submit">Resolve market</button>
+            <p id="settlement-feedback" class="feedback" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">Live markets</p>
+            <h3>Market board</h3>
+          </div>
+          <button id="reset-demo" class="ghost-button" type="button">Reset demo data</button>
+        </div>
+        <div id="admin-market-list" class="admin-market-list"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">Ledger</p>
+            <h3>All trades</h3>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Player</th>
+                <th>Side</th>
+                <th>Stake</th>
+                <th>Entry line</th>
+                <th>Current line</th>
+                <th>Status</th>
+                <th>Final</th>
+                <th>P/L</th>
+              </tr>
+            </thead>
+            <tbody id="positions-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <template id="fixture-pill-template">
+    <button class="fixture-pill" type="button">
+      <span class="fixture-title"></span>
+      <span class="fixture-meta"></span>
+    </button>
+  </template>
+
+  <template id="market-row-template">
+    <button class="market-row" type="button">
+      <div class="player-block">
+        <div class="player-copy">
+          <strong class="player-name"></strong>
+          <div class="player-subrow">
+            <span class="player-meta"></span>
+            <span class="season-average"></span>
+          </div>
+        </div>
+      </div>
+      <div class="projection-block">
+        <strong class="projection-line"></strong>
+        <div class="projection-support">
+          <span class="projection-move"></span>
+          <span class="projection-average"></span>
+        </div>
+        <div class="comparison-track" aria-hidden="true">
+          <span class="comparison-fill"></span>
+        </div>
+      </div>
+      <div class="market-menu">+</div>
+    </button>
+  </template>
+
+  <template id="position-card-template">
+    <article class="position-card">
+      <div class="position-header">
+        <span class="position-side-badge"></span>
+        <span class="status-chip"></span>
+      </div>
+      <div class="position-body">
+        <h4 class="position-title"></h4>
+        <p class="position-meta"></p>
+      </div>
+      <div class="position-footer">
+        <div class="position-pl">
+          <span class="position-pl-label">P/L</span>
+          <strong class="position-pl-value"></strong>
+        </div>
+        <div class="position-side-actions">
+          <button class="position-action" type="button" hidden>Cancel</button>
+          <span class="position-time"></span>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
+
+  <script src="./seed-data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
