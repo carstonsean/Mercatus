@@ -347,7 +347,7 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
 
     if (isExpanded) {
       const panel = document.createElement("article");
-      panel.className = "inline-market-panel market-hero";
+      panel.className = "inline-market-panel";
       panel.innerHTML = marketDetailMarkup(market);
       container.appendChild(panel);
       bindTradeSheetEvents(panel, market.id);
