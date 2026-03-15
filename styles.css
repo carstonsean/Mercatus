@@ -484,7 +484,7 @@ label {
 .hero-price {
   display: grid;
   justify-items: start;
-  gap: 4px;
+  gap: 2px;
 }
 
 .hero-price-value {
@@ -511,7 +511,7 @@ label {
 
 .hero-comparison {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .hero-comparison-copy {
@@ -553,12 +553,12 @@ label {
 .trade-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .trade-button {
-  padding: 12px 13px;
-  border-radius: 16px;
+  padding: 11px 12px;
+  border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(18, 23, 32, 0.92);
   text-align: center;
@@ -585,12 +585,12 @@ label {
 
 .trade-button.trade-over.active {
   border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(89, 217, 122, 0.08);
+  box-shadow: 0 0 0 2px rgba(89, 217, 122, 0.08);
 }
 
 .trade-button.trade-under.active {
   border-color: var(--red);
-  box-shadow: 0 0 0 3px rgba(255, 126, 158, 0.08);
+  box-shadow: 0 0 0 2px rgba(255, 126, 158, 0.08);
 }
 
 .trade-button span {
@@ -605,7 +605,7 @@ label {
 
 .trade-button-price {
   margin-top: 4px;
-  font-size: 0.98rem;
+  font-size: 0.94rem;
   font-weight: 780;
 }
 
@@ -617,24 +617,24 @@ label {
 
 .trade-form-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .quick-stakes {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .quick-stake-button {
   min-width: 0;
-  height: 34px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   color: var(--text);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
   transition: transform 220ms ease-out, border-color 220ms ease-out, box-shadow 220ms ease-out;
@@ -650,7 +650,7 @@ label {
 .stake-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 14px;
+  gap: 12px;
   align-items: end;
 }
 
@@ -659,8 +659,8 @@ label {
 }
 
 .stake-preview {
-  min-width: 108px;
-  padding: 10px 0 2px;
+  min-width: 96px;
+  padding: 0;
   text-align: left;
 }
 
@@ -672,18 +672,18 @@ label {
 
 .stake-preview strong {
   display: block;
-  margin-top: 4px;
-  font-size: 1rem;
+  margin-top: 3px;
+  font-size: 0.96rem;
 }
 
 .trade-ticket {
   display: grid;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 22px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
   background: rgba(14, 17, 23, 0.96);
   border: 1px solid rgba(255,255,255,0.05);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.26);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.24);
 }
 
 .trade-ticket-head {
@@ -694,23 +694,19 @@ label {
   gap: 2px;
 }
 
-.trade-spread-card,
-.stake-module {
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.025);
-  border: 1px solid rgba(255,255,255,0.05);
+.trade-spread-inline {
+  padding: 0;
 }
 
 .trade-spread-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .trade-spread-row {
   display: grid;
   grid-template-columns: minmax(0, 70px) 1fr;
-  gap: 12px;
+  gap: 10px;
   align-items: start;
 }
 
@@ -727,19 +723,19 @@ label {
 }
 
 .trade-ticket-form {
-  gap: 14px;
+  gap: 12px;
 }
 
-.stake-module {
+.stake-section {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .stake-module-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 10px;
 }
 
 .stake-module-head .trade-label:last-child {
@@ -755,15 +751,14 @@ label {
 .trade-note-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
 }
 
 .trade-note-copy {
-  display: grid;
-  gap: 2px;
+  display: block;
 }
 
 .trade-note-copy strong {
@@ -774,23 +769,23 @@ label {
 
 .trade-confirm-button {
   width: 100%;
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 @media (max-width: 560px) {
   .trade-ticket {
-    padding: 14px;
-    gap: 12px;
+    padding: 13px;
+    gap: 10px;
   }
 
   .trade-spread-row {
     grid-template-columns: 1fr;
-    gap: 4px;
+    gap: 3px;
   }
 
   .stake-row {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 8px;
   }
 
   .stake-preview {
