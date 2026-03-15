@@ -62,7 +62,6 @@ const elements = {
   portfolioFilters: document.getElementById("portfolio-filters"),
   portfolioSortButton: document.getElementById("portfolio-sort-button"),
   portfolioList: document.getElementById("portfolio-list"),
-  quickTakeBalancePill: document.getElementById("quick-take-balance-pill"),
   quickTakeDeck: document.getElementById("quick-take-deck"),
   userName: document.getElementById("user-name"),
   logoutButton: document.getElementById("logout-button"),
@@ -277,6 +276,7 @@ function renderScreens() {
   elements.screens.forEach((screen) =>
     screen.classList.toggle("active", screen.dataset.screen === uiState.activeScreen)
   );
+  elements.toast?.classList.toggle("toast-low", uiState.activeScreen === "quicktake");
 }
 
 function renderTeamToggle() {
@@ -689,11 +689,9 @@ function portfolioMetricCard(label, value, tone = 0) {
 }
 
 function renderQuickTake() {
-  if (!elements.quickTakeDeck || !elements.quickTakeBalancePill) return;
+  if (!elements.quickTakeDeck) return;
   syncQuickTakeQueue();
-  const bankroll = getDisplayedCash(currentUserName());
   const queue = getQuickTakeQueueMarkets();
-  elements.quickTakeBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(bankroll)}</strong>`;
   if (!queue.length) {
     elements.quickTakeDeck.innerHTML = `<div class="portfolio-empty-state"><strong>No open markets right now</strong><span>Quick Take only shows player markets that are currently open.</span></div>`;
     return;
@@ -706,7 +704,7 @@ function renderQuickTake() {
   const isPending = uiState.quickTakePendingMarketId === current.id;
   const teamColors = TEAM_COLORS[current.team] ?? TEAM_COLORS[normalizeTeamName(current.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
   const nextColors = next ? TEAM_COLORS[next.team] ?? TEAM_COLORS[normalizeTeamName(next.team)] ?? { primary: "#101722", secondary: "#68d9ff" } : null;
-  elements.quickTakeDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span></div></article>` : ""}<article class="quick-take-card is-front" data-market-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Take</span><span class="quick-take-counter">${queue.length} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p></div><span class="status-chip status-open">Open</span></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-spread"><span><strong>Under</strong> ${currentPair.underLine.toFixed(1)}</span><span><strong>Over</strong> ${currentPair.overLine.toFixed(1)}</span><span><strong>Stake</strong> $1</span></div><div class="quick-take-stats"><span class="trade-label">Recent</span><div class="quick-take-score-row">${scores.map((score) => `<span class="quick-take-score-pill">${score}</span>`).join("")}</div><div class="quick-take-statline"><span>Avg ${current.seasonAverage.toFixed(1)}</span><span>${gameTitleFor(current.gameId)}</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "UNDER" ? "Submitting..." : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "OVER" ? "Submitting..." : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
+  elements.quickTakeDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span></div></article>` : ""}<article class="quick-take-card is-front" data-market-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Take</span><span class="quick-take-counter">${queue.length} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p></div><span class="status-chip status-open">Open</span></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-spread"><span><strong>Under</strong> ${currentPair.underLine.toFixed(1)}</span><span><strong>Over</strong> ${currentPair.overLine.toFixed(1)}</span><span><strong>Stake</strong> $1</span></div><div class="quick-take-stats"><span class="trade-label">Recent</span><div class="quick-take-score-row">${scores.map((score) => `<span class="quick-take-score-pill">${score}</span>`).join("")}</div><div class="quick-take-statline"><span>Avg ${current.seasonAverage.toFixed(1)}</span><span>vs ${opponentForMarket(current)}</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "UNDER" ? "Submitting..." : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "OVER" ? "Submitting..." : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
   const activeCard = elements.quickTakeDeck.querySelector(".quick-take-card.is-front");
   activeCard?.querySelectorAll("[data-quick-side]").forEach((button) =>
     button.addEventListener("click", async () => {
@@ -1074,6 +1072,12 @@ function findMarket(marketId) {
 
 function gameTitleFor(gameId) {
   return roundGames.find((game) => game.id === gameId)?.title ?? "Round game";
+}
+
+function opponentForMarket(market) {
+  const game = roundGames.find((roundGame) => roundGame.id === market.gameId);
+  if (!game) return "Opponent";
+  return game.homeTeam === market.team ? game.awayTeam : game.homeTeam;
 }
 
 function formatStake(value) {

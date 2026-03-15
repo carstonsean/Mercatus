@@ -2082,6 +2082,10 @@ th {
   font-weight: 700;
 }
 
+.toast.toast-low {
+  bottom: 28px;
+}
+
 @media (max-width: 900px) {
   .admin-grid {
     grid-template-columns: 1fr;
