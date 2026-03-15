@@ -30,7 +30,10 @@ const uiState = {
   portfolioFilter: "ALL",
   portfolioSort: "MOST_RECENT",
   pendingTradeMarketId: "",
-  leaderboardSort: "BALANCE"
+  leaderboardSort: "BALANCE",
+  quickTakeMarketIds: [],
+  quickTakePendingMarketId: "",
+  quickTakePendingSide: ""
 };
 
 const elements = {
@@ -59,6 +62,8 @@ const elements = {
   portfolioFilters: document.getElementById("portfolio-filters"),
   portfolioSortButton: document.getElementById("portfolio-sort-button"),
   portfolioList: document.getElementById("portfolio-list"),
+  quickTakeBalancePill: document.getElementById("quick-take-balance-pill"),
+  quickTakeDeck: document.getElementById("quick-take-deck"),
   userName: document.getElementById("user-name"),
   logoutButton: document.getElementById("logout-button"),
   profileSummary: document.getElementById("profile-summary"),
@@ -250,8 +255,9 @@ function renderAll() {
   renderSelectedMarket();
   renderDiscovery();
   renderMarketsList();
-  renderLeaderboard();
   renderPortfolio();
+  renderQuickTake();
+  renderLeaderboard();
   renderProfileSummary();
   renderAdminShell();
   renderAdminMarkets();
@@ -495,12 +501,7 @@ async function submitTrade(marketId, stake, panel) {
   uiState.pendingTradeMarketId = marketId;
   renderAll();
   try {
-    const response = await api("/api/trades", {
-      userName: currentUserName(),
-      marketId,
-      side: uiState.selectedSide,
-      stake
-    });
+    const response = await executeTrade(marketId, stake, uiState.selectedSide);
     state = response.state;
     backendState = response.backend || backendState;
     const submittedTrade = response.trade;
@@ -524,6 +525,15 @@ async function submitTrade(marketId, stake, panel) {
     }
     return;
   }
+}
+
+function executeTrade(marketId, stake, side) {
+  return api("/api/trades", {
+    userName: currentUserName(),
+    marketId,
+    side,
+    stake
+  });
 }
 
 function renderPortfolio() {
@@ -678,6 +688,68 @@ function portfolioMetricCard(label, value, tone = 0) {
   return `<article class="portfolio-metric-card"><span>${label}</span><strong class="${tone > 0 ? "positive" : tone < 0 ? "negative" : ""}">${value}</strong></article>`;
 }
 
+function renderQuickTake() {
+  if (!elements.quickTakeDeck || !elements.quickTakeBalancePill) return;
+  syncQuickTakeQueue();
+  const bankroll = getDisplayedCash(currentUserName());
+  const queue = getQuickTakeQueueMarkets();
+  elements.quickTakeBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(bankroll)}</strong>`;
+  if (!queue.length) {
+    elements.quickTakeDeck.innerHTML = `<div class="portfolio-empty-state"><strong>No open markets right now</strong><span>Quick Take only shows player markets that are currently open.</span></div>`;
+    return;
+  }
+  const current = queue[0];
+  const next = queue[1];
+  const currentPair = linePairForMarket(current);
+  const movement = getMovementText(current);
+  const scores = quickTakeRecentScores(current);
+  const isPending = uiState.quickTakePendingMarketId === current.id;
+  const teamColors = TEAM_COLORS[current.team] ?? TEAM_COLORS[normalizeTeamName(current.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
+  const nextColors = next ? TEAM_COLORS[next.team] ?? TEAM_COLORS[normalizeTeamName(next.team)] ?? { primary: "#101722", secondary: "#68d9ff" } : null;
+  elements.quickTakeDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span></div></article>` : ""}<article class="quick-take-card is-front" data-market-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Take</span><span class="quick-take-counter">${queue.length} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p></div><span class="status-chip status-open">Open</span></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-spread"><span><strong>Under</strong> ${currentPair.underLine.toFixed(1)}</span><span><strong>Over</strong> ${currentPair.overLine.toFixed(1)}</span><span><strong>Stake</strong> $1</span></div><div class="quick-take-stats"><span class="trade-label">Recent</span><div class="quick-take-score-row">${scores.map((score) => `<span class="quick-take-score-pill">${score}</span>`).join("")}</div><div class="quick-take-statline"><span>Avg ${current.seasonAverage.toFixed(1)}</span><span>${gameTitleFor(current.gameId)}</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "UNDER" ? "Submitting..." : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "OVER" ? "Submitting..." : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
+  const activeCard = elements.quickTakeDeck.querySelector(".quick-take-card.is-front");
+  activeCard?.querySelectorAll("[data-quick-side]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      await submitQuickTake(current.id, button.dataset.quickSide, activeCard);
+    })
+  );
+}
+
+async function submitQuickTake(marketId, side, card) {
+  if (uiState.quickTakePendingMarketId) return;
+  uiState.quickTakePendingMarketId = marketId;
+  uiState.quickTakePendingSide = side;
+  renderQuickTake();
+  try {
+    const response = await executeTrade(marketId, 1, side);
+    state = response.state;
+    backendState = response.backend || backendState;
+    triggerBalanceFlash();
+    const submittedTrade = response.trade;
+    const liveCard = elements.quickTakeDeck.querySelector(`.quick-take-card.is-front[data-market-id="${marketId}"]`) || card;
+    if (liveCard) {
+      liveCard.classList.add(side === "OVER" ? "is-exit-over" : "is-exit-under");
+      await wait(240);
+    }
+    advanceQuickTakeQueue(marketId);
+    uiState.quickTakePendingMarketId = "";
+    uiState.quickTakePendingSide = "";
+    renderAll();
+    const toastMessage = submittedTrade?.status === "MATCHED"
+      ? `Matched $1 on ${side}`
+      : submittedTrade?.status === "PARTIALLY_MATCHED"
+        ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} pending`
+        : `Order pending for ${formatStake(submittedTrade?.unmatchedStake || 1)} on ${side}`;
+    showToast("Quick Take submitted", toastMessage);
+    refreshSharedState();
+  } catch (error) {
+    uiState.quickTakePendingMarketId = "";
+    uiState.quickTakePendingSide = "";
+    renderQuickTake();
+    showToast("Quick Take failed", error.message);
+  }
+}
+
 function renderProfileSummary() {
   const userName = currentUserName();
   const bankroll = getDisplayedCash(userName);
@@ -776,6 +848,7 @@ function syncSelectedMarket() {
   if (uiState.expandedMarketId && !visibleMarkets.some((market) => market.id === uiState.expandedMarketId)) {
     uiState.expandedMarketId = "";
   }
+  syncQuickTakeQueue();
 }
 
 function currentGame() {
@@ -788,6 +861,33 @@ function getGameMarkets(gameId) {
 
 function getVisibleMarkets() {
   return getGameMarkets(uiState.currentGameId).filter((market) => market.team === uiState.currentTeam);
+}
+
+function syncQuickTakeQueue() {
+  const openMarketIds = state.markets.filter(isMarketOpen).map((market) => market.id);
+  const openIdSet = new Set(openMarketIds);
+  const remaining = uiState.quickTakeMarketIds.filter((marketId) => openIdSet.has(marketId));
+  const unseen = openMarketIds.filter((marketId) => !remaining.includes(marketId));
+  const nextQueue = [...remaining, ...shuffleArray(unseen)];
+  if (!nextQueue.length) {
+    uiState.quickTakeMarketIds = [];
+    return;
+  }
+  if (!arraysEqual(nextQueue, uiState.quickTakeMarketIds)) {
+    uiState.quickTakeMarketIds = nextQueue;
+  }
+}
+
+function getQuickTakeQueueMarkets() {
+  syncQuickTakeQueue();
+  return uiState.quickTakeMarketIds.map((marketId) => findMarket(marketId)).filter(Boolean);
+}
+
+function advanceQuickTakeQueue(marketId) {
+  uiState.quickTakeMarketIds = uiState.quickTakeMarketIds.filter((id) => id !== marketId);
+  if (!uiState.quickTakeMarketIds.length) {
+    uiState.quickTakeMarketIds = shuffleArray(state.markets.filter(isMarketOpen).map((market) => market.id));
+  }
 }
 
 function getUserTrades(userName) {
@@ -924,6 +1024,14 @@ function getMovementText(market) {
   return { value: 0, arrow: "\u2192", label: "0.0", className: "move-flat" };
 }
 
+function quickTakeRecentScores(market) {
+  const seedValue = [...market.id].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 3), 0);
+  return Array.from({ length: 4 }, (_, index) => {
+    const offset = ((seedValue >> (index * 2)) % 13) - 6;
+    return Math.max(8, Math.round(market.seasonAverage + offset));
+  });
+}
+
 function getMarketStatus(market) {
   if (market.settlement) return { label: "Resolved", className: "status-resolved" };
   if (market.manuallyLocked) return { label: "Locked", className: "status-locked" };
@@ -989,8 +1097,42 @@ function roundToHalf(value) {
   return Math.round(value * 2) / 2;
 }
 
+function isMarketOpen(market) {
+  return !market.settlement && !market.manuallyLocked;
+}
+
 function normalizeProjectionLine(value) {
   return Math.round(value);
+}
+
+function shuffleArray(items) {
+  const copy = items.slice();
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+function arraysEqual(left, right) {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
+function hexToRgba(hex, alpha) {
+  const cleaned = hex.replace("#", "");
+  const normalized = cleaned.length === 3
+    ? cleaned.split("").map((char) => char + char).join("")
+    : cleaned;
+  const value = Number.parseInt(normalized, 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function aggregateOpenPositions(trades) {

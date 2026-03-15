@@ -179,6 +179,25 @@
         </div>
       </section>
 
+      <section class="screen" data-screen="quicktake">
+        <div class="screen-scroll quick-take-scroll">
+          <section class="hero-strip quick-take-strip">
+            <div class="portfolio-title-row">
+              <div>
+                <p class="eyebrow">Mercatus</p>
+                <h2>Quick Take</h2>
+              </div>
+              <div id="quick-take-balance-pill" class="portfolio-balance-pill"></div>
+            </div>
+            <p class="section-meta quick-take-subtitle">Swipe-style player calls with a fixed $1 stake on open markets only.</p>
+          </section>
+
+          <section class="section-block quick-take-stage-block">
+            <div id="quick-take-deck" class="quick-take-deck"></div>
+          </section>
+        </div>
+      </section>
+
       <section class="screen" data-screen="profile">
         <div class="screen-scroll">
           <section class="hero-strip profile-strip">
@@ -217,6 +236,11 @@
         <button class="nav-button" type="button" data-screen-target="portfolio">
           <span class="nav-icon nav-icon-portfolio"></span>
           <span class="nav-label">Portfolio</span>
+          <span class="nav-dot" aria-hidden="true"></span>
+        </button>
+        <button class="nav-button" type="button" data-screen-target="quicktake">
+          <span class="nav-icon nav-icon-quicktake"></span>
+          <span class="nav-label">Quick Take</span>
           <span class="nav-dot" aria-hidden="true"></span>
         </button>
         <button class="nav-button" type="button" data-screen-target="leaderboard">
