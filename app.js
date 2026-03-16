@@ -1,6 +1,7 @@
 const HALF_POINT = 0.5;
 const LINE_STEP = 1;
-const PRESSURE_STEP = 20;
+const PRESSURE_STEP = 2;
+const BOT_PRESSURE_MULTIPLIER = 1;
 const STARTING_BANKROLL = 1000;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
@@ -33,7 +34,11 @@ const uiState = {
   leaderboardSort: "BALANCE",
   quickTakeMarketIds: [],
   quickTakePendingMarketId: "",
-  quickTakePendingSide: ""
+  quickTakePendingSide: "",
+  adminMarketFilter: "ACTIVE",
+  adminMarketLimit: 24,
+  adminTradeFilter: "OPEN",
+  adminTradeLimit: 60
 };
 
 const elements = {
@@ -89,11 +94,13 @@ const elements = {
   botThresholdWeight: document.getElementById("bot-threshold-weight"),
   botConfigFeedback: document.getElementById("bot-config-feedback"),
   botSummary: document.getElementById("bot-summary"),
-  runBotTick: document.getElementById("run-bot-tick"),
-  runBotBurst: document.getElementById("run-bot-burst"),
+  createBot: document.getElementById("create-bot"),
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
+  adminDashboard: document.getElementById("admin-dashboard"),
+  adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
+  adminTradeControls: document.getElementById("admin-trade-controls"),
   positionsBody: document.getElementById("positions-body"),
   resetDemo: document.getElementById("reset-demo"),
   toast: document.getElementById("toast")
@@ -183,11 +190,8 @@ function bindEvents() {
     event.preventDefault();
     await saveBotConfig();
   });
-  elements.runBotTick?.addEventListener("click", async () => {
-    await runBotSimulationTicks(1);
-  });
-  elements.runBotBurst?.addEventListener("click", async () => {
-    await runBotSimulationTicks(10);
+  elements.createBot?.addEventListener("click", async () => {
+    await createSimulationBot();
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -195,6 +199,34 @@ function bindEvents() {
     uiState.expandedMarketId = "";
     syncSelectedMarket();
     renderAll();
+  });
+
+  elements.adminMarketControls?.addEventListener("click", (event) => {
+    const filterButton = event.target.closest("[data-admin-market-filter]");
+    if (filterButton) {
+      uiState.adminMarketFilter = filterButton.dataset.adminMarketFilter;
+      renderAdminMarkets();
+      return;
+    }
+    const limitButton = event.target.closest("[data-admin-market-limit]");
+    if (limitButton) {
+      uiState.adminMarketLimit = Number(limitButton.dataset.adminMarketLimit);
+      renderAdminMarkets();
+    }
+  });
+
+  elements.adminTradeControls?.addEventListener("click", (event) => {
+    const filterButton = event.target.closest("[data-admin-trade-filter]");
+    if (filterButton) {
+      uiState.adminTradeFilter = filterButton.dataset.adminTradeFilter;
+      renderAdminTable();
+      return;
+    }
+    const limitButton = event.target.closest("[data-admin-trade-limit]");
+    if (limitButton) {
+      uiState.adminTradeLimit = Number(limitButton.dataset.adminTradeLimit);
+      renderAdminTable();
+    }
   });
 
   bindSwipeNavigation();
@@ -284,6 +316,7 @@ function renderAll() {
   renderLeaderboard();
   renderProfileSummary();
   renderAdminShell();
+  renderAdminDashboard();
   renderAdminMarkets();
   renderBotSimulation();
   renderAdminTable();
@@ -354,19 +387,15 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
   markets.forEach((market) => {
     const row = template.content.firstElementChild.cloneNode(true);
     const movement = getMovementText(market);
-    const comparisonWidth = comparisonPercent(market.currentLine, market.seasonAverage);
     const isExpanded = expandable && market.id === uiState.expandedMarketId;
     row.dataset.marketId = market.id;
     row.classList.toggle("is-selected", market.id === uiState.selectedMarketId);
     row.classList.toggle("is-expanded", isExpanded);
     row.querySelector(".player-name").textContent = market.playerName;
     row.querySelector(".player-meta").textContent = `${market.position} | Avg ${market.seasonAverage.toFixed(1)}`;
-    row.querySelector(".season-average").textContent = "";
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
     row.querySelector(".projection-move").className = `projection-move ${movement.className}`;
-    row.querySelector(".projection-average").textContent = "";
-    row.querySelector(".comparison-fill").style.width = `${comparisonWidth}%`;
     row.addEventListener("click", () => {
       uiState.currentGameId = market.gameId;
       uiState.currentTeam = market.team;
@@ -462,20 +491,22 @@ function renderDiscovery() {
 
 function discoveryCard(market, mode) {
   const movement = getMovementText(market);
+  const marketMetrics = getMarketTradeMetrics(market);
   if (mode === "Projection") {
-    return `<button class="discovery-card" type="button" data-market-id="${market.id}"><span class="discovery-kicker">Top projection</span><strong class="discovery-title">${market.playerName}</strong><span class="discovery-value">${market.currentLine.toFixed(1)}</span><span class="discovery-meta">${market.position} | ${market.team}</span></button>`;
+    return `<button class="discovery-card" type="button" data-market-id="${market.id}"><span class="discovery-kicker">Top projection</span><strong class="discovery-title">${market.playerName}</strong><span class="discovery-value">${market.currentLine.toFixed(1)}</span><span class="discovery-meta">${market.position} | ${market.team}</span><span class="discovery-submeta">Vol ${formatStake(marketMetrics.volume)} | Avail ${formatStake(marketMetrics.availableLiquidity)}</span></button>`;
   }
-  return `<button class="discovery-card" type="button" data-market-id="${market.id}"><span class="discovery-kicker">Biggest mover</span><strong class="discovery-title">${market.playerName}</strong><span class="discovery-value">${market.currentLine.toFixed(1)}</span><span class="discovery-meta ${movement.className}">${movement.arrow} ${movement.label}</span><span class="discovery-submeta">Avg ${market.seasonAverage.toFixed(1)}</span></button>`;
+  return `<button class="discovery-card" type="button" data-market-id="${market.id}"><span class="discovery-kicker">Biggest mover</span><strong class="discovery-title">${market.playerName}</strong><span class="discovery-value">${market.currentLine.toFixed(1)}</span><span class="discovery-meta ${movement.className}">${movement.arrow} ${movement.label}</span><span class="discovery-submeta">Vol ${formatStake(marketMetrics.volume)} | Avail ${formatStake(marketMetrics.availableLiquidity)}</span></button>`;
 }
 
 function marketDetailMarkup(market) {
   const status = getMarketStatus(market);
   const movement = getMovementText(market);
+  const marketMetrics = getMarketTradeMetrics(market);
   const nextLine = calculateNextLine(market, uiState.selectedSide, 10);
   const stakeDraft = uiState.stakeDrafts[market.id] ?? 10;
   const isPending = uiState.pendingTradeMarketId === market.id;
   const currentPair = linePairForMarket(market);
-  return `<div class="trade-ticket"><div class="hero-head trade-ticket-head"><div><div class="hero-player">${market.playerName}</div><div class="hero-meta">${market.team} | ${market.position}</div></div><span class="status-chip ${status.className}">${status.label}</span></div><div class="hero-price trade-ticket-price"><div class="hero-price-value">${market.currentLine.toFixed(1)}</div><div class="hero-delta ${movement.className}">${movement.arrow} ${movement.label}</div></div><div class="hero-comparison trade-spread-inline"><div class="trade-spread-grid"><div class="trade-spread-row"><span class="trade-label">Spread</span><strong>Under ${currentPair.underLine.toFixed(1)} <span class="trade-divider">|</span> Over ${currentPair.overLine.toFixed(1)}</strong></div><div class="trade-spread-row"><span class="trade-label">Next midpoint</span><strong>${nextLine.toFixed(1)}</strong></div></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${uiState.selectedSide === "OVER" ? "active" : ""}" data-side="OVER" ${isPending ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${uiState.selectedSide === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Order type</span><span class="trade-note-copy">Matches opposite user liquidity</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending ? "disabled" : ""}>${isPending ? "Placing..." : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : ""}</p></form></div>`;
+  return `<div class="trade-ticket"><div class="hero-head trade-ticket-head"><div><div class="hero-player">${market.playerName}</div><div class="hero-meta">${market.team} | ${market.position}</div></div><span class="status-chip ${status.className}">${status.label}</span></div><div class="hero-price trade-ticket-price"><div class="hero-price-value">${market.currentLine.toFixed(1)}</div><div class="hero-delta ${movement.className}">${movement.arrow} ${movement.label}</div></div><div class="hero-comparison trade-spread-inline"><div class="trade-spread-grid"><div class="trade-spread-row"><span class="trade-label">Projection</span><strong>Under ${currentPair.underLine.toFixed(1)} <span class="trade-divider">|</span> Over ${currentPair.overLine.toFixed(1)}</strong></div><div class="trade-spread-row"><span class="trade-label">Next midpoint</span><strong>${nextLine.toFixed(1)}</strong></div></div></div><details class="market-signals-panel"><summary>Market signals</summary><div class="market-signal-grid">${positionMetric("Volume", formatStake(marketMetrics.volume))}${positionMetric("Live", formatStake(marketMetrics.liveExposure))}${positionMetric("Avail", formatStake(marketMetrics.availableLiquidity))}${positionMetric("Market lean", marketLeanLabel(marketMetrics.netPressure))}</div></details><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${uiState.selectedSide === "OVER" ? "active" : ""}" data-side="OVER" ${isPending ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${uiState.selectedSide === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><span class="trade-note-copy">Fills against waiting orders first, then shifts the projection if needed</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending ? "disabled" : ""}>${isPending ? "Placing..." : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : ""}</p></form></div>`;
 }
 
 function bindTradeSheetEvents(panel, marketId) {
@@ -538,8 +569,8 @@ async function submitTrade(marketId, stake, panel) {
     const toastMessage = submittedTrade?.status === "MATCHED"
       ? `Matched ${formatStake(submittedTrade.matchedStake || stake)} on ${uiState.selectedSide}`
       : submittedTrade?.status === "PARTIALLY_MATCHED"
-        ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} pending`
-        : `Order pending for ${formatStake(submittedTrade?.unmatchedStake || stake)} on ${uiState.selectedSide}`;
+        ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
+        : `Posted ${formatStake(submittedTrade?.unmatchedStake || stake)} on ${uiState.selectedSide}`;
     showToast("Position submitted", toastMessage);
     refreshSharedState();
   } catch (error) {
@@ -569,11 +600,15 @@ function renderPortfolio() {
   const realized = portfolio.realized;
   const cash = portfolio.balance;
   const winRate = portfolio.winRate;
+  const matchedBalance = openTrades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
+  const unmatchedBalance = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
   const positions = sortPortfolioPositions(filterPortfolioPositions(buildPortfolioItems(openTrades, settledTrades)));
   elements.portfolioBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(cash)}</strong>`;
   elements.portfolioSummary.innerHTML = [
     portfolioMetricCard("Balance", formatStake(cash)),
     portfolioMetricCard("Open positions", String(openTrades.length)),
+    portfolioMetricCard("Matched balance", formatStake(matchedBalance)),
+    portfolioMetricCard("Unmatched balance", formatStake(unmatchedBalance)),
     portfolioMetricCard("Realized P/L", formatSignedStake(realized), realized),
     portfolioMetricCard("Win rate", `${winRate}%`, winRate >= 50 ? 1 : winRate === 0 ? 0 : -1)
   ].join("");
@@ -626,8 +661,8 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
     card.querySelector(".position-title").textContent = trade.playerName ?? market?.playerName ?? "Unknown player";
     const activeStake = trade.activeStake ?? trade.stake;
     const lineLabel = trade.side === "OVER" ? trade.entryOverLine ?? trade.entryLine : trade.entryUnderLine ?? trade.entryLine;
-    const pendingLabel = trade.unmatchedStake ? ` | Pending ${formatStake(trade.unmatchedStake)}` : "";
-    card.querySelector(".position-meta").textContent = `${trade.position ?? market?.position ?? "Market"} | Line ${Number(lineLabel).toFixed(1)} | Stake ${formatStake(activeStake)}${pendingLabel}`;
+    const unmatchedLabel = trade.unmatchedStake ? ` | Unmatched ${formatStake(trade.unmatchedStake)}` : "";
+    card.querySelector(".position-meta").textContent = `${trade.position ?? market?.position ?? "Market"} | Line ${Number(lineLabel).toFixed(1)} | Stake ${formatStake(activeStake)}${unmatchedLabel}`;
     card.querySelector(".position-pl-value").textContent = formatSignedStake(plValue);
     card.querySelector(".position-pl-value").className = `position-pl-value ${plValue > 0 ? "positive" : plValue < 0 ? "negative" : ""}`;
     card.querySelector(".position-time").textContent = timeLabel;
@@ -651,6 +686,8 @@ function renderPortfolioFilters() {
     ["ALL", "All"],
     ["OPEN", "Open"],
     ["SETTLED", "Settled"],
+    ["MATCHED", "Matched"],
+    ["UNMATCHED", "Unmatched"],
     ["OVER", "Over"],
     ["UNDER", "Under"]
   ];
@@ -681,6 +718,12 @@ function filterPortfolioPositions(trades) {
     if (uiState.portfolioFilter === "ALL") return true;
     if (uiState.portfolioFilter === "OPEN") return trade.portfolioState === "OPEN";
     if (uiState.portfolioFilter === "SETTLED") return trade.portfolioState === "SETTLED";
+    if (uiState.portfolioFilter === "MATCHED") {
+      return trade.portfolioState === "OPEN" && (Number(trade.matchedStake) || 0) > 0;
+    }
+    if (uiState.portfolioFilter === "UNMATCHED") {
+      return trade.portfolioState === "OPEN" && (Number(trade.unmatchedStake) || 0) > 0;
+    }
     return trade.side === uiState.portfolioFilter;
   });
 }
@@ -762,8 +805,8 @@ async function submitQuickTake(marketId, side, card) {
     const toastMessage = submittedTrade?.status === "MATCHED"
       ? `Matched $1 on ${side}`
       : submittedTrade?.status === "PARTIALLY_MATCHED"
-        ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} pending`
-        : `Order pending for ${formatStake(submittedTrade?.unmatchedStake || 1)} on ${side}`;
+        ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
+        : `Posted ${formatStake(submittedTrade?.unmatchedStake || 1)} on ${side}`;
     showToast("Quick Take submitted", toastMessage);
     refreshSharedState();
   } catch (error) {
@@ -791,29 +834,74 @@ function renderAdminShell() {
 }
 
 function renderAdminMarkets() {
-  elements.adminMarketList.innerHTML = state.markets
+  const filteredMarkets = getAdminMarkets();
+  const totalMarkets = state.markets.length;
+  elements.adminMarketControls.innerHTML = `<div><p class="panel-label">Visible markets</p><p class="section-meta">Showing ${filteredMarkets.length} of ${totalMarkets} markets. Defaults focus on open or moved markets to keep admin fast.</p></div><div class="portfolio-chip-row">${[
+    ["ACTIVE", "Open only"],
+    ["MOVED", "Moved"],
+    ["ACTION", "Needs action"],
+    ["ALL", "All"]
+  ]
+    .map(
+      ([value, label]) =>
+        `<button class="portfolio-chip ${uiState.adminMarketFilter === value ? "active" : ""}" type="button" data-admin-market-filter="${value}">${label}</button>`
+    )
+    .join("")}</div><div class="portfolio-chip-row">${[
+    [12, "12"],
+    [24, "24"],
+    [48, "48"],
+    [9999, "All"]
+  ]
+    .map(
+      ([value, label]) =>
+        `<button class="portfolio-chip ${uiState.adminMarketLimit === value ? "active" : ""}" type="button" data-admin-market-limit="${value}">${label}</button>`
+    )
+    .join("")}</div>`;
+  elements.adminMarketList.innerHTML = filteredMarkets
     .map((market) => {
       const movement = getMovementText(market);
       const status = getMarketStatus(market);
-      return `<article class="admin-market-card"><p class="eyebrow">${gameTitleFor(market.gameId)} | ${market.team}</p><h3>${market.playerName}</h3><div class="position-grid">${positionMetric("Open", market.initialLine.toFixed(1))}${positionMetric("Current", market.currentLine.toFixed(1))}${positionMetric("Move", movement.label, movement.value)}${positionMetric("Status", status.label)}</div></article>`;
+      const tradeCount = market.trades.length;
+      const availableLiquidity = market.totalOverStake + market.totalUnderStake;
+      const liveExposure = getMarketTradeMetrics(market).liveExposure;
+      const netPressure = Number(market.netPressure) || 0;
+      return `<article class="admin-market-card"><p class="eyebrow">${gameTitleFor(market.gameId)} | ${market.team}</p><h3>${market.playerName}</h3><div class="position-grid">${positionMetric("Open", market.initialLine.toFixed(1))}${positionMetric("Current", market.currentLine.toFixed(1))}${positionMetric("Move", movement.label, movement.value)}${positionMetric("Trades", String(tradeCount))}${positionMetric("Live", formatStake(liveExposure))}${positionMetric("Avail", formatStake(availableLiquidity))}${positionMetric("Market lean", marketLeanLabel(netPressure))}${positionMetric("Status", status.label)}</div></article>`;
     })
-    .join("");
+    .join("") || `<div class="section-meta">No markets match that admin filter.</div>`;
+}
+
+function renderAdminDashboard() {
+  if (!elements.adminDashboard) return;
+  const summary = getAdminDashboardSummary();
+  elements.adminDashboard.innerHTML = [
+    adminDashboardCard("Total traded", formatStake(summary.totalTradedValue), `${summary.totalTrades} executed trades across the market`),
+    adminDashboardCard("Matched live", formatStake(summary.liveExposure), `${summary.matchedOpenTrades} matched positions not settled yet`),
+    adminDashboardCard("Available liquidity", formatStake(summary.availableLiquidity), `${summary.pendingTrades} unmatched orders still waiting to match`),
+    adminDashboardCard("Market lean", marketLeanLabel(summary.netPressure), `${formatStake(summary.overPressure)} over vs ${formatStake(summary.underPressure)} under`),
+    adminDashboardCard("Bot share", `${summary.botShare}%`, `${summary.botTrades} of ${summary.totalTrades} trades came from bots`),
+    adminDashboardCard("Needs action", String(summary.marketsNeedingAction), `${summary.activeMarkets} open markets, ${summary.resolvedMarkets} resolved`)
+  ].join("");
 }
 
 function renderBotSimulation() {
   if (!elements.botSummary || !state.botSimulation) return;
   const config = state.botSimulation.config || {};
   const logs = config.logs || [];
-  const botCount = (state.botSimulation.bots || []).length;
+  const bots = state.botSimulation.bots || [];
+  const botCount = bots.length;
+  const activeBotCount = bots.filter((bot) => getDisplayedCash(bot.userName) >= 1).length;
+  const totalBotBankroll = bots.reduce((sum, bot) => sum + getDisplayedCash(bot.userName), 0);
   elements.botSeasonWeight.value = String(config.globalWeights?.season ?? 1);
   elements.botFormWeight.value = String(config.globalWeights?.form ?? 1);
   elements.botVenueWeight.value = String(config.globalWeights?.venue ?? 1);
   elements.botOpponentWeight.value = String(config.globalWeights?.opponent ?? 1);
   elements.botMatchupWeight.value = String(config.globalWeights?.matchup ?? 1);
   elements.botNoiseWeight.value = String(config.globalWeights?.noise ?? 1);
+  elements.botSeasonWeight.disabled = true;
+  elements.botNoiseWeight.disabled = true;
   elements.botActivityWeight.value = String(config.globalWeights?.activity ?? 1);
   elements.botThresholdWeight.value = String(config.globalWeights?.threshold ?? 1);
-  elements.botSummary.innerHTML = `${positionMetric("Bots", String(botCount))}${positionMetric("Tick", String(config.tick ?? 0))}${positionMetric("Open markets", String(state.markets.filter((market) => !market.settlement && !market.manuallyLocked).length))}${positionMetric("Recent events", String(logs.length))}`;
+  elements.botSummary.innerHTML = `${positionMetric("Bots", String(botCount))}${positionMetric("Active", String(activeBotCount))}${positionMetric("Bot bankroll", formatStake(totalBotBankroll))}${positionMetric("Recent events", String(logs.length))}`;
   elements.botLog.innerHTML = logs.length
     ? logs
         .slice(0, 12)
@@ -822,20 +910,125 @@ function renderBotSimulation() {
             `<article class="bot-log-card"><div class="bot-log-head"><strong>${log.botName}</strong><span>Tick ${log.tick}</span></div><p>${log.playerName} · ${log.side} · Edge ${Number(log.edge).toFixed(1)}</p><span>${log.reason}</span></article>`
         )
         .join("")
-    : `<div class="section-meta">No bot events yet. Run a tick to generate liquidity and decision logs.</div>`;
+    : `<div class="section-meta">No bot events yet. Create a bot to start autonomous Quick Take activity.</div>`;
 }
 
 function renderAdminTable() {
-  const rows = state.markets.flatMap((market) =>
-    market.trades
-      .slice()
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .map((trade) => {
-        const profit = trade.result ? trade.result.profit : null;
-        return `<tr><td>${trade.userName}</td><td>${market.playerName}</td><td>${trade.side}</td><td>${formatStake(trade.stake)}</td><td>${trade.entryLine.toFixed(1)}</td><td>${market.currentLine.toFixed(1)}</td><td>${trade.result ? trade.result.outcome : "Open"}</td><td>${trade.result ? trade.result.finalScore.toFixed(1) : "-"}</td><td class="${profit > 0 ? "positive" : profit < 0 ? "negative" : ""}">${trade.result ? formatSignedStake(profit) : "Pending"}</td></tr>`;
-      })
-  );
+  const trades = getAdminTrades();
+  const allTradesCount = state.markets.reduce((sum, market) => sum + market.trades.length, 0);
+  elements.adminTradeControls.innerHTML = `<div><p class="panel-label">Visible trades</p><p class="section-meta">Showing ${trades.length} of ${allTradesCount} trades. Default view prioritizes open and recent activity.</p></div><div class="portfolio-chip-row">${[
+    ["OPEN", "Open"],
+    ["BOTS", "Bots"],
+    ["HUMANS", "Humans"],
+    ["SETTLED", "Settled"],
+    ["ALL", "All"]
+  ]
+    .map(
+      ([value, label]) =>
+        `<button class="portfolio-chip ${uiState.adminTradeFilter === value ? "active" : ""}" type="button" data-admin-trade-filter="${value}">${label}</button>`
+    )
+    .join("")}</div><div class="portfolio-chip-row">${[
+    [25, "25"],
+    [60, "60"],
+    [120, "120"],
+    [9999, "All"]
+  ]
+    .map(
+      ([value, label]) =>
+        `<button class="portfolio-chip ${uiState.adminTradeLimit === value ? "active" : ""}" type="button" data-admin-trade-limit="${value}">${label}</button>`
+    )
+    .join("")}</div>`;
+  const rows = trades
+    .map(({ trade, market }) => {
+      const profit = trade.result ? trade.result.profit : null;
+      const status = trade.result ? trade.result.outcome : getTradeStatus(trade).label;
+      return `<tr><td>${trade.userName}</td><td>${market.playerName}</td><td>${trade.side}</td><td>${formatStake(trade.stake)}</td><td>${trade.entryLine.toFixed(1)}</td><td>${market.currentLine.toFixed(1)}</td><td>${status}</td><td>${trade.result ? trade.result.finalScore.toFixed(1) : "-"}</td><td class="${profit > 0 ? "positive" : profit < 0 ? "negative" : ""}">${trade.result ? formatSignedStake(profit) : "Unmatched"}</td></tr>`;
+    });
   elements.positionsBody.innerHTML = rows.join("") || `<tr><td colspan="9">No trades yet.</td></tr>`;
+}
+
+function getAdminMarkets() {
+  const sortedMarkets = state.markets
+    .slice()
+    .sort((left, right) => adminMarketRank(right) - adminMarketRank(left));
+  const filteredMarkets = sortedMarkets.filter((market) => {
+    if (uiState.adminMarketFilter === "ACTIVE") return isMarketOpen(market);
+    if (uiState.adminMarketFilter === "MOVED") return Math.abs(getMovementValue(market)) >= 1;
+    if (uiState.adminMarketFilter === "ACTION") return !market.settlement && (market.manuallyLocked || market.trades.length > 0 || Math.abs(getMovementValue(market)) >= 1);
+    return true;
+  });
+  return filteredMarkets.slice(0, uiState.adminMarketLimit);
+}
+
+function adminMarketRank(market) {
+  const openBonus = isMarketOpen(market) ? 1000 : 0;
+  const actionBonus = market.manuallyLocked ? 300 : 0;
+  const movementScore = Math.abs(getMovementValue(market)) * 100;
+  const tradeScore = market.trades.length * 10;
+  const exposureScore = (market.totalOverStake + market.totalUnderStake) * 2;
+  return openBonus + actionBonus + movementScore + tradeScore + exposureScore;
+}
+
+function getAdminTrades() {
+  const trades = state.markets.flatMap((market) =>
+    market.trades.map((trade) => ({ trade, market }))
+  );
+  const filteredTrades = trades
+    .filter(({ trade }) => {
+      const isBot = isBotTrade(trade);
+      const isOpen = !trade.result;
+      if (uiState.adminTradeFilter === "OPEN") return isOpen;
+      if (uiState.adminTradeFilter === "BOTS") return isBot;
+      if (uiState.adminTradeFilter === "HUMANS") return !isBot;
+      if (uiState.adminTradeFilter === "SETTLED") return Boolean(trade.result);
+      return true;
+    })
+    .sort((left, right) => new Date(right.trade.timestamp) - new Date(left.trade.timestamp));
+  return filteredTrades.slice(0, uiState.adminTradeLimit);
+}
+
+function isBotTrade(trade) {
+  return trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
+}
+
+function getAdminDashboardSummary() {
+  const allTrades = state.markets.flatMap((market) => market.trades || []);
+  const totalTradedValue = allTrades.reduce((sum, trade) => sum + (Number(trade.stake) || 0), 0);
+  const openTrades = allTrades.filter((trade) => !trade.result);
+  const liveExposure = openTrades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
+  const availableLiquidity = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
+  const matchedOpenTrades = openTrades.filter((trade) => (Number(trade.matchedStake) || 0) > 0).length;
+  const pendingTrades = openTrades.filter((trade) => (Number(trade.unmatchedStake) || 0) > 0).length;
+  const overPressure = state.markets.reduce((sum, market) => sum + Math.max(0, Number(market.netPressure) || 0), 0);
+  const underPressure = state.markets.reduce((sum, market) => sum + Math.max(0, -(Number(market.netPressure) || 0)), 0);
+  const netPressure = overPressure - underPressure;
+  const botTrades = allTrades.filter((trade) => isBotTrade(trade)).length;
+  const activeMarkets = state.markets.filter((market) => !market.settlement).length;
+  const resolvedMarkets = state.markets.length - activeMarkets;
+  const marketsNeedingAction = state.markets.filter((market) => adminMarketRank(market) >= 300).length;
+  const botShare = allTrades.length ? Math.round((botTrades / allTrades.length) * 100) : 0;
+
+  return {
+    totalTrades: allTrades.length,
+    totalTradedValue,
+    openTrades: openTrades.length,
+    liveExposure,
+    availableLiquidity,
+    matchedOpenTrades,
+    pendingTrades,
+    overPressure,
+    underPressure,
+    netPressure,
+    botTrades,
+    botShare,
+    activeMarkets,
+    resolvedMarkets,
+    marketsNeedingAction
+  };
+}
+
+function adminDashboardCard(label, value, meta) {
+  return `<article class="admin-dashboard-card"><p class="panel-label">${label}</p><strong>${value}</strong><p class="section-meta">${meta}</p></article>`;
 }
 
 async function saveLines() {
@@ -892,17 +1085,14 @@ async function saveBotConfig() {
   }
 }
 
-async function runBotSimulationTicks(ticks) {
+async function createSimulationBot() {
   try {
-    const response = await api("/api/admin/bots/run", { ticks });
+    const response = await api("/api/admin/bots/create", {});
     state = response.state;
     renderAll();
-    triggerBalanceFlash();
-    elements.botRunFeedback.textContent = `Ran ${ticks} bot tick${ticks === 1 ? "" : "s"}.`;
-    const events = response.events || [];
-    if (events.length) {
-      showToast("Bot simulation", `${events.length} Quick Take orders evaluated.`);
-    }
+    const botName = response.bot?.userName || "Quick Take bot";
+    elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing.`;
+    showToast("Bot created", `${botName} joined the Quick Take market.`);
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
   }
@@ -1086,17 +1276,24 @@ function filterMarkets(term) {
 }
 
 function calculateCurrentLine(market) {
-  const imbalance = market.totalOverStake - market.totalUnderStake;
+  const imbalance = calculatePressureImbalance(market);
   const steps = Math.trunc(imbalance / PRESSURE_STEP) + (market.manualAdjustmentSteps ?? 0);
   return normalizeProjectionLine(market.initialLine + steps * LINE_STEP);
 }
 
 function calculateNextLine(market, side, stake) {
-  return calculateCurrentLine({
-    ...market,
-    totalOverStake: market.totalOverStake + (side === "OVER" ? stake : 0),
-    totalUnderStake: market.totalUnderStake + (side === "UNDER" ? stake : 0)
-  });
+  let nextLine = Number(market.currentLine) || 0;
+  let pressureBalance = Number(market.pressureBalance) || 0;
+  pressureBalance += (side === "OVER" ? 1 : -1) * stake;
+  while (Math.abs(pressureBalance) >= PRESSURE_STEP) {
+    nextLine += Math.sign(pressureBalance) * LINE_STEP;
+    pressureBalance -= Math.sign(pressureBalance) * PRESSURE_STEP;
+  }
+  return normalizeProjectionLine(nextLine);
+}
+
+function calculatePressureImbalance(market) {
+  return Number(market.netPressure) || 0;
 }
 
 
@@ -1127,9 +1324,10 @@ function getMarketStatus(market) {
 
 function getTradeStatus(trade) {
   if (!trade.result) {
-    if (trade.status === "PARTIALLY_MATCHED") return { label: "Partial", className: "status-open" };
-    if (trade.status === "PENDING") return { label: "Pending", className: "status-locked" };
+    if (trade.status === "PARTIALLY_MATCHED") return { label: "Partial match", className: "status-open" };
+    if (trade.status === "PENDING") return { label: "Unmatched", className: "status-locked" };
     if (trade.status === "MATCHED") return { label: "Matched", className: "status-open" };
+    if (trade.status === "CANCELLED") return { label: "Cancelled", className: "status-locked" };
     return { label: "Open", className: "status-open" };
   }
   if (trade.result.outcome === "WIN") return { label: "Win", className: "status-win" };
@@ -1184,6 +1382,26 @@ function formatLine(value) {
 
 function formatTimestamp(timestamp) {
   return new Date(timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function getMarketTradeMetrics(market) {
+  const trades = market.trades || [];
+  const volume = trades.reduce((sum, trade) => sum + (Number(trade.stake) || 0), 0);
+  const openTrades = trades.filter((trade) => !trade.result && trade.status !== "CANCELLED");
+  const liveExposure = openTrades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
+  const availableLiquidity = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
+  return {
+    volume,
+    liveExposure,
+    availableLiquidity,
+    netPressure: Number(market.netPressure) || 0
+  };
+}
+
+function marketLeanLabel(netPressure) {
+  if (netPressure > 0) return `Over +${Math.abs(netPressure).toFixed(0)}`;
+  if (netPressure < 0) return `Under +${Math.abs(netPressure).toFixed(0)}`;
+  return "Balanced";
 }
 
 function roundToHalf(value) {
@@ -1297,7 +1515,7 @@ async function cancelPendingOrders(orderIds) {
     backendState = response.backend || { mode: "local", user: null, dashboard: null };
     renderAll();
     refreshSharedState();
-    showToast("Pending order cancelled", "Any unmatched stake has been returned to your wallet.");
+    showToast("Unmatched order cancelled", "Any unmatched stake has been returned to your wallet.");
   } catch (error) {
     showToast("Unable to cancel", error.message);
   }

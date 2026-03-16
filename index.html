@@ -29,8 +29,9 @@
           </div>
           <div class="auth-copy">
             <h2>Enter a username</h2>
-            <p>Mercatus is a play-money market where users trade weekly NRL Fantasy player score projections. The crowd moves each player line up or down, and every position settles against the official final fantasy score using the line you entered at.</p>
-            <p>Use a unique username to enter Mercatus. No password required for this stage.</p>
+            <p>Mercatus is an NRL Fantasy projection market shaped by the wisdom of the crowd. Trade Over or Under on player score lines and watch projections move as market sentiment shifts.</p>
+            <p>Each market reflects the crowd's evolving view of what a player will score.</p>
+            <p>Use a unique username to enter. Mercatus is currently in beta, and new accounts receive $200 in app currency.</p>
           </div>
           <form id="auth-form" class="stack-form auth-form">
             <label>
@@ -260,6 +261,7 @@
         <div>
           <p class="eyebrow">Admin tools</p>
           <h2>Round controls</h2>
+          <p class="section-meta admin-shell-subtitle">Manage live lines, settlements, simulation bots, and the trade ledger from one workspace.</p>
         </div>
         <button id="close-admin-button" class="ghost-button" type="button">Close</button>
       </div>
@@ -309,11 +311,23 @@
       <section class="admin-panel">
         <div class="section-heading compact-heading">
           <div>
+            <p class="eyebrow">Dashboard</p>
+            <h3>Trading overview</h3>
+            <p class="section-meta">Quick health check across matched flow, open exposure, and markets that likely need admin attention.</p>
+          </div>
+        </div>
+        <div id="admin-dashboard" class="admin-dashboard-grid"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="section-heading compact-heading">
+          <div>
             <p class="eyebrow">Live markets</p>
             <h3>Market board</h3>
           </div>
           <button id="reset-demo" class="ghost-button" type="button">Reset demo data</button>
         </div>
+        <div id="admin-market-controls" class="stack-form"></div>
         <div id="admin-market-list" class="admin-market-list"></div>
       </section>
 
@@ -331,8 +345,8 @@
               <p class="section-meta">Adjust the global weight multipliers that shape how smart or noisy the bots behave.</p>
             </div>
             <label>
-              Season baseline
-              <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1">
+              Season baseline (fixed in v1)
+              <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1" disabled>
             </label>
             <label>
               Recent form
@@ -343,16 +357,16 @@
               <input id="bot-venue-weight" name="venueWeight" type="number" min="0" max="3" step="0.1">
             </label>
             <label>
-              Opponent difficulty
-              <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="3" step="0.1">
+              Opponent odds weighting
+              <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="1" step="0.05">
             </label>
             <label>
               Positional matchup
               <input id="bot-matchup-weight" name="matchupWeight" type="number" min="0" max="3" step="0.1">
             </label>
             <label>
-              Noise
-              <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1">
+              Noise (unused in v1)
+              <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1" disabled>
             </label>
             <label>
               Activity
@@ -368,13 +382,12 @@
 
           <div class="stack-form">
             <div>
-              <p class="panel-label">Simulation run</p>
-              <p class="section-meta">Each bot only trades through Quick Take and always stakes $1.</p>
+              <p class="panel-label">Bot creation</p>
+              <p class="section-meta">Create a new $200 Quick Take bot with a random mix of weightings. It will play automatically at a human pace until it runs out of money.</p>
             </div>
             <div id="bot-summary" class="position-grid"></div>
             <div class="bot-run-actions">
-              <button id="run-bot-tick" class="secondary-button" type="button">Run 1 tick</button>
-              <button id="run-bot-burst" class="primary-button" type="button">Run 10 ticks</button>
+              <button id="create-bot" class="primary-button" type="button">Create new bot</button>
             </div>
             <p id="bot-run-feedback" class="feedback" aria-live="polite"></p>
             <div id="bot-log" class="bot-log"></div>
@@ -389,6 +402,7 @@
             <h3>All trades</h3>
           </div>
         </div>
+        <div id="admin-trade-controls" class="stack-form"></div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -425,7 +439,6 @@
           <strong class="player-name"></strong>
           <div class="player-subrow">
             <span class="player-meta"></span>
-            <span class="season-average"></span>
           </div>
         </div>
       </div>
@@ -433,13 +446,9 @@
         <strong class="projection-line"></strong>
         <div class="projection-support">
           <span class="projection-move"></span>
-          <span class="projection-average"></span>
-        </div>
-        <div class="comparison-track" aria-hidden="true">
-          <span class="comparison-fill"></span>
         </div>
       </div>
-      <div class="market-menu">+</div>
+      <div class="market-menu">›</div>
     </button>
   </template>
 
@@ -468,6 +477,7 @@
 
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
+  <script src="./lib/derived-fantasy-data.js"></script>
   <script src="./seed-data.js"></script>
   <script src="./app.js"></script>
 </body>

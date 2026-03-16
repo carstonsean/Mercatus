@@ -973,8 +973,8 @@ label {
   width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 13px 15px;
   border: 1px solid rgba(255,255,255,0.05);
   border-radius: 18px;
   background: #0e1117;
@@ -1014,25 +1014,19 @@ label {
 .player-subrow {
   display: flex;
   gap: 8px;
-  margin-top: 5px;
+  margin-top: 4px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.player-meta,
-.season-average {
+.player-meta {
   color: var(--muted);
   font-size: 0.82rem;
 }
 
-.season-average:empty,
-.projection-average:empty {
-  display: none;
-}
-
 .projection-block {
   text-align: right;
-  min-width: 108px;
+  min-width: 92px;
 }
 
 .projection-line {
@@ -1047,31 +1041,57 @@ label {
 .projection-support {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
-  margin-top: 5px;
+  gap: 4px;
+  margin-top: 4px;
   flex-wrap: wrap;
 }
 
-.projection-move,
-.projection-average {
+.projection-move {
   font-size: 0.8rem;
   font-weight: 700;
 }
 
-.projection-average {
-  color: var(--muted);
-}
-
-.comparison-track {
-  height: 6px;
-  margin-top: 8px;
+.market-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 2px;
 }
 
 .market-menu {
   color: var(--muted);
-  font-size: 1.2rem;
-  font-weight: 500;
+  font-size: 1.05rem;
+  font-weight: 700;
   align-self: center;
+  opacity: 0.7;
+}
+
+.market-signals-panel {
+  margin: 12px 0 2px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 10px;
+}
+
+.market-signals-panel summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  list-style: none;
+}
+
+.market-signals-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.market-signals-panel summary::after {
+  content: "Show";
+  margin-left: 8px;
+  color: var(--text);
+}
+
+.market-signals-panel[open] summary::after {
+  content: "Hide";
 }
 
 .inline-market-panel {
@@ -1936,37 +1956,86 @@ label {
 }
 
 .admin-shell {
-  width: min(1120px, 100%);
+  width: min(1120px, calc(100% - 20px));
   margin: 20px auto 0;
-  padding: 18px 0 0;
+  padding: 20px 0 8px;
   display: none;
 }
 
 .admin-shell.is-open {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .admin-shell-head {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  align-items: center;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 4px 2px 0;
+}
+
+.admin-shell-subtitle {
+  margin-top: 8px;
+  max-width: 520px;
+  line-height: 1.45;
 }
 
 .admin-panel {
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(11, 14, 19, 0.94);
+  box-shadow: 0 16px 42px rgba(0,0,0,0.24);
 }
 
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .bot-admin-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-grid > .stack-form,
+.bot-admin-grid > .stack-form,
+.bot-admin-grid > div.stack-form {
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(16, 23, 34, 0.78);
+  gap: 12px;
+}
+
+.admin-grid > .stack-form > div:first-child,
+.bot-admin-grid > .stack-form > div:first-child,
+.bot-admin-grid > div.stack-form > div:first-child {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.admin-grid > .stack-form label,
+.bot-admin-grid > .stack-form label {
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.admin-grid > .stack-form input,
+.admin-grid > .stack-form select,
+.bot-admin-grid > .stack-form input,
+.bot-admin-grid > .stack-form select {
+  min-height: 44px;
+}
+
+.admin-panel .section-heading {
+  margin-bottom: 14px;
+}
+
+.admin-panel .section-heading h3 {
+  font-size: 1.08rem;
+  letter-spacing: -0.03em;
 }
 
 .bot-run-actions {
@@ -1985,6 +2054,8 @@ label {
   max-height: 320px;
   overflow-y: auto;
   padding-right: 2px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 12px;
 }
 
 .bot-log-card {
@@ -2018,16 +2089,42 @@ label {
 }
 
 .admin-market-list {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
 }
 
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.admin-dashboard-card,
 .admin-market-card {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(16, 23, 34, 0.72);
+}
+
+.admin-dashboard-card strong {
+  display: block;
+  margin: 8px 0 6px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.admin-dashboard-card .section-meta {
+  margin: 0;
 }
 
 .table-wrap {
   overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(16, 23, 34, 0.62);
 }
 
 table {
@@ -2038,7 +2135,7 @@ table {
 th,
 td {
   padding: 12px 10px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   text-align: left;
   white-space: nowrap;
 }
@@ -2145,6 +2242,16 @@ th {
 
   .bot-admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-panel {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .admin-shell-head {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
