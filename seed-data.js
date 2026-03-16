@@ -15,11 +15,46 @@
   function slugify(value){return value.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
   function projectionForPosition(position,jerseyNumber){const map={Fullback:49.5,Winger:33.5,Centre:37.5,"Five-Eighth":43.5,Halfback:46.5,Prop:35.5,Hooker:44.5,"2nd Row":41.5,Lock:47.5};return roundToHalf((map[position]??36.5)+(jerseyNumber%3));}
   function seasonAverageForPosition(position,jerseyNumber){return roundToHalf(projectionForPosition(position,jerseyNumber)-2+(jerseyNumber%2));}
+  function stableHash(value){return [...value].reduce((sum,char,index)=>sum+(char.charCodeAt(0)*(index+1)),0);}
+  function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+  function buildBotInputs(game,team,playerName,position,jerseyNumber,seasonAverage,initialLine){
+    const seed=stableHash(`${game.id}|${team}|${playerName}|${position}|${jerseyNumber}`);
+    const isHome=game.homeTeam===team;
+    const lastGameScore=roundToHalf(seasonAverage+((seed%17)-8));
+    const last3Average=roundToHalf(seasonAverage+(((seed>>2)%11)-5));
+    const opponentDifficulty=roundToHalf(clamp(0.8+(((seed>>4)%9)*0.1),0.8,1.6));
+    const positionalMatchupAdjustment=roundToHalf((((seed>>6)%13)-6)*0.4);
+    const popularity=clamp(1+((seed>>8)%5),1,5);
+    const scoreVolatility=roundToHalf(clamp(4+((seed>>10)%9),4,12));
+    return {
+      isHome,
+      lastSeasonAverage: seasonAverage,
+      lastGameScore,
+      last3Average,
+      opponentDifficulty,
+      positionalMatchupAdjustment,
+      popularity,
+      scoreVolatility,
+      openingProjection: initialLine,
+      botInputs: {
+        baseline: seasonAverage,
+        recentDelta: roundToHalf(last3Average-seasonAverage),
+        lastGameDelta: roundToHalf(lastGameScore-seasonAverage),
+        venueAdjustment: isHome?1.5:-1,
+        opponentDifficulty,
+        positionalMatchupAdjustment,
+        popularity,
+        scoreVolatility
+      }
+    };
+  }
   function buildMarketFromPlayer(gameId,team,playerName,position,jerseyNumber){
     const game=roundGames.find((item)=>item.id===gameId);
     const opponent=game.homeTeam===team?game.awayTeam:game.homeTeam;
     const seeded=seededMarketOverrides.get(`${gameId}|${team}|${playerName}`);
-    return {id:slugify(`${gameId}-${team}-${playerName}`),gameId,playerName,team,opponent,position,jerseyNumber,initialLine:seeded?.initialLine??projectionForPosition(position,jerseyNumber),seasonAverage:seeded?.seasonAverage??seasonAverageForPosition(position,jerseyNumber)};
+    const initialLine=seeded?.initialLine??projectionForPosition(position,jerseyNumber);
+    const seasonAverage=seeded?.seasonAverage??seasonAverageForPosition(position,jerseyNumber);
+    return {id:slugify(`${gameId}-${team}-${playerName}`),gameId,playerName,team,opponent,position,jerseyNumber,initialLine,seasonAverage,...buildBotInputs(game,team,playerName,position,jerseyNumber,seasonAverage,initialLine)};
   }
   function buildRoundMarkets(){
     return Object.entries(playerRowsByGame).flatMap(([gameId,rows])=>rows.map(([team,playerName,position,jerseyNumber])=>buildMarketFromPlayer(gameId,team,playerName,position,jerseyNumber)));

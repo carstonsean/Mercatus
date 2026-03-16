@@ -4,6 +4,7 @@ const path=require("path");
 const {randomUUID}=require("crypto");
 require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
+const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,runSimulationTick}=require("./lib/bot-engine");
 const {isSupabaseConfigured}=require("./lib/config");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseTrade}=require("./lib/supabase-market-sync");
@@ -170,6 +171,32 @@ async function handleApi(req,res,url){
     persistState();
     return json(res,200,{state});
   }
+  if(req.method==="POST"&&url.pathname==="/api/admin/bots/config"){
+    const body=await parseJson(req);
+    state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:createBotRoster(normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG))};
+    const nextConfig=normalizeSimulationConfig({
+      ...state.botSimulation.config,
+      enabled: body.enabled ?? state.botSimulation.config.enabled,
+      maxMarketsPerBot: Number.isFinite(Number(body.maxMarketsPerBot))?Number(body.maxMarketsPerBot):state.botSimulation.config.maxMarketsPerBot,
+      maxExposurePerPlayer: Number.isFinite(Number(body.maxExposurePerPlayer))?Number(body.maxExposurePerPlayer):state.botSimulation.config.maxExposurePerPlayer,
+      maxTotalExposure: Number.isFinite(Number(body.maxTotalExposure))?Number(body.maxTotalExposure):state.botSimulation.config.maxTotalExposure,
+      globalWeights: {...state.botSimulation.config.globalWeights,...(body.globalWeights||{})},
+      botCounts: {...state.botSimulation.config.botCounts,...(body.botCounts||{})},
+      seed: Number.isFinite(Number(body.seed))?Number(body.seed):state.botSimulation.config.seed
+    });
+    state.botSimulation.config=nextConfig;
+    state.botSimulation.bots=createBotRoster(nextConfig);
+    syncDerivedBalances();
+    persistState();
+    return json(res,200,{state,botSimulation:state.botSimulation});
+  }
+  if(req.method==="POST"&&url.pathname==="/api/admin/bots/run"){
+    const body=await parseJson(req);
+    const ticks=Math.max(1,Math.min(100,Number(body.ticks)||1));
+    const result=runBotTicks(ticks);
+    persistState();
+    return json(res,200,{state,botSimulation:state.botSimulation,events:result.events});
+  }
   json(res,404,{error:"Not found"});
 }
 
@@ -185,7 +212,15 @@ function loadState(){
 }
 
 function buildFreshState(){
-  return {bankrolls:{},markets:buildRoundMarkets().map((market)=>({...market,initialLine:normalizeMidpoint(market.initialLine),currentLine:normalizeMidpoint(market.initialLine),spreadWidth:LINE_STEP,totalOverStake:0,totalUnderStake:0,trades:[],matchedPairs:[],settlement:null,manuallyLocked:false,manualAdjustmentSteps:0}))};
+  const botSimulation=normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG);
+  return {
+    bankrolls:{},
+    markets:buildRoundMarkets().map((market)=>({...market,initialLine:normalizeMidpoint(market.initialLine),currentLine:normalizeMidpoint(market.initialLine),spreadWidth:LINE_STEP,totalOverStake:0,totalUnderStake:0,trades:[],matchedPairs:[],settlement:null,manuallyLocked:false,manualAdjustmentSteps:0})),
+    botSimulation:{
+      config:botSimulation,
+      bots:createBotRoster(botSimulation)
+    }
+  };
 }
 
 function persistState(){
@@ -220,6 +255,13 @@ function linePairFor(market){
 
 function normalizeState(rawState){
   const bankrolls=Object.fromEntries(Object.entries(rawState.bankrolls||{}).map(([userName,balance])=>[userName,Number(balance)||STARTING_BANKROLL]));
+  const botConfig=normalizeSimulationConfig(rawState.botSimulation?.config||DEFAULT_SIMULATION_CONFIG);
+  const bots=(rawState.botSimulation?.bots||createBotRoster(botConfig)).map((bot)=>({
+    ...bot,
+    bankroll:Number.isFinite(Number(bot.bankroll))?Number(bot.bankroll):STARTING_BANKROLL,
+    cooldownUntil:Number.isFinite(Number(bot.cooldownUntil))?Number(bot.cooldownUntil):0,
+    exposureByPlayer:{...(bot.exposureByPlayer||{})}
+  }));
   const markets=(rawState.markets||[]).map((market)=>({
     ...market,
     initialLine: normalizeMidpoint(Number(market.initialLine)||0),
@@ -239,12 +281,17 @@ function normalizeState(rawState){
     }))
   }));
   markets.forEach((market)=>updateMarketTotals(market));
-  return syncDerivedBalances({bankrolls,markets});
+  return syncDerivedBalances({bankrolls,markets,botSimulation:{config:botConfig,bots}});
 }
 
 function syncDerivedBalances(targetState=state){
   const bankrolls={...targetState.bankrolls};
   Object.keys(bankrolls).forEach((userName)=>{bankrolls[userName]=getUserBankroll(userName,targetState);});
+  (targetState.botSimulation?.bots||[]).forEach((bot)=>{
+    if(typeof bankrolls[bot.userName]!=="number"){
+      bankrolls[bot.userName]=STARTING_BANKROLL;
+    }
+  });
   targetState.markets.forEach((market)=>{
     market.trades.forEach((trade)=>{
       if(typeof bankrolls[trade.userName]!=="number"){
@@ -430,6 +477,53 @@ function settleMatchedMarket(market,finalScore){
   });
   updateMarketTotals(market);
   syncDerivedBalances();
+}
+
+function runBotTicks(ticks){
+  state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:createBotRoster(normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG))};
+  let aggregatedEvents=[];
+  for(let tickIndex=0;tickIndex<ticks;tickIndex+=1){
+    const tickResult=runSimulationTick({
+      state,
+      bots:state.botSimulation.bots,
+      config:state.botSimulation.config,
+      tick:state.botSimulation.config.tick||0
+    });
+    state.botSimulation.config=tickResult.config;
+    state.botSimulation.bots=tickResult.bots;
+    const executedEvents=tickResult.events.map((event)=>{
+      const market=findMarket(event.marketId);
+      if(!market||market.settlement||market.manuallyLocked){
+        return {...event,executed:false,reason:`${event.reason} Market locked.`};
+      }
+      ensureUser(event.botName);
+      const bankroll=getUserBankroll(event.botName);
+      if(bankroll<1){
+        return {...event,executed:false,reason:`${event.reason} Bot bankroll too low.`};
+      }
+      const trade=placeMatchedOrder(market,{userName:event.botName,side:event.side,stake:1});
+      return {
+        ...event,
+        executed:true,
+        tradeId:trade.id,
+        tradeStatus:trade.status
+      };
+    });
+    aggregatedEvents=aggregatedEvents.concat(executedEvents);
+    state.botSimulation.config.logs=[...executedEvents.slice().reverse().map((event)=>({
+      id:event.id,
+      tick:event.tick,
+      botName:event.botName,
+      playerName:event.playerName,
+      side:event.side,
+      projection:event.projection,
+      edge:event.edge,
+      reason:event.executed?`${event.reason} ${event.tradeStatus==="MATCHED"?"Matched immediately.":event.tradeStatus==="PARTIALLY_MATCHED"?"Partial match posted.":"Posted to book."}`:`${event.reason}`,
+      executed:event.executed
+    })),...(state.botSimulation.config.logs||[])].slice(0,state.botSimulation.config.maxLogs||120);
+  }
+  syncDerivedBalances();
+  return {events:aggregatedEvents};
 }
 
 function parseJson(req){

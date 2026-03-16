@@ -78,6 +78,21 @@ const elements = {
   settlementForm: document.getElementById("settlement-form"),
   openingFeedback: document.getElementById("opening-feedback"),
   settlementFeedback: document.getElementById("settlement-feedback"),
+  botConfigForm: document.getElementById("bot-config-form"),
+  botSeasonWeight: document.getElementById("bot-season-weight"),
+  botFormWeight: document.getElementById("bot-form-weight"),
+  botVenueWeight: document.getElementById("bot-venue-weight"),
+  botOpponentWeight: document.getElementById("bot-opponent-weight"),
+  botMatchupWeight: document.getElementById("bot-matchup-weight"),
+  botNoiseWeight: document.getElementById("bot-noise-weight"),
+  botActivityWeight: document.getElementById("bot-activity-weight"),
+  botThresholdWeight: document.getElementById("bot-threshold-weight"),
+  botConfigFeedback: document.getElementById("bot-config-feedback"),
+  botSummary: document.getElementById("bot-summary"),
+  runBotTick: document.getElementById("run-bot-tick"),
+  runBotBurst: document.getElementById("run-bot-burst"),
+  botRunFeedback: document.getElementById("bot-run-feedback"),
+  botLog: document.getElementById("bot-log"),
   adminMarketList: document.getElementById("admin-market-list"),
   positionsBody: document.getElementById("positions-body"),
   resetDemo: document.getElementById("reset-demo"),
@@ -163,6 +178,16 @@ function bindEvents() {
   elements.settlementForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await settleMarket();
+  });
+  elements.botConfigForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveBotConfig();
+  });
+  elements.runBotTick?.addEventListener("click", async () => {
+    await runBotSimulationTicks(1);
+  });
+  elements.runBotBurst?.addEventListener("click", async () => {
+    await runBotSimulationTicks(10);
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -260,6 +285,7 @@ function renderAll() {
   renderProfileSummary();
   renderAdminShell();
   renderAdminMarkets();
+  renderBotSimulation();
   renderAdminTable();
   syncOpeningForm();
 }
@@ -774,6 +800,31 @@ function renderAdminMarkets() {
     .join("");
 }
 
+function renderBotSimulation() {
+  if (!elements.botSummary || !state.botSimulation) return;
+  const config = state.botSimulation.config || {};
+  const logs = config.logs || [];
+  const botCount = (state.botSimulation.bots || []).length;
+  elements.botSeasonWeight.value = String(config.globalWeights?.season ?? 1);
+  elements.botFormWeight.value = String(config.globalWeights?.form ?? 1);
+  elements.botVenueWeight.value = String(config.globalWeights?.venue ?? 1);
+  elements.botOpponentWeight.value = String(config.globalWeights?.opponent ?? 1);
+  elements.botMatchupWeight.value = String(config.globalWeights?.matchup ?? 1);
+  elements.botNoiseWeight.value = String(config.globalWeights?.noise ?? 1);
+  elements.botActivityWeight.value = String(config.globalWeights?.activity ?? 1);
+  elements.botThresholdWeight.value = String(config.globalWeights?.threshold ?? 1);
+  elements.botSummary.innerHTML = `${positionMetric("Bots", String(botCount))}${positionMetric("Tick", String(config.tick ?? 0))}${positionMetric("Open markets", String(state.markets.filter((market) => !market.settlement && !market.manuallyLocked).length))}${positionMetric("Recent events", String(logs.length))}`;
+  elements.botLog.innerHTML = logs.length
+    ? logs
+        .slice(0, 12)
+        .map(
+          (log) =>
+            `<article class="bot-log-card"><div class="bot-log-head"><strong>${log.botName}</strong><span>Tick ${log.tick}</span></div><p>${log.playerName} · ${log.side} · Edge ${Number(log.edge).toFixed(1)}</p><span>${log.reason}</span></article>`
+        )
+        .join("")
+    : `<div class="section-meta">No bot events yet. Run a tick to generate liquidity and decision logs.</div>`;
+}
+
 function renderAdminTable() {
   const rows = state.markets.flatMap((market) =>
     market.trades
@@ -816,6 +867,44 @@ async function settleMarket() {
     refreshSharedState();
   } catch (error) {
     elements.settlementFeedback.textContent = error.message;
+  }
+}
+
+async function saveBotConfig() {
+  try {
+    const response = await api("/api/admin/bots/config", {
+      globalWeights: {
+        season: Number(elements.botSeasonWeight.value),
+        form: Number(elements.botFormWeight.value),
+        venue: Number(elements.botVenueWeight.value),
+        opponent: Number(elements.botOpponentWeight.value),
+        matchup: Number(elements.botMatchupWeight.value),
+        noise: Number(elements.botNoiseWeight.value),
+        activity: Number(elements.botActivityWeight.value),
+        threshold: Number(elements.botThresholdWeight.value)
+      }
+    });
+    state = response.state;
+    renderAll();
+    elements.botConfigFeedback.textContent = "Bot settings updated.";
+  } catch (error) {
+    elements.botConfigFeedback.textContent = error.message;
+  }
+}
+
+async function runBotSimulationTicks(ticks) {
+  try {
+    const response = await api("/api/admin/bots/run", { ticks });
+    state = response.state;
+    renderAll();
+    triggerBalanceFlash();
+    elements.botRunFeedback.textContent = `Ran ${ticks} bot tick${ticks === 1 ? "" : "s"}.`;
+    const events = response.events || [];
+    if (events.length) {
+      showToast("Bot simulation", `${events.length} Quick Take orders evaluated.`);
+    }
+  } catch (error) {
+    elements.botRunFeedback.textContent = error.message;
   }
 }
 
