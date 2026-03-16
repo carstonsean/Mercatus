@@ -33,6 +33,7 @@ const uiState = {
   pendingTradeMarketId: "",
   leaderboardSort: "BALANCE",
   quickTakeMarketIds: [],
+  quickTakeSeenMarketIds: [],
   quickTakePendingMarketId: "",
   quickTakePendingSide: "",
   adminMarketFilter: "ACTIVE",
@@ -1143,12 +1144,18 @@ function getVisibleMarkets() {
 function syncQuickTakeQueue() {
   const openMarketIds = state.markets.filter(isMarketOpen).map((market) => market.id);
   const openIdSet = new Set(openMarketIds);
+  const seen = uiState.quickTakeSeenMarketIds.filter((marketId) => openIdSet.has(marketId));
+  const seenSet = new Set(seen);
   const remaining = uiState.quickTakeMarketIds.filter((marketId) => openIdSet.has(marketId));
-  const unseen = openMarketIds.filter((marketId) => !remaining.includes(marketId));
-  const nextQueue = [...remaining, ...shuffleArray(unseen)];
+  const unseen = openMarketIds.filter((marketId) => !seenSet.has(marketId) && !remaining.includes(marketId));
+  let nextQueue = [...remaining, ...shuffleArray(unseen)];
+  let nextSeen = seen;
   if (!nextQueue.length) {
-    uiState.quickTakeMarketIds = [];
-    return;
+    nextSeen = [];
+    nextQueue = shuffleArray(openMarketIds);
+  }
+  if (!arraysEqual(nextSeen, uiState.quickTakeSeenMarketIds)) {
+    uiState.quickTakeSeenMarketIds = nextSeen;
   }
   if (!arraysEqual(nextQueue, uiState.quickTakeMarketIds)) {
     uiState.quickTakeMarketIds = nextQueue;
@@ -1161,10 +1168,11 @@ function getQuickTakeQueueMarkets() {
 }
 
 function advanceQuickTakeQueue(marketId) {
-  uiState.quickTakeMarketIds = uiState.quickTakeMarketIds.filter((id) => id !== marketId);
-  if (!uiState.quickTakeMarketIds.length) {
-    uiState.quickTakeMarketIds = shuffleArray(state.markets.filter(isMarketOpen).map((market) => market.id));
+  if (marketId && !uiState.quickTakeSeenMarketIds.includes(marketId)) {
+    uiState.quickTakeSeenMarketIds = [...uiState.quickTakeSeenMarketIds, marketId];
   }
+  uiState.quickTakeMarketIds = uiState.quickTakeMarketIds.filter((id) => id !== marketId);
+  syncQuickTakeQueue();
 }
 
 function getUserTrades(userName) {
