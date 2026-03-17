@@ -79,7 +79,44 @@
         </div>
       </section>
 
-      <section class="screen active" data-screen="markets">
+      <section class="screen active" data-screen="home">
+        <div class="screen-scroll">
+          <section class="hero-strip home-strip">
+            <div class="portfolio-title-row">
+              <div>
+                <p class="eyebrow">Market insight</p>
+                <h2>Home</h2>
+              </div>
+            </div>
+            <p class="section-meta home-intro">Track where projections sit, where sentiment is moving, and where crowd participation is strongest across the market.</p>
+            <div id="home-summary" class="leaderboard-summary-grid"></div>
+          </section>
+
+          <div class="home-carousel" aria-label="Home market insight categories">
+            <section class="section-block home-section-block home-carousel-section">
+              <div id="home-top-projected" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block market-signal-emphasis home-carousel-section">
+              <div id="home-biggest-movers" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block home-carousel-section">
+              <div id="home-best-value" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block market-signal-emphasis home-carousel-section">
+              <div id="home-most-traded" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block home-carousel-section">
+              <div id="home-user-leaderboard" class="home-leaderboard-list"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="markets">
         <div id="markets-screen-scroll" class="screen-scroll">
           <section id="selected-market-panel" class="market-centre-note"></section>
 
@@ -93,63 +130,48 @@
             </div>
             <div id="markets-list" class="markets-list"></div>
           </section>
+        </div>
+      </section>
 
-          <section class="discovery-section secondary-discovery-section">
-            <div class="section-heading compact-heading">
+      <section class="screen" data-screen="quicktake">
+        <div class="screen-scroll quick-take-scroll">
+          <section class="hero-strip quick-take-strip">
+            <div class="portfolio-title-row">
               <div>
-                <p class="eyebrow">Featured</p>
-                <h3>Top projections today</h3>
+                <h2>Quick Take</h2>
               </div>
             </div>
-            <div id="featured-rail" class="discovery-rail"></div>
-            <div class="section-heading compact-heading">
-              <div>
-                <p class="eyebrow">Momentum</p>
-                <h3>Biggest line moves</h3>
-              </div>
-            </div>
-            <div id="movers-rail" class="discovery-rail compact"></div>
+            <p class="section-meta quick-take-subtitle">Swipe-style player calls with a fixed $1 stake on open markets only.</p>
+          </section>
+
+          <section class="section-block quick-take-stage-block">
+            <div id="quick-take-deck" class="quick-take-deck"></div>
           </section>
         </div>
       </section>
 
-      <section class="screen" data-screen="leaderboard">
+      <section class="screen" data-screen="account">
         <div class="screen-scroll">
-          <section class="hero-strip portfolio-strip premium-leaderboard-strip">
-            <div class="leaderboard-title-row">
+          <section class="hero-strip profile-strip">
+            <div class="portfolio-title-row">
               <div>
-                <p class="eyebrow">Mercatus</p>
-                <h2>Leaderboard</h2>
+                <p class="eyebrow">Your activity</p>
+                <h2>Portfolio & Profile</h2>
               </div>
               <div id="leaderboard-balance-pill" class="portfolio-balance-pill"></div>
             </div>
-            <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
+            <div id="profile-summary" class="summary-grid"></div>
           </section>
 
-          <section class="section-block leaderboard-controls-block">
-            <div class="section-heading compact-heading leaderboard-controls-heading">
-              <div>
-                <p class="eyebrow">View and sort</p>
-                <h3>Community rankings</h3>
-              </div>
-            </div>
-            <div class="leaderboard-controls">
-              <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
-              <div class="leaderboard-scope-row">
-                <button class="portfolio-chip active" type="button">All time</button>
-                <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
-              </div>
-            </div>
+          <section class="section-block">
+            <form class="stack-form">
+              <label>
+                Username
+                <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
+              </label>
+            </form>
           </section>
 
-          <section class="section-block leaderboard-list-block">
-            <div id="leaderboard-list" class="list-stack"></div>
-          </section>
-        </div>
-      </section>
-
-      <section class="screen" data-screen="portfolio">
-        <div class="screen-scroll">
           <section class="hero-strip portfolio-strip premium-portfolio-strip">
             <div class="portfolio-title-row">
               <div>
@@ -177,64 +199,58 @@
           <section class="section-block portfolio-list-block">
             <div id="portfolio-list" class="portfolio-list"></div>
           </section>
-        </div>
-      </section>
 
-      <section class="screen" data-screen="quicktake">
-        <div class="screen-scroll quick-take-scroll">
-          <section class="hero-strip quick-take-strip">
-            <div class="portfolio-title-row">
+          <section class="hero-strip portfolio-strip premium-leaderboard-strip">
+            <div class="leaderboard-title-row">
               <div>
-                <h2>Quick Take</h2>
+                <p class="eyebrow">Mercatus</p>
+                <h2>Leaderboard</h2>
               </div>
             </div>
-            <p class="section-meta quick-take-subtitle">Swipe-style player calls with a fixed $1 stake on open markets only.</p>
+            <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
           </section>
 
-          <section class="section-block quick-take-stage-block">
-            <div id="quick-take-deck" class="quick-take-deck"></div>
+          <section class="section-block leaderboard-controls-block">
+            <div class="section-heading compact-heading leaderboard-controls-heading">
+              <div>
+                <p class="eyebrow">View and sort</p>
+                <h3>Community rankings</h3>
+              </div>
+            </div>
+            <div class="leaderboard-controls">
+              <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
+              <div class="leaderboard-scope-row">
+                <button class="portfolio-chip active" type="button">All time</button>
+                <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
+              </div>
+            </div>
           </section>
-        </div>
-      </section>
 
-      <section class="screen" data-screen="profile">
-        <div class="screen-scroll">
-          <section class="hero-strip profile-strip">
-            <p class="eyebrow">Profile</p>
-            <h2>Demo account</h2>
-          </section>
-
-          <section class="section-block">
-            <form class="stack-form">
-              <label>
-                Username
-                <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
-              </label>
-            </form>
-            <div id="profile-summary" class="summary-grid single-column"></div>
-            <button id="logout-button" class="secondary-button" type="button">Log out</button>
+          <section class="section-block leaderboard-list-block">
+            <div id="leaderboard-list" class="list-stack"></div>
           </section>
 
           <section class="section-block dev-entry">
             <div>
               <p class="eyebrow">Tools</p>
-              <h3>Admin access</h3>
-              <p class="section-meta">Kept out of the main user flow so the product feels consumer-ready.</p>
+              <h3>Account actions</h3>
+              <p class="section-meta">Keep your profile, leaderboard standing, and admin access together in one personal space.</p>
             </div>
+            <button id="logout-button" class="secondary-button" type="button">Log out</button>
             <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
           </section>
         </div>
       </section>
 
       <nav class="bottom-nav" aria-label="User navigation">
-        <button class="nav-button active" type="button" data-screen-target="markets">
-          <span class="nav-icon nav-icon-markets"></span>
-          <span class="nav-label">Markets</span>
+        <button class="nav-button active" type="button" data-screen-target="home">
+          <span class="nav-icon nav-icon-home"></span>
+          <span class="nav-label">Home</span>
           <span class="nav-dot" aria-hidden="true"></span>
         </button>
-        <button class="nav-button" type="button" data-screen-target="portfolio">
-          <span class="nav-icon nav-icon-portfolio"></span>
-          <span class="nav-label">Portfolio</span>
+        <button class="nav-button" type="button" data-screen-target="markets">
+          <span class="nav-icon nav-icon-markets"></span>
+          <span class="nav-label">Match Centre</span>
           <span class="nav-dot" aria-hidden="true"></span>
         </button>
         <button class="nav-button" type="button" data-screen-target="quicktake">
@@ -242,14 +258,9 @@
           <span class="nav-label">Quick Take</span>
           <span class="nav-dot" aria-hidden="true"></span>
         </button>
-        <button class="nav-button" type="button" data-screen-target="leaderboard">
-          <span class="nav-icon nav-icon-leaderboard"></span>
-          <span class="nav-label">Leaderboard</span>
-          <span class="nav-dot" aria-hidden="true"></span>
-        </button>
-        <button class="nav-button" type="button" data-screen-target="profile">
+        <button class="nav-button" type="button" data-screen-target="account">
           <span class="nav-icon nav-icon-profile"></span>
-          <span class="nav-label">Profile</span>
+          <span class="nav-label">Portfolio</span>
           <span class="nav-dot" aria-hidden="true"></span>
         </button>
       </nav>
@@ -303,6 +314,10 @@
               <input id="final-score-input" name="finalScore" type="number" step="0.1" min="0" placeholder="71.0" required>
             </label>
             <button class="primary-button" type="submit">Resolve market</button>
+            <div class="admin-inline-actions">
+              <button id="settle-round-button" class="secondary-button" type="button">Settle current round from imported scores</button>
+              <button id="undo-settlement-button" class="ghost-button" type="button">Undo last settlement</button>
+            </div>
             <p id="settlement-feedback" class="feedback" aria-live="polite"></p>
           </form>
         </div>
@@ -338,58 +353,87 @@
             <h3>Quick Take bots</h3>
           </div>
         </div>
-        <div class="admin-grid bot-admin-grid">
-          <form id="bot-config-form" class="stack-form">
+        <div class="bot-admin-layout">
+          <form id="bot-config-form" class="stack-form bot-tuning-panel">
             <div>
               <p class="panel-label">Model tuning</p>
               <p class="section-meta">Adjust the global weight multipliers that shape how smart or noisy the bots behave.</p>
             </div>
-            <label>
-              Season baseline (fixed in v1)
-              <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1" disabled>
-            </label>
-            <label>
-              Recent form
-              <input id="bot-form-weight" name="formWeight" type="number" min="0" max="3" step="0.1">
-            </label>
-            <label>
-              Venue impact
-              <input id="bot-venue-weight" name="venueWeight" type="number" min="0" max="3" step="0.1">
-            </label>
-            <label>
-              Opponent odds weighting
-              <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="1" step="0.05">
-            </label>
-            <label>
-              Positional matchup
-              <input id="bot-matchup-weight" name="matchupWeight" type="number" min="0" max="3" step="0.1">
-            </label>
-            <label>
-              Noise (unused in v1)
-              <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1" disabled>
-            </label>
-            <label>
-              Activity
-              <input id="bot-activity-weight" name="activityWeight" type="number" min="0" max="3" step="0.1">
-            </label>
-            <label>
-              Trade threshold
-              <input id="bot-threshold-weight" name="thresholdWeight" type="number" min="0.2" max="3" step="0.1">
-            </label>
-            <button class="secondary-button" type="submit">Save bot settings</button>
-            <p id="bot-config-feedback" class="feedback" aria-live="polite"></p>
+            <div class="bot-tuning-grid">
+              <label>
+                Season baseline (fixed in v1)
+                <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1" disabled>
+              </label>
+              <label>
+                Recent form
+                <input id="bot-form-weight" name="formWeight" type="number" min="0" max="3" step="0.1">
+              </label>
+              <label>
+                Venue impact
+                <input id="bot-venue-weight" name="venueWeight" type="number" min="0" max="3" step="0.1">
+              </label>
+              <label>
+                Opponent odds weighting
+                <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="1" step="0.05">
+              </label>
+              <label>
+                Positional matchup
+                <input id="bot-matchup-weight" name="matchupWeight" type="number" min="0" max="3" step="0.1">
+              </label>
+              <label>
+                Noise (unused in v1)
+                <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1" disabled>
+              </label>
+              <label>
+                Activity
+                <input id="bot-activity-weight" name="activityWeight" type="number" min="0" max="3" step="0.1">
+              </label>
+              <label>
+                Trade threshold
+                <input id="bot-threshold-weight" name="thresholdWeight" type="number" min="0.2" max="3" step="0.1">
+              </label>
+            </div>
+            <div class="bot-panel-footer">
+              <button class="secondary-button" type="submit">Save bot settings</button>
+              <p id="bot-config-feedback" class="feedback" aria-live="polite"></p>
+            </div>
           </form>
 
-          <div class="stack-form">
+          <div class="stack-form bot-overview-panel">
             <div>
-              <p class="panel-label">Bot creation</p>
-              <p class="section-meta">Create a new $200 Quick Take bot with a random mix of weightings. It will play automatically at a human pace until it runs out of money.</p>
+              <p class="panel-label">Bot operations</p>
+              <p class="section-meta">Create a new $200 Quick Take bot with a random personality variant, then track how it performs once markets settle.</p>
             </div>
-            <div id="bot-summary" class="position-grid"></div>
-            <div class="bot-run-actions">
-              <button id="create-bot" class="primary-button" type="button">Create new bot</button>
+            <div class="bot-overview-head">
+              <div id="bot-summary" class="position-grid bot-summary-grid"></div>
+              <div class="bot-run-actions">
+                <button id="create-bot" class="primary-button" type="button">Create new bot</button>
+              </div>
             </div>
             <p id="bot-run-feedback" class="feedback" aria-live="polite"></p>
+          </div>
+
+          <div class="stack-form bot-personality-panel">
+            <div>
+              <p class="panel-label">Personality board</p>
+              <p class="section-meta">Settlement-first read on which bot styles are making money and which ones need retraining.</p>
+            </div>
+            <div id="bot-archetype-summary" class="admin-dashboard-grid"></div>
+          </div>
+
+          <div class="stack-form bot-leaderboard-panel">
+            <div>
+              <p class="panel-label">Bot leaderboard</p>
+              <p class="section-meta">Rank individual bots by realized settlement performance while still showing open exposure.</p>
+            </div>
+            <div id="bot-performance-list" class="bot-performance-list"></div>
+          </div>
+
+          <div class="stack-form bot-log-panel">
+            <div>
+              <p class="panel-label">Recent bot decisions</p>
+              <p class="section-meta">Use the latest event feed to explain why a personality is overperforming or struggling.</p>
+            </div>
             <div id="bot-log" class="bot-log"></div>
           </div>
         </div>
@@ -439,6 +483,7 @@
           <strong class="player-name"></strong>
           <div class="player-subrow">
             <span class="player-meta"></span>
+            <span class="season-average"></span>
           </div>
         </div>
       </div>
@@ -446,6 +491,11 @@
         <strong class="projection-line"></strong>
         <div class="projection-support">
           <span class="projection-move"></span>
+          <span class="market-confidence-slot"></span>
+          <span class="projection-average"></span>
+        </div>
+        <div class="comparison-track" aria-hidden="true">
+          <span class="comparison-fill"></span>
         </div>
       </div>
       <div class="market-menu">›</div>
