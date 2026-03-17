@@ -54,7 +54,6 @@ const elements = {
   headerBalance: document.getElementById("header-balance"),
   navButtons: [...document.querySelectorAll(".nav-button")],
   screens: [...document.querySelectorAll(".screen")],
-  homeSummary: document.getElementById("home-summary"),
   homeTopProjected: document.getElementById("home-top-projected"),
   homeBiggestMovers: document.getElementById("home-biggest-movers"),
   homeBestValue: document.getElementById("home-best-value"),
@@ -1550,15 +1549,6 @@ function renderHome() {
     .slice(0, 20);
   const leaderboardRows = getLeaderboardRows();
   const topLeaderboardRows = leaderboardRows.slice(0, 20);
-  const biggestMover = biggestMovers[0];
-  const highestProjection = topProjected[0];
-
-  elements.homeSummary.innerHTML = [
-    leaderboardMetricCard("Most active market", mostActiveMarket ? `${mostActiveMarket.playerName} | ${tradeCountFor(mostActiveMarket)} trades` : "No activity yet"),
-    leaderboardMetricCard("Biggest projection move", biggestMover ? `${biggestMover.playerName} | ${getMovementText(biggestMover).label}` : "No movement yet"),
-    leaderboardMetricCard("Highest projection today", highestProjection ? `${highestProjection.playerName} | ${highestProjection.currentLine.toFixed(1)}` : "No projection yet"),
-    leaderboardMetricCard("Top trader", topLeaderboardRows[0] ? `${topLeaderboardRows[0].userName} | ${formatStake(topLeaderboardRows[0].balance)}` : "No users yet")
-  ].join("");
 
   renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
     badge: "Proj",
