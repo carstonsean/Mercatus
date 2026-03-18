@@ -181,89 +181,100 @@
             <div class="portfolio-title-row">
               <div>
                 <p class="eyebrow">Your activity</p>
-                <h2>Portfolio & Profile</h2>
-              </div>
-              <div id="leaderboard-balance-pill" class="portfolio-balance-pill"></div>
-            </div>
-            <div id="profile-summary" class="summary-grid"></div>
-          </section>
-
-          <section class="section-block">
-            <form class="stack-form">
-              <label>
-                Username
-                <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
-              </label>
-            </form>
-          </section>
-
-          <section class="hero-strip portfolio-strip premium-portfolio-strip">
-            <div class="portfolio-title-row">
-              <div>
-                <p class="eyebrow">crowdIQ</p>
                 <h2>Portfolio</h2>
               </div>
-              <div id="portfolio-balance-pill" class="portfolio-balance-pill"></div>
             </div>
-            <div id="portfolio-summary" class="portfolio-summary-grid"></div>
+            <div id="profile-summary" class="summary-grid"></div>
+            <div id="account-view-switch" class="account-view-switch">
+              <button class="account-view-tab active" type="button" data-account-view="portfolio">Portfolio</button>
+              <button class="account-view-tab" type="button" data-account-view="leaderboard">Leaderboard</button>
+            </div>
           </section>
 
-          <section class="section-block portfolio-controls-block">
-            <div class="section-heading compact-heading portfolio-controls-heading">
+          <div id="account-portfolio-view" class="account-view-panel active">
+            <section class="hero-strip portfolio-strip premium-portfolio-strip portfolio-mode-hero">
+              <div class="portfolio-mode-head">
+                <p class="eyebrow">Your book</p>
+                <h2>Portfolio</h2>
+                <p class="section-meta">Track open exposure, matched stake, and realized performance in one place.</p>
+              </div>
+              <div id="portfolio-summary" class="portfolio-summary-grid"></div>
+            </section>
+
+            <section class="section-block portfolio-controls-block">
+              <div class="section-heading compact-heading portfolio-controls-heading">
+                <div>
+                  <p class="eyebrow">View and sort</p>
+                  <h3>Positions</h3>
+                </div>
+              </div>
+              <div class="portfolio-controls">
+                <div id="portfolio-filters" class="portfolio-chip-row"></div>
+                <button id="portfolio-sort-button" class="portfolio-sort-button" type="button"></button>
+              </div>
+            </section>
+
+            <section class="section-block portfolio-list-block">
+              <div id="portfolio-list" class="portfolio-list"></div>
+            </section>
+
+            <section class="section-block profile-settings-block">
+              <div class="section-heading compact-heading">
+                <div>
+                  <p class="eyebrow">Profile settings</p>
+                  <h3>Account details</h3>
+                </div>
+              </div>
+              <form class="stack-form profile-settings-form">
+                <label>
+                  Username
+                  <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
+                </label>
+              </form>
+            </section>
+
+            <section class="section-block dev-entry">
               <div>
-                <p class="eyebrow">View and sort</p>
-                <h3>Positions</h3>
+                <p class="eyebrow">Tools</p>
+                <h3>Account actions</h3>
+                <p class="section-meta">Keep your profile and admin access together in one personal space.</p>
               </div>
-            </div>
-            <div class="portfolio-controls">
-              <div id="portfolio-filters" class="portfolio-chip-row"></div>
-              <button id="portfolio-sort-button" class="portfolio-sort-button" type="button"></button>
-            </div>
-          </section>
+              <button id="logout-button" class="secondary-button" type="button">Log out</button>
+              <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
+            </section>
+          </div>
 
-          <section class="section-block portfolio-list-block">
-            <div id="portfolio-list" class="portfolio-list"></div>
-          </section>
-
-          <section class="hero-strip portfolio-strip premium-leaderboard-strip">
-            <div class="leaderboard-title-row">
-              <div>
-                <p class="eyebrow">crowdIQ</p>
-                <h2>Leaderboard</h2>
+          <div id="account-leaderboard-view" class="account-view-panel">
+            <section class="hero-strip portfolio-strip premium-leaderboard-strip">
+              <div class="leaderboard-title-row">
+                <div>
+                  <p class="eyebrow">crowdIQ</p>
+                  <h2>Leaderboard</h2>
+                </div>
               </div>
-            </div>
-            <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
-          </section>
+              <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
+            </section>
 
-          <section class="section-block leaderboard-controls-block">
-            <div class="section-heading compact-heading leaderboard-controls-heading">
-              <div>
-                <p class="eyebrow">View and sort</p>
-                <h3>Community rankings</h3>
+            <section class="section-block leaderboard-controls-block">
+              <div class="section-heading compact-heading leaderboard-controls-heading">
+                <div>
+                  <p class="eyebrow">View and sort</p>
+                  <h3>Community rankings</h3>
+                </div>
               </div>
-            </div>
-            <div class="leaderboard-controls">
-              <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
-              <div class="leaderboard-scope-row">
-                <button class="portfolio-chip active" type="button">All time</button>
-                <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
+              <div class="leaderboard-controls">
+                <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
+                <div class="leaderboard-scope-row">
+                  <button class="portfolio-chip active" type="button">All time</button>
+                  <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="section-block leaderboard-list-block">
-            <div id="leaderboard-list" class="list-stack"></div>
-          </section>
-
-          <section class="section-block dev-entry">
-            <div>
-              <p class="eyebrow">Tools</p>
-              <h3>Account actions</h3>
-              <p class="section-meta">Keep your profile, leaderboard standing, and admin access together in one personal space.</p>
-            </div>
-            <button id="logout-button" class="secondary-button" type="button">Log out</button>
-            <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
-          </section>
+            <section class="section-block leaderboard-list-block">
+              <div id="leaderboard-list" class="list-stack"></div>
+            </section>
+          </div>
         </div>
       </section>
 

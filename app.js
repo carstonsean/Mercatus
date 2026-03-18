@@ -33,6 +33,7 @@ const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.b
 const uiState = {
   activeScreen: "home",
   activeHomePanel: "movers",
+  activeAccountView: "portfolio",
   currentGameId: "tigers-cowboys",
   currentTeam: "Tigers",
   selectedMarketId: "",
@@ -85,6 +86,10 @@ const elements = {
   leaderboardBalancePill: document.getElementById("leaderboard-balance-pill"),
   leaderboardSortChips: document.getElementById("leaderboard-sort-chips"),
   leaderboardList: document.getElementById("leaderboard-list"),
+  accountViewSwitch: document.getElementById("account-view-switch"),
+  accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
+  accountPortfolioView: document.getElementById("account-portfolio-view"),
+  accountLeaderboardView: document.getElementById("account-leaderboard-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
   portfolioFilters: document.getElementById("portfolio-filters"),
@@ -206,6 +211,12 @@ function bindEvents() {
     if (!chip) return;
     uiState.leaderboardSort = chip.dataset.leaderboardSort;
     renderLeaderboard();
+  });
+  elements.accountViewSwitch?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-account-view]");
+    if (!button) return;
+    uiState.activeAccountView = button.dataset.accountView;
+    renderScreens();
   });
 
   elements.homeLeaderboardLink?.addEventListener("click", () => {
@@ -513,6 +524,11 @@ function renderScreens() {
   elements.screens.forEach((screen) =>
     screen.classList.toggle("active", screen.dataset.screen === uiState.activeScreen)
   );
+  elements.accountViewTabs?.forEach((button) =>
+    button.classList.toggle("active", button.dataset.accountView === uiState.activeAccountView)
+  );
+  elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
+  elements.accountLeaderboardView?.classList.toggle("active", uiState.activeAccountView === "leaderboard");
   elements.toast?.classList.toggle("toast-low", uiState.activeScreen === "quicktake");
 }
 
@@ -627,8 +643,6 @@ function renderSelectedMarket() {
 function renderLeaderboard() {
   const rows = getLeaderboardRows();
   const leaders = rows.slice(0, 3);
-  const bankroll = getDisplayedCash(currentUserName());
-  elements.leaderboardBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(bankroll)}</strong>`;
   elements.leaderboardSummary.innerHTML = [
     leaderboardMetricCard("Leader", leaders[0] ? leaders[0].userName : "No users yet"),
     leaderboardMetricCard("Top balance", leaders[0] ? formatStake(leaders[0].balance) : formatStake(STARTING_BANKROLL)),
@@ -798,7 +812,9 @@ function renderPortfolio() {
   const matchedBalance = openTrades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
   const unmatchedBalance = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
   const positions = sortPortfolioPositions(filterPortfolioPositions(buildPortfolioItems(openTrades, settledTrades)));
-  elements.portfolioBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(cash)}</strong>`;
+  if (elements.portfolioBalancePill) {
+    elements.portfolioBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(cash)}</strong>`;
+  }
   elements.portfolioSummary.innerHTML = [
     portfolioMetricCard("Balance", formatStake(cash)),
     portfolioMetricCard("Open positions", String(openTrades.length)),
@@ -2069,9 +2085,10 @@ function openMarketFromHome(marketId) {
 
 function openFullLeaderboard() {
   uiState.activeScreen = "account";
+  uiState.activeAccountView = "leaderboard";
   renderAll();
   window.requestAnimationFrame(() => {
-    elements.leaderboardList?.scrollIntoView({ behavior: "smooth", block: "start" });
+    elements.accountLeaderboardView?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
