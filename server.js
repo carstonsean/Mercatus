@@ -1,9 +1,13 @@
+// Mercatus is a crowd-led projection market. Core market logic should optimise
+// for participation, trading activity, liquidity, and fast price discovery.
+// Projections should emerge from trading flow rather than central determination.
 const http=require("http");
 const fs=require("fs");
 const path=require("path");
 const {randomUUID}=require("crypto");
 require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
+const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,runSimulationTick}=require("./lib/bot-engine");
 const {isSupabaseConfigured}=require("./lib/config");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
@@ -16,12 +20,14 @@ const STARTING_BANKROLL=1000;
 const PRESSURE_STEP=2;
 const BOT_PRESSURE_MULTIPLIER=1;
 const LINE_STEP=1;
-const ENGINE_VERSION="hybrid-v1";
+const ENGINE_VERSION="hybrid-v2";
 const STATE_PATH=path.join(__dirname,"server-state.json");
 const USE_SUPABASE=false;
 const BOT_AUTOPLAY_INTERVAL_MS=3000;
 const SEEDED_MARKETS=buildRoundMarkets();
 const SEEDED_MARKETS_BY_ID=new Map(SEEDED_MARKETS.map((market)=>[market.id,market]));
+const CURRENT_ROUND_NUMBER=parseRoundNumber(roundGames[0]?.roundLabel);
+const ROUND_NUMBER_BY_GAME_ID=new Map(roundGames.map((game)=>[game.id,parseRoundNumber(game.roundLabel)]));
 
 let state=loadState();
 persistState();
@@ -165,9 +171,55 @@ async function handleApi(req,res,url){
     if(market.settlement){
       return json(res,400,{error:"That market is already resolved."});
     }
-    settleProjectionMarket(market,finalScore);
+    settleMarketsWithSnapshot([{market,finalScore}],{
+      mode:"single",
+      label:`Manual settlement for ${market.playerName}`
+    });
     persistState();
     return json(res,200,{state});
+  }
+  if(req.method==="POST"&&url.pathname==="/api/admin/settle-round"){
+    const candidates=state.markets
+      .filter((market)=>!market.settlement)
+      .map((market)=>{
+        const finalScore=getImportedRoundScoreForMarket(market,CURRENT_ROUND_NUMBER);
+        if(Number.isFinite(finalScore)){
+          return {market,finalScore,settlementType:"SCORED"};
+        }
+        return {market,finalScore:null,settlementType:"VOID"};
+      });
+    if(!candidates.length){
+      return json(res,400,{error:`No imported ${roundGames[0]?.roundLabel||"round"} scores are available for open markets.`});
+    }
+    const scoredCount=candidates.filter((entry)=>entry.settlementType==="SCORED").length;
+    const voidCount=candidates.filter((entry)=>entry.settlementType==="VOID").length;
+    settleMarketsWithSnapshot(candidates,{
+      mode:"round",
+      label:`Imported ${roundGames[0]?.roundLabel||`Round ${CURRENT_ROUND_NUMBER}`} settlement`,
+      roundNumber:CURRENT_ROUND_NUMBER,
+      settledCount:candidates.length,
+      scoredCount,
+      voidCount
+    });
+    persistState();
+    return json(res,200,{
+      state,
+      settlementBatch:{
+        settledCount:candidates.length,
+        scoredCount,
+        voidCount,
+        roundNumber:CURRENT_ROUND_NUMBER,
+        roundMetrics:state.lastSettlementBatch?.roundMetrics||null
+      }
+    });
+  }
+  if(req.method==="POST"&&url.pathname==="/api/admin/undo-settlement"){
+    if(!state.lastSettlementBatch){
+      return json(res,400,{error:"There is no settlement batch to undo."});
+    }
+    const restoredCount=undoLastSettlementBatch();
+    persistState();
+    return json(res,200,{state,restoredCount});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/reset"){
     state=buildFreshState();
@@ -228,6 +280,8 @@ function buildFreshState(){
   return {
     bankrolls:{},
     markets:buildRoundMarkets().map((market)=>({...market,initialLine:normalizeMidpoint(market.initialLine),currentLine:normalizeMidpoint(market.initialLine),spreadWidth:LINE_STEP,totalOverStake:0,totalUnderStake:0,netPressure:0,pressureBalance:0,trades:[],matchedPairs:[],settlement:null,manuallyLocked:false,manualAdjustmentSteps:0,engineVersion:ENGINE_VERSION})),
+    lastSettlementBatch:null,
+    roundMetricsHistory:[],
     botSimulation:{
       config:botSimulation,
       bots:[]
@@ -306,7 +360,13 @@ function normalizeState(rawState){
   });
   markets.forEach((market)=>migrateLegacyMarket(market,bankrolls));
   markets.forEach((market)=>updateMarketTotals(market));
-  return syncDerivedBalances({bankrolls,markets,botSimulation:{config:botConfig,bots}});
+  return syncDerivedBalances({
+    bankrolls,
+    markets,
+    lastSettlementBatch:rawState.lastSettlementBatch||null,
+    roundMetricsHistory:Array.isArray(rawState.roundMetricsHistory)?cloneValue(rawState.roundMetricsHistory):[],
+    botSimulation:{config:botConfig,bots}
+  });
 }
 
 function syncDerivedBalances(targetState=state){
@@ -413,7 +473,6 @@ function activeOrderStatus(order){
 function executeProjectionTrade(market,{userName,side,stake}){
   ensureBankroll(userName);
   const previousNetPressure=Number(market.netPressure)||0;
-  state.bankrolls[userName]-=stake;
   const {underLine,overLine}=linePairFor(market);
   const timestamp=new Date().toISOString();
   const trade={
@@ -451,9 +510,6 @@ function cancelPendingOrders(userName,orderIds){
       if(trade.userName!==userName||!orderIds.includes(trade.id)||!(trade.unmatchedStake>0)){
         return;
       }
-      state.bankrolls[userName]=(state.bankrolls[userName]||STARTING_BANKROLL)+trade.unmatchedStake;
-      trade.refundedStake=(trade.refundedStake||0)+trade.unmatchedStake;
-      trade.stake-=trade.unmatchedStake;
       trade.unmatchedStake=0;
       trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
     });
@@ -462,14 +518,13 @@ function cancelPendingOrders(userName,orderIds){
   });
 }
 
-function settleProjectionMarket(market,finalScore){
-  market.settlement={finalScore,settledAt:new Date().toISOString()};
+function settleProjectionMarket(market,finalScore,options={}){
+  const settlementType=options.settlementType||"SCORED";
+  const isVoid=settlementType==="VOID";
+  market.settlement={finalScore:isVoid?null:finalScore,settledAt:new Date().toISOString(),settlementType};
   market.manuallyLocked=true;
   market.trades.forEach((trade)=>{
     if(trade.unmatchedStake>0){
-      state.bankrolls[trade.userName]=(state.bankrolls[trade.userName]||STARTING_BANKROLL)+trade.unmatchedStake;
-      trade.refundedStake=(trade.refundedStake||0)+trade.unmatchedStake;
-      trade.stake-=trade.unmatchedStake;
       trade.unmatchedStake=0;
     }
   });
@@ -477,7 +532,12 @@ function settleProjectionMarket(market,finalScore){
     if(pair.status!=="OPEN"){
       return;
     }
-    if(finalScore>pair.overEntryLine){
+    if(isVoid){
+      state.bankrolls[pair.overUserName]=(state.bankrolls[pair.overUserName]||STARTING_BANKROLL)+pair.stake;
+      state.bankrolls[pair.underUserName]=(state.bankrolls[pair.underUserName]||STARTING_BANKROLL)+pair.stake;
+      pair.winnerUserName=null;
+      pair.voided=true;
+    }else if(finalScore>pair.overEntryLine){
       pair.winnerUserName=pair.overUserName;
       state.bankrolls[pair.overUserName]=(state.bankrolls[pair.overUserName]||STARTING_BANKROLL)+(pair.stake*2);
     }else if(finalScore<pair.underEntryLine){
@@ -490,22 +550,135 @@ function settleProjectionMarket(market,finalScore){
   });
   market.trades.forEach((trade)=>{
     const relatedPairs=market.matchedPairs.filter((pair)=>(trade.pairIds||[]).includes(pair.id));
-    const payout=relatedPairs.reduce((sum,pair)=>sum+(pair.winnerUserName===trade.userName?pair.stake*2:0),0);
+    const payout=relatedPairs.reduce((sum,pair)=>{
+      if(isVoid){
+        return sum+pair.stake;
+      }
+      return sum+(pair.winnerUserName===trade.userName?pair.stake*2:0);
+    },0);
     const activeStake=(trade.matchedStake||0)+(trade.refundedStake||0);
     const profit=payout+(trade.refundedStake||0)-activeStake;
     let outcome="LOSS";
-    if(trade.matchedStake===0&&trade.refundedStake>0){
+    if(isVoid){
+      outcome="VOID";
+    }else if(trade.matchedStake===0){
       outcome="VOID";
     }else if(relatedPairs.some((pair)=>pair.platformRevenue>0)&&payout===0){
       outcome="MIDDLE";
     }else if(payout>0){
       outcome="WIN";
     }
-    trade.result={outcome,finalScore,payout:payout+(trade.refundedStake||0),profit};
+    trade.result={outcome,finalScore:isVoid?null:finalScore,payout:payout+(trade.refundedStake||0),profit};
     trade.status="SETTLED";
   });
   updateMarketTotals(market);
   syncDerivedBalances();
+}
+
+function settleMarketsWithSnapshot(entries,metadata={}){
+  const marketsToRestore=entries.map(({market})=>market);
+  const preSettlementMarkets=cloneValue(marketsToRestore);
+  state.lastSettlementBatch={
+    createdAt:new Date().toISOString(),
+    metadata,
+    bankrolls:cloneValue(state.bankrolls),
+    markets:preSettlementMarkets,
+    roundMetricsHistory:cloneValue(state.roundMetricsHistory||[])
+  };
+  entries.forEach(({market,finalScore,settlementType})=>{
+    settleProjectionMarket(market,finalScore,{settlementType});
+  });
+  if(Number.isFinite(Number(metadata.roundNumber))){
+    const roundMetrics=buildRoundSettlementMetricsReport({
+      roundNumber:Number(metadata.roundNumber),
+      beforeMarkets:preSettlementMarkets,
+      afterMarkets:cloneValue(entries.map(({market})=>market)),
+      metadata
+    });
+    state.lastSettlementBatch.roundMetrics=roundMetrics;
+    state.roundMetricsHistory=upsertRoundMetricsHistory(state.roundMetricsHistory,roundMetrics);
+  }
+}
+
+function undoLastSettlementBatch(){
+  const snapshot=state.lastSettlementBatch;
+  const snapshotMarkets=new Map((snapshot?.markets||[]).map((market)=>[market.id,market]));
+  if(!snapshot||!snapshotMarkets.size){
+    throw new Error("There is no settlement batch to undo.");
+  }
+  state.bankrolls=cloneValue(snapshot.bankrolls||{});
+  state.markets=state.markets.map((market)=>snapshotMarkets.has(market.id)?cloneValue(snapshotMarkets.get(market.id)):market);
+  state.roundMetricsHistory=cloneValue(snapshot.roundMetricsHistory||[]);
+  state.lastSettlementBatch=null;
+  syncDerivedBalances();
+  return snapshotMarkets.size;
+}
+
+function getImportedRoundScoreForMarket(market,roundNumber){
+  const playerEntries=derivedData?.roundScoresByPlayer?.[normalizePlayerKey(market.playerName)];
+  if(!Array.isArray(playerEntries)){
+    return null;
+  }
+  const entry=playerEntries.find((item)=>
+    Number(item.round)===Number(roundNumber)&&normalizeTeamName(item.team)===normalizeTeamName(market.team)
+  );
+  return Number.isFinite(Number(entry?.score))?Number(entry.score):null;
+}
+
+function parseRoundNumber(label){
+  const match=String(label||"").match(/(\d+)/);
+  return match?Number(match[1]):null;
+}
+
+function getRoundNumberForMarket(market){
+  return ROUND_NUMBER_BY_GAME_ID.get(market?.gameId)??null;
+}
+
+function buildRoundSettlementMetricsReport({roundNumber,beforeMarkets,afterMarkets,metadata={}}){
+  const relevantBeforeMarkets=(beforeMarkets||[]).filter((market)=>getRoundNumberForMarket(market)===roundNumber);
+  const relevantAfterMarkets=(afterMarkets||[]).filter((market)=>getRoundNumberForMarket(market)===roundNumber);
+  const trades=relevantBeforeMarkets.flatMap((market)=>market.trades||[]);
+  const matchedPairs=relevantAfterMarkets.flatMap((market)=>market.matchedPairs||[]);
+  const participatingUsers=new Set(trades.map((trade)=>trade.userName).filter(Boolean));
+  const totalMatchedVolume=trades.reduce((sum,trade)=>sum+(Number(trade.matchedStake)||0),0);
+  const unmatchedVolume=trades.reduce((sum,trade)=>sum+(Number(trade.unmatchedStake)||0),0);
+  const totalTradedValue=trades.reduce((sum,trade)=>sum+(Number(trade.stake)||0),0);
+  const roundProfit=matchedPairs.reduce((sum,pair)=>sum+(Number(pair.platformRevenue)||0),0);
+  const middleMatchedPairs=matchedPairs.filter((pair)=>(Number(pair.platformRevenue)||0)>0);
+  return {
+    roundNumber,
+    roundLabel:roundGames.find((game)=>parseRoundNumber(game.roundLabel)===roundNumber)?.roundLabel||`Round ${roundNumber}`,
+    settledAt:new Date().toISOString(),
+    settledMarkets:relevantAfterMarkets.length,
+    totalTrades:trades.length,
+    totalMatchedVolume,
+    unmatchedVolume,
+    totalTradedValue,
+    participatingUsers:participatingUsers.size,
+    averageSpendPerUser:participatingUsers.size?totalTradedValue/participatingUsers.size:0,
+    roundProfit,
+    middleOutcomeCount:middleMatchedPairs.length,
+    middleMatchedVolume:middleMatchedPairs.reduce((sum,pair)=>sum+((Number(pair.stake)||0)*2),0),
+    metadata
+  };
+}
+
+function upsertRoundMetricsHistory(history,roundMetrics){
+  const existingHistory=Array.isArray(history)?history:[];
+  const nextHistory=existingHistory.filter((entry)=>Number(entry?.roundNumber)!==Number(roundMetrics?.roundNumber));
+  return [...nextHistory,roundMetrics].sort((left,right)=>Number(left.roundNumber)-Number(right.roundNumber));
+}
+
+function normalizePlayerKey(value){
+  return String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+}
+
+function normalizeTeamName(team){
+  return team==="Tigers"?"Wests Tigers":String(team||"");
+}
+
+function cloneValue(value){
+  return JSON.parse(JSON.stringify(value));
 }
 
 function runBotTicks(ticks){
@@ -531,6 +704,7 @@ function runBotTicks(ticks){
         return {...event,executed:false,reason:`${event.reason} Bot bankroll too low.`};
       }
       const trade=executeProjectionTrade(market,{userName:event.botName,side:event.side,stake:1});
+      trade.archetype=event.archetype||"custom";
       return {
         ...event,
         executed:true,
@@ -543,6 +717,8 @@ function runBotTicks(ticks){
       id:event.id,
       tick:event.tick,
       botName:event.botName,
+      archetype:event.archetype,
+      archetypeLabel:(state.botSimulation.bots||[]).find((bot)=>bot.userName===event.botName)?.config?.baseLabel||(state.botSimulation.bots||[]).find((bot)=>bot.userName===event.botName)?.config?.label||event.archetype||"Custom",
       playerName:event.playerName,
       side:event.side,
       projection:event.projection,
@@ -627,12 +803,17 @@ function migrateLegacyMarket(market,bankrolls){
   }
   market.pressureBalance=0;
   (market.trades||[]).forEach((trade)=>{
+    const unmatchedStake=Number(trade.unmatchedStake)||0;
     if(trade.result){
       trade.status="SETTLED";
       trade.unmatchedStake=0;
       trade.matchedStake=Number(trade.matchedStake)||Number(trade.stake)||0;
       trade.engineVersion=ENGINE_VERSION;
       return;
+    }
+    if(unmatchedStake>0){
+      bankrolls[trade.userName]=(Number(bankrolls[trade.userName])||STARTING_BANKROLL)+unmatchedStake;
+      trade.refundedStake=0;
     }
     const reservedStake=Math.max((Number(trade.stake)||0)-(Number(trade.refundedStake)||0),0);
     if((trade.pairIds||[]).length){
@@ -641,7 +822,7 @@ function migrateLegacyMarket(market,bankrolls){
       trade.status=activeOrderStatus(trade);
     }else{
       trade.matchedStake=0;
-      trade.unmatchedStake=reservedStake;
+      trade.unmatchedStake=Number(trade.unmatchedStake)||reservedStake;
       trade.status=reservedStake>0?"PENDING":"CANCELLED";
     }
     trade.engineVersion=ENGINE_VERSION;
@@ -663,8 +844,13 @@ function matchAgainstRestingOrders(market,incomingOrder){
     if(incomingOrder.unmatchedStake<=0){
       return;
     }
-    const matchedStake=Math.min(incomingOrder.unmatchedStake,restingOrder.unmatchedStake);
-    if(matchedStake<=0){
+    const affordableStake=Math.min(
+      incomingOrder.unmatchedStake,
+      restingOrder.unmatchedStake,
+      Math.max(getUserBankroll(incomingOrder.userName),0),
+      Math.max(getUserBankroll(restingOrder.userName),0)
+    );
+    if(affordableStake<=0){
       return;
     }
     const overOrder=incomingOrder.side==="OVER"?incomingOrder:restingOrder;
@@ -674,7 +860,7 @@ function matchAgainstRestingOrders(market,incomingOrder){
       marketId:market.id,
       createdAt:incomingOrder.timestamp,
       status:"OPEN",
-      stake:matchedStake,
+      stake:affordableStake,
       overUserName:overOrder.userName,
       underUserName:underOrder.userName,
       overOrderId:overOrder.id,
@@ -684,12 +870,14 @@ function matchAgainstRestingOrders(market,incomingOrder){
       winnerUserName:null,
       platformRevenue:0
     };
+    state.bankrolls[incomingOrder.userName]=Math.max(getUserBankroll(incomingOrder.userName)-affordableStake,0);
+    state.bankrolls[restingOrder.userName]=Math.max(getUserBankroll(restingOrder.userName)-affordableStake,0);
     market.matchedPairs.push(pair);
-    incomingOrder.unmatchedStake-=matchedStake;
-    incomingOrder.matchedStake+=matchedStake;
+    incomingOrder.unmatchedStake-=affordableStake;
+    incomingOrder.matchedStake+=affordableStake;
     incomingOrder.pairIds.push(pair.id);
-    restingOrder.unmatchedStake-=matchedStake;
-    restingOrder.matchedStake+=matchedStake;
+    restingOrder.unmatchedStake-=affordableStake;
+    restingOrder.matchedStake+=affordableStake;
     restingOrder.pairIds=(restingOrder.pairIds||[]).concat(pair.id);
     restingOrder.status=activeOrderStatus(restingOrder);
   });
