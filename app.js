@@ -328,7 +328,7 @@ async function completeLogin(userName) {
     elements.authFeedback.textContent = "Enter a username to continue.";
     return;
   }
-  elements.authFeedback.textContent = "Entering Mercatus...";
+  elements.authFeedback.textContent = "Entering crowdIQ...";
   elements.authUsername.disabled = true;
   try {
     elements.userName.value = userName;

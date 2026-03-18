@@ -2097,6 +2097,9 @@ label {
 }
 
 .home-group-card {
+  --home-visible-rows: 5;
+  --home-card-row-gap: 8px;
+  --home-card-row-height: 72px;
   display: grid;
   gap: 10px;
   padding: 12px;
@@ -2141,6 +2144,7 @@ label {
   gap: 10px;
   align-items: center;
   width: 100%;
+  min-height: var(--home-card-row-height);
   padding: 11px 12px;
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.04);
@@ -2154,9 +2158,14 @@ label {
 }
 
 .home-group-card-body {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--home-card-row-gap);
   min-height: 0;
+  max-height: calc(
+    (var(--home-card-row-height) * var(--home-visible-rows)) +
+    (var(--home-card-row-gap) * (var(--home-visible-rows) - 1))
+  );
   overflow-y: auto;
   padding-right: 2px;
   scrollbar-width: thin;
