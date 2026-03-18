@@ -28,17 +28,40 @@
             </div>
           </div>
           <div class="auth-copy">
-            <h2>Enter a username</h2>
-            <p>Mercatus is an NRL Fantasy projection market shaped by the wisdom of the crowd. Trade Over or Under on player score lines and watch projections move as market sentiment shifts.</p>
-            <p>Each market reflects the crowd's evolving view of what a player will score.</p>
-            <p>Use a unique username to enter. Mercatus is currently in beta, and new accounts receive $200 in app currency.</p>
+            <h2>Trade the crowd's view</h2>
+            <p>Mercatus turns crowd trading into live NRL Fantasy score projections. Enter the market, spot movement, and back your read.</p>
+            <div class="auth-signal-list" aria-label="Why trade on Mercatus">
+              <article class="auth-signal-card">
+                <strong>Live projections shaped by market activity</strong>
+                <span>Player lines move when traders disagree and matched orders hit the market.</span>
+              </article>
+              <article class="auth-signal-card">
+                <strong>Fast discovery of movers and pricing gaps</strong>
+                <span>See where sentiment is shifting and where the crowd differs from fantasy expectations.</span>
+              </article>
+              <article class="auth-signal-card">
+                <strong>Leaderboards reward sharp trading</strong>
+                <span>Trade well, climb the rankings, and earn visible status inside the market.</span>
+              </article>
+            </div>
+            <div class="auth-incentive-strip">
+              <strong>Start with $200 in Mercatus cash</strong>
+              <span>No signup flow. Just choose a username and enter the market.</span>
+            </div>
+            <section class="auth-preview-panel" aria-label="Market snapshot before entry">
+              <div class="auth-preview-head">
+                <p class="eyebrow">Market snapshot</p>
+                <h3>See what's moving before you enter</h3>
+              </div>
+              <div id="auth-preview-list" class="auth-preview-grid"></div>
+            </section>
           </div>
           <form id="auth-form" class="stack-form auth-form">
             <label>
               Username
               <input id="auth-username" name="authUsername" type="text" maxlength="24" placeholder="Johnny" required>
             </label>
-            <button class="primary-button" type="submit">Enter Mercatus</button>
+            <button class="primary-button" type="submit">Enter the Market</button>
             <p id="auth-feedback" class="feedback" aria-live="polite"></p>
           </form>
         </div>
@@ -345,43 +368,85 @@
         <div class="bot-admin-layout">
           <form id="bot-config-form" class="stack-form bot-tuning-panel">
             <div>
-              <p class="panel-label">Model tuning</p>
-              <p class="section-meta">Adjust the global weight multipliers that shape how smart or noisy the bots behave.</p>
+              <p class="panel-label">Bot market behaviour</p>
+              <p class="section-meta">Control how bots behave in the market using plain-English levers, then fine-tune the projection model only if needed.</p>
             </div>
-            <div class="bot-tuning-grid">
-              <label>
-                Season baseline (fixed in v1)
-                <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1" disabled>
+            <div class="bot-preset-block">
+              <span class="trade-label">Quick presets</span>
+              <div id="bot-behaviour-presets" class="portfolio-chip-row">
+                <button class="portfolio-chip" type="button" data-bot-preset="BALANCED">Balanced</button>
+                <button class="portfolio-chip" type="button" data-bot-preset="MOMENTUM">Momentum</button>
+                <button class="portfolio-chip" type="button" data-bot-preset="CONTRARIAN">Contrarian</button>
+                <button class="portfolio-chip" type="button" data-bot-preset="MARKET_MAKER">Market maker</button>
+                <button class="portfolio-chip" type="button" data-bot-preset="PUBLIC">Public money</button>
+              </div>
+            </div>
+            <div class="bot-behaviour-grid">
+              <label class="bot-behaviour-card">
+                <span class="bot-behaviour-heading">Crowd style</span>
+                <span class="bot-behaviour-meta">Fade crowd <strong id="bot-crowd-style-label">Neutral</strong> Follow crowd</span>
+                <input id="bot-crowd-style" name="crowdStyle" type="range" min="0" max="100" step="1">
               </label>
-              <label>
-                Recent form
-                <input id="bot-form-weight" name="formWeight" type="number" min="0" max="3" step="0.1">
+              <label class="bot-behaviour-card">
+                <span class="bot-behaviour-heading">Liquidity providing</span>
+                <span class="bot-behaviour-meta">Directional <strong id="bot-liquidity-label">Balanced</strong> Market making</span>
+                <input id="bot-liquidity-style" name="liquidityStyle" type="range" min="0" max="100" step="1">
               </label>
-              <label>
-                Venue impact
-                <input id="bot-venue-weight" name="venueWeight" type="number" min="0" max="3" step="0.1">
+              <label class="bot-behaviour-card">
+                <span class="bot-behaviour-heading">Fade big moves</span>
+                <span class="bot-behaviour-meta">Ignore extremes <strong id="bot-fade-label">Moderate</strong> Strong reversion</span>
+                <input id="bot-fade-style" name="fadeStyle" type="range" min="0" max="100" step="1">
               </label>
-              <label>
-                Opponent odds weighting
-                <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="1" step="0.05">
+              <label class="bot-behaviour-card">
+                <span class="bot-behaviour-heading">Trading frequency</span>
+                <span class="bot-behaviour-meta">Selective <strong id="bot-frequency-label">Balanced</strong> Active</span>
+                <input id="bot-frequency-style" name="frequencyStyle" type="range" min="0" max="100" step="1">
               </label>
-              <label>
-                Positional matchup
-                <input id="bot-matchup-weight" name="matchupWeight" type="number" min="0" max="3" step="0.1">
-              </label>
-              <label>
-                Noise (unused in v1)
-                <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1" disabled>
-              </label>
-              <label>
-                Activity
-                <input id="bot-activity-weight" name="activityWeight" type="number" min="0" max="3" step="0.1">
-              </label>
-              <label>
-                Trade threshold
-                <input id="bot-threshold-weight" name="thresholdWeight" type="number" min="0.2" max="3" step="0.1">
+              <label class="bot-behaviour-card">
+                <span class="bot-behaviour-heading">Edge required</span>
+                <span class="bot-behaviour-meta">Trade small edges <strong id="bot-edge-label">Balanced</strong> Wait for conviction</span>
+                <input id="bot-edge-style" name="edgeStyle" type="range" min="0" max="100" step="1">
               </label>
             </div>
+            <details class="bot-advanced-panel">
+              <summary>Advanced model tuning</summary>
+              <p class="section-meta">These inputs change how the projection model is built. Use them only when you want to adjust the bot's underlying scoring logic.</p>
+              <div class="bot-tuning-grid">
+                <label>
+                  Season baseline (fixed in v1)
+                  <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1" disabled>
+                </label>
+                <label>
+                  Recent form
+                  <input id="bot-form-weight" name="formWeight" type="number" min="0" max="3" step="0.1">
+                </label>
+                <label>
+                  Venue impact
+                  <input id="bot-venue-weight" name="venueWeight" type="number" min="0" max="3" step="0.1">
+                </label>
+                <label>
+                  Opponent odds weighting
+                  <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="1" step="0.05">
+                </label>
+                <label>
+                  Positional matchup
+                  <input id="bot-matchup-weight" name="matchupWeight" type="number" min="0" max="3" step="0.1">
+                </label>
+                <label>
+                  Noise (unused in v1)
+                  <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1" disabled>
+                </label>
+                <label>
+                  Activity multiplier
+                  <input id="bot-activity-weight" name="activityWeight" type="number" min="0.2" max="3" step="0.1">
+                </label>
+                <label>
+                  Trade threshold multiplier
+                  <input id="bot-threshold-weight" name="thresholdWeight" type="number" min="0.2" max="3" step="0.1">
+                </label>
+              </div>
+            </details>
+            <div id="bot-behaviour-summary" class="bot-behaviour-summary"></div>
             <div class="bot-panel-footer">
               <button class="secondary-button" type="submit">Save bot settings</button>
               <p id="bot-config-feedback" class="feedback" aria-live="polite"></p>

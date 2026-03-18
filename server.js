@@ -237,6 +237,7 @@ async function handleApi(req,res,url){
       enabled: body.enabled ?? state.botSimulation.config.enabled,
       maxMarketsPerBot: Number.isFinite(Number(body.maxMarketsPerBot))?Number(body.maxMarketsPerBot):state.botSimulation.config.maxMarketsPerBot,
       globalWeights: {...state.botSimulation.config.globalWeights,...(body.globalWeights||{})},
+      behaviour: {...state.botSimulation.config.behaviour,...(body.behaviour||{})},
       botCounts: {...state.botSimulation.config.botCounts,...(body.botCounts||{})},
       seed: Number.isFinite(Number(body.seed))?Number(body.seed):state.botSimulation.config.seed
     });

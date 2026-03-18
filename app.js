@@ -13,12 +13,20 @@ const derivedData = window.MERCATUS_DERIVED || {};
 const roundGames = seed.roundGames;
 const TEAM_COLORS = seed.TEAM_COLORS;
 const CURRENT_ROUND_LABEL = roundGames[0]?.roundLabel || "Current round";
+const BOT_BEHAVIOUR_PRESETS = {
+  BALANCED: { crowdStyle: 50, liquidityStyle: 40, fadeStyle: 45, frequencyStyle: 50, edgeStyle: 50 },
+  MOMENTUM: { crowdStyle: 84, liquidityStyle: 22, fadeStyle: 18, frequencyStyle: 70, edgeStyle: 38 },
+  CONTRARIAN: { crowdStyle: 14, liquidityStyle: 34, fadeStyle: 72, frequencyStyle: 42, edgeStyle: 62 },
+  MARKET_MAKER: { crowdStyle: 50, liquidityStyle: 88, fadeStyle: 55, frequencyStyle: 58, edgeStyle: 28 },
+  PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
+};
 
 let state = { bankrolls: {}, markets: [] };
 let backendState = { mode: "local", user: null, dashboard: null };
 let toastTimer = null;
 let syncTimer = null;
 let syncInFlight = false;
+const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
 
 const uiState = {
   activeScreen: "home",
@@ -50,6 +58,7 @@ const elements = {
   authForm: document.getElementById("auth-form"),
   authUsername: document.getElementById("auth-username"),
   authFeedback: document.getElementById("auth-feedback"),
+  authPreviewList: document.getElementById("auth-preview-list"),
   appFrame: document.querySelector(".mobile-frame"),
   headerBalance: document.getElementById("header-balance"),
   navButtons: [...document.querySelectorAll(".nav-button")],
@@ -102,6 +111,18 @@ const elements = {
   botNoiseWeight: document.getElementById("bot-noise-weight"),
   botActivityWeight: document.getElementById("bot-activity-weight"),
   botThresholdWeight: document.getElementById("bot-threshold-weight"),
+  botBehaviourPresets: document.getElementById("bot-behaviour-presets"),
+  botCrowdStyle: document.getElementById("bot-crowd-style"),
+  botLiquidityStyle: document.getElementById("bot-liquidity-style"),
+  botFadeStyle: document.getElementById("bot-fade-style"),
+  botFrequencyStyle: document.getElementById("bot-frequency-style"),
+  botEdgeStyle: document.getElementById("bot-edge-style"),
+  botCrowdStyleLabel: document.getElementById("bot-crowd-style-label"),
+  botLiquidityLabel: document.getElementById("bot-liquidity-label"),
+  botFadeLabel: document.getElementById("bot-fade-label"),
+  botFrequencyLabel: document.getElementById("bot-frequency-label"),
+  botEdgeLabel: document.getElementById("bot-edge-label"),
+  botBehaviourSummary: document.getElementById("bot-behaviour-summary"),
   botConfigFeedback: document.getElementById("bot-config-feedback"),
   botSummary: document.getElementById("bot-summary"),
   botArchetypeSummary: document.getElementById("bot-archetype-summary"),
@@ -122,6 +143,7 @@ init();
 
 async function init() {
   bindEvents();
+  renderAuthPreview();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (!savedUserName) {
     renderAuthGate(false);
@@ -212,6 +234,22 @@ function bindEvents() {
     event.preventDefault();
     await saveBotConfig();
   });
+  elements.botBehaviourPresets?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-bot-preset]");
+    if (!button) return;
+    applyBotBehaviourPreset(button.dataset.botPreset);
+  });
+  [
+    elements.botCrowdStyle,
+    elements.botLiquidityStyle,
+    elements.botFadeStyle,
+    elements.botFrequencyStyle,
+    elements.botEdgeStyle
+  ].forEach((input) =>
+    input?.addEventListener("input", () => {
+      renderBotBehaviourSummary();
+    })
+  );
   elements.createBot?.addEventListener("click", async () => {
     await createSimulationBot();
   });
@@ -312,6 +350,43 @@ async function completeLogin(userName) {
 function renderAuthGate(isAuthenticated) {
   elements.authGate.classList.toggle("is-hidden", isAuthenticated);
   elements.appFrame.classList.toggle("is-authenticated", isAuthenticated);
+}
+
+function renderAuthPreview() {
+  if (!elements.authPreviewList) return;
+  const markets = state.markets?.length ? state.markets : authPreviewMarkets;
+  const highestProjection = markets.slice().sort((left, right) => projectionValue(right) - projectionValue(left))[0];
+  const biggestMover = markets.slice().sort((left, right) => Math.abs(initialMovement(right)) - Math.abs(initialMovement(left)) || projectionValue(right) - projectionValue(left))[0];
+  const mostActive = markets.slice().sort((left, right) => authPreviewActivity(right) - authPreviewActivity(left) || projectionValue(right) - projectionValue(left))[0];
+  const topTrader = getLeaderboardRows().slice(0, 1)[0];
+  const items = [
+    {
+      label: "Most active market",
+      value: mostActive ? mostActive.playerName : "Opening soon",
+      meta: mostActive ? matchupContextForPreview(mostActive).label : "Trading activity builds after market open"
+    },
+    {
+      label: "Biggest mover today",
+      value: biggestMover ? movementCopyForPreview(biggestMover) : "No move yet",
+      meta: biggestMover ? biggestMover.playerName : "Live movement appears as orders match"
+    },
+    {
+      label: "Highest projection",
+      value: highestProjection ? `${projectionValue(highestProjection).toFixed(1)} pts` : "0.0 pts",
+      meta: highestProjection ? highestProjection.playerName : "Top projected player"
+    },
+    {
+      label: "Top trader",
+      value: topTrader ? topTrader.userName : "Board opens with first trade",
+      meta: topTrader ? `${formatStake(topTrader.balance)} wallet` : "Compete once the market is live"
+    }
+  ];
+  elements.authPreviewList.innerHTML = items
+    .map(
+      (item) =>
+        `<article class="auth-preview-card"><span>${item.label}</span><strong>${item.value}</strong><p>${item.meta}</p></article>`
+    )
+    .join("");
 }
 
 function startLiveSync() {
@@ -977,6 +1052,8 @@ function renderBotSimulation() {
   elements.botNoiseWeight.disabled = true;
   elements.botActivityWeight.value = String(config.globalWeights?.activity ?? 1);
   elements.botThresholdWeight.value = String(config.globalWeights?.threshold ?? 1);
+  syncBotBehaviourInputs(config.behaviour);
+  renderBotBehaviourSummary();
   elements.botSummary.innerHTML = `${positionMetric("Bots", String(botCount))}${positionMetric("Active", String(activeBotCount))}${positionMetric("Bot bankroll", formatStake(totalBotBankroll))}${positionMetric("Settled P/L", formatSignedStake(performance.totalRealizedProfit), performance.totalRealizedProfit)}${positionMetric("Recent events", String(displayLogs.length))}${positionMetric("Settled trades", String(performance.totalSettledTrades))}`;
   if (elements.botArchetypeSummary) {
     elements.botArchetypeSummary.innerHTML = performance.archetypes.length
@@ -1346,6 +1423,7 @@ async function undoSettlementBatch() {
 async function saveBotConfig() {
   try {
     const response = await api("/api/admin/bots/config", {
+      behaviour: getBotBehaviourDraft(),
       globalWeights: {
         season: Number(elements.botSeasonWeight.value),
         form: Number(elements.botFormWeight.value),
@@ -1375,6 +1453,77 @@ async function createSimulationBot() {
     showToast("Bot created", `${botName} joined the Quick Take market.`);
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
+  }
+}
+
+function applyBotBehaviourPreset(presetKey) {
+  const preset = BOT_BEHAVIOUR_PRESETS[presetKey];
+  if (!preset) return;
+  if (elements.botCrowdStyle) elements.botCrowdStyle.value = String(preset.crowdStyle);
+  if (elements.botLiquidityStyle) elements.botLiquidityStyle.value = String(preset.liquidityStyle);
+  if (elements.botFadeStyle) elements.botFadeStyle.value = String(preset.fadeStyle);
+  if (elements.botFrequencyStyle) elements.botFrequencyStyle.value = String(preset.frequencyStyle);
+  if (elements.botEdgeStyle) elements.botEdgeStyle.value = String(preset.edgeStyle);
+  renderBotBehaviourSummary();
+}
+
+function syncBotBehaviourInputs(behaviour = {}) {
+  const draft = behaviourToSliderValues(behaviour);
+  if (elements.botCrowdStyle) elements.botCrowdStyle.value = String(draft.crowdStyle);
+  if (elements.botLiquidityStyle) elements.botLiquidityStyle.value = String(draft.liquidityStyle);
+  if (elements.botFadeStyle) elements.botFadeStyle.value = String(draft.fadeStyle);
+  if (elements.botFrequencyStyle) elements.botFrequencyStyle.value = String(draft.frequencyStyle);
+  if (elements.botEdgeStyle) elements.botEdgeStyle.value = String(draft.edgeStyle);
+}
+
+function behaviourToSliderValues(behaviour = {}) {
+  const crowdStyle = Number.isFinite(Number(behaviour.crowdFollow))
+    ? Math.round(((Number(behaviour.crowdFollow) + 1) / 2) * 100)
+    : BOT_BEHAVIOUR_PRESETS.BALANCED.crowdStyle;
+  return {
+    crowdStyle: clampNumber(crowdStyle, 0, 100),
+    liquidityStyle: clampNumber(Math.round((Number(behaviour.liquidityProviding) || 0.4) * 100), 0, 100),
+    fadeStyle: clampNumber(Math.round((Number(behaviour.fadeExtremeMoves) || 0.45) * 100), 0, 100),
+    frequencyStyle: clampNumber(Math.round((((Number(behaviour.tradingFrequency) || 1) - 0.6) / 0.9) * 100), 0, 100),
+    edgeStyle: clampNumber(Math.round((((Number(behaviour.edgeRequirement) || 1) - 0.7) / 0.8) * 100), 0, 100)
+  };
+}
+
+function getBotBehaviourDraft() {
+  const crowdValue = Number(elements.botCrowdStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.crowdStyle);
+  const liquidityValue = Number(elements.botLiquidityStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.liquidityStyle);
+  const fadeValue = Number(elements.botFadeStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.fadeStyle);
+  const frequencyValue = Number(elements.botFrequencyStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.frequencyStyle);
+  const edgeValue = Number(elements.botEdgeStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.edgeStyle);
+  return {
+    crowdFollow: roundToTwo((crowdValue - 50) / 50),
+    liquidityProviding: roundToTwo(liquidityValue / 100),
+    fadeExtremeMoves: roundToTwo(fadeValue / 100),
+    tradingFrequency: roundToTwo(0.6 + (frequencyValue / 100) * 0.9),
+    edgeRequirement: roundToTwo(0.7 + (edgeValue / 100) * 0.8)
+  };
+}
+
+function renderBotBehaviourSummary() {
+  const draft = getBotBehaviourDraft();
+  const crowdLabel = describeCrowdStyle(draft.crowdFollow);
+  const liquidityLabel = describeLiquidityStyle(draft.liquidityProviding);
+  const fadeLabel = describeFadeStyle(draft.fadeExtremeMoves);
+  const frequencyLabel = describeFrequencyStyle(draft.tradingFrequency);
+  const edgeLabel = describeEdgeStyle(draft.edgeRequirement);
+  if (elements.botCrowdStyleLabel) elements.botCrowdStyleLabel.textContent = crowdLabel;
+  if (elements.botLiquidityLabel) elements.botLiquidityLabel.textContent = liquidityLabel;
+  if (elements.botFadeLabel) elements.botFadeLabel.textContent = fadeLabel;
+  if (elements.botFrequencyLabel) elements.botFrequencyLabel.textContent = frequencyLabel;
+  if (elements.botEdgeLabel) elements.botEdgeLabel.textContent = edgeLabel;
+  if (elements.botBehaviourSummary) {
+    elements.botBehaviourSummary.innerHTML = [
+      portfolioMetricCard("Crowd style", crowdLabel),
+      portfolioMetricCard("Liquidity", liquidityLabel),
+      portfolioMetricCard("Fade moves", fadeLabel),
+      portfolioMetricCard("Frequency", frequencyLabel),
+      portfolioMetricCard("Edge required", edgeLabel)
+    ].join("");
   }
 }
 
@@ -1848,6 +1997,33 @@ function gameTitleFor(gameId) {
   return roundGames.find((game) => game.id === gameId)?.title ?? "Round game";
 }
 
+function projectionValue(market) {
+  return Number(market?.currentLine ?? market?.initialLine ?? 0);
+}
+
+function initialMovement(market) {
+  return Number(market?.currentLine ?? market?.initialLine ?? 0) - Number(market?.initialLine ?? 0);
+}
+
+function authPreviewActivity(market) {
+  return Number(market?.trades?.length || 0) * 100 + projectionValue(market);
+}
+
+function matchupContextForPreview(market) {
+  const game = roundGames.find((roundGame) => roundGame.id === market.gameId);
+  if (!game) return { label: market.team };
+  const isHome = game.homeTeam === market.team;
+  const opponent = isHome ? game.awayTeam : game.homeTeam;
+  return { label: `vs ${opponent} (${isHome ? "Home" : "Away"})` };
+}
+
+function movementCopyForPreview(market) {
+  const value = initialMovement(market);
+  if (value > 0) return `+${value.toFixed(1)} pts`;
+  if (value < 0) return `${value.toFixed(1)} pts`;
+  return "Holding steady";
+}
+
 function normalizePlayerKey(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
@@ -1885,6 +2061,47 @@ function tradeVolumeFor(market) {
 function formatSignedLine(value) {
   if (value === 0) return "0.0";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
+}
+
+function describeCrowdStyle(value) {
+  if (value <= -0.45) return "Fade crowd";
+  if (value < -0.15) return "Leaning contrarian";
+  if (value < 0.15) return "Neutral";
+  if (value < 0.45) return "Leaning momentum";
+  return "Follow crowd";
+}
+
+function describeLiquidityStyle(value) {
+  if (value < 0.25) return "Directional";
+  if (value < 0.55) return "Balanced";
+  if (value < 0.8) return "Liquidity first";
+  return "Market making";
+}
+
+function describeFadeStyle(value) {
+  if (value < 0.25) return "Low";
+  if (value < 0.6) return "Moderate";
+  return "Strong";
+}
+
+function describeFrequencyStyle(value) {
+  if (value < 0.85) return "Selective";
+  if (value < 1.15) return "Balanced";
+  return "Active";
+}
+
+function describeEdgeStyle(value) {
+  if (value < 0.9) return "Low threshold";
+  if (value < 1.2) return "Balanced";
+  return "High conviction";
+}
+
+function roundToTwo(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, Number(value) || 0));
 }
 
 function opponentForMarket(market) {
