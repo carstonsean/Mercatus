@@ -1754,12 +1754,24 @@ function renderHome() {
       meta: `${market.team} | ${market.position}`,
       detail: `${tradeCountFor(market)} trades | ${metrics.uniqueTraders} traders`,
       statPrimary: `${tradeVolumeFor(market)} volume`,
-      statSecondary: `${confidenceLabel(metrics.confidence)} crowd signal`
+      statSecondary: `${metrics.confidence}% confidence`
     };
   }, {
-    variant: "compact-list-group",
+    variant: "featured-market-confidence",
     headingEyebrow: "Market confidence",
-    headingTitle: "Most traded and crowd-backed markets"
+    headingTitle: "Most traded and crowd-backed markets",
+    summaryItems: mostTraded[0]
+      ? [
+          {
+            label: "Most active",
+            value: mostTraded[0].playerName
+          },
+          {
+            label: "Top volume",
+            value: tradeVolumeFor(mostTraded[0])
+          }
+        ]
+      : []
   });
 
   renderHomeUserLeaderboard(elements.homeUserLeaderboard, topLeaderboardRows, {
@@ -1820,8 +1832,13 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No markets yet</strong><span>${options.emptyMessage || "Market activity will appear here once trading begins."}</span></div>`;
     return;
   }
+  const summaryMarkup = (options.summaryItems || []).length
+    ? `<div class="home-group-summary">${options.summaryItems
+        .map((item) => `<span><strong>${item.value}</strong><em>${item.label}</em></span>`)
+        .join("")}</div>`
+    : "";
   if (options.variant === "compact-projection-group") {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3></div><div class="home-group-card-body">${rows
+    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body">${rows
       .map((row, index) => {
         const market = row.market || row;
         const movement = getMovementText(market);
@@ -1836,11 +1853,26 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
     return;
   }
   if (options.variant === "compact-list-group") {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3></div><div class="home-group-card-body">${rows
+    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body">${rows
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
         return `<button class="home-projection-subcard home-list-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}"><span class="home-card-rank">${index + 1}</span><div class="home-projection-copy"><strong>${view.title}</strong><span>${view.detail}</span></div><div class="home-projection-metric"><strong>${view.statPrimary}</strong><span class="${view.badgeTone || ""}">${view.statSecondary}</span></div></button>`;
+      })
+      .join("")}</div></article>`;
+    container.querySelectorAll("[data-market-id]").forEach((card) =>
+      card.addEventListener("click", () => {
+        openMarketFromHome(card.dataset.marketId);
+      })
+    );
+    return;
+  }
+  if (options.variant === "featured-market-confidence") {
+    container.innerHTML = `<article class="home-group-card home-group-card-featured"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body">${rows
+      .map((row, index) => {
+        const market = row.market || row;
+        const view = presenter({ market, ...row }, index);
+        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}"><span class="home-card-rank">${index + 1}</span><div class="home-projection-copy"><strong>${view.title}</strong><span>${view.meta}</span><span class="home-confidence-meta">${view.detail}</span></div><div class="home-projection-metric"><strong>${view.statPrimary}</strong><span class="home-confidence-badge ${view.badgeTone || ""}">${view.statSecondary}</span></div></button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
