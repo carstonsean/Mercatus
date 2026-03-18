@@ -30,6 +30,7 @@ const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.b
 
 const uiState = {
   activeScreen: "home",
+  activeHomePanel: "movers",
   currentGameId: "tigers-cowboys",
   currentTeam: "Tigers",
   selectedMarketId: "",
@@ -69,6 +70,9 @@ const elements = {
   homeMostTraded: document.getElementById("home-most-traded"),
   homeUserLeaderboard: document.getElementById("home-user-leaderboard"),
   homeLeaderboardLink: document.getElementById("home-leaderboard-link"),
+  homeCarousel: document.getElementById("home-carousel"),
+  homeCarouselNav: document.getElementById("home-carousel-nav"),
+  homeCarouselMeta: document.getElementById("home-carousel-meta"),
   searchInput: document.getElementById("search-input"),
   searchResults: document.getElementById("search-results"),
   marketsScreenScroll: document.getElementById("markets-screen-scroll"),
@@ -204,6 +208,12 @@ function bindEvents() {
   elements.homeLeaderboardLink?.addEventListener("click", () => {
     openFullLeaderboard();
   });
+  elements.homeCarousel?.addEventListener("scroll", handleHomeCarouselScroll, { passive: true });
+  elements.homeCarouselNav?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-home-panel-target]");
+    if (!button) return;
+    scrollHomeCarouselTo(button.dataset.homePanelTarget);
+  });
 
   elements.openAdminButton.addEventListener("click", () => {
     uiState.adminOpen = true;
@@ -311,6 +321,38 @@ function bindEvents() {
       document.querySelectorAll(".market-confidence.is-open").forEach((entry) => entry.classList.remove("is-open"));
     }
   });
+}
+
+function handleHomeCarouselScroll() {
+  const carousel = elements.homeCarousel;
+  if (!carousel) return;
+  const sections = [...carousel.querySelectorAll(".home-carousel-section")];
+  if (!sections.length) return;
+  const carouselCenter = carousel.scrollLeft + carousel.clientWidth / 2;
+  let activeSection = sections[0];
+  let smallestDistance = Number.POSITIVE_INFINITY;
+  sections.forEach((section) => {
+    const sectionCenter = section.offsetLeft + section.offsetWidth / 2;
+    const distance = Math.abs(sectionCenter - carouselCenter);
+    if (distance < smallestDistance) {
+      smallestDistance = distance;
+      activeSection = section;
+    }
+  });
+  const panelKey = activeSection.dataset.homePanel || "movers";
+  if (uiState.activeHomePanel !== panelKey) {
+    uiState.activeHomePanel = panelKey;
+    renderHomeCarouselControls();
+  }
+}
+
+function scrollHomeCarouselTo(panelKey) {
+  const carousel = elements.homeCarousel;
+  const panel = carousel?.querySelector(`[data-home-panel="${panelKey}"]`);
+  if (!carousel || !panel) return;
+  uiState.activeHomePanel = panelKey;
+  renderHomeCarouselControls();
+  carousel.scrollTo({ left: panel.offsetLeft, behavior: "smooth" });
 }
 
 function bindSwipeNavigation() {
@@ -1669,10 +1711,6 @@ function getLeaderboardRows() {
 }
 
 function renderHome() {
-  const mostActiveMarket = state.markets
-    .slice()
-    .sort((left, right) => tradeCountFor(right) - tradeCountFor(left) || tradeVolumeFor(right) - tradeVolumeFor(left))
-    .at(0);
   const topProjected = state.markets
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine)
@@ -1699,19 +1737,7 @@ function renderHome() {
   const leaderboardRows = getLeaderboardRows();
   const topLeaderboardRows = leaderboardRows.slice(0, 20);
 
-  renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
-    badge: "Proj",
-    badgeTone: "",
-    title: market.playerName,
-    meta: `${market.team} | ${market.position}`,
-    detail: matchupContext(market).label,
-    statPrimary: `${market.currentLine.toFixed(1)} pts`,
-    statSecondary: optionalTrendText(market)
-  }), {
-    variant: "compact-projection-group",
-    headingEyebrow: "Top projected players",
-    headingTitle: "Where market consensus currently sits"
-  });
+  renderHomeCarouselControls();
 
   renderHomeMarketLeaderboard(elements.homeBiggestMovers, biggestMovers, ({ market }) => {
     const movement = getMovementText(market);
@@ -1726,23 +1752,8 @@ function renderHome() {
     };
   }, {
     variant: "compact-list-group",
-    headingEyebrow: "Biggest projection movers",
-    headingTitle: "Where the market is shifting fastest"
-  });
-
-  renderHomeMarketLeaderboard(elements.homeBestValue, projectionComparisons, ({ market, impliedScore, value }) => ({
-    badge: formatSignedLine(value),
-    badgeTone: value > 0 ? "move-up" : value < 0 ? "move-down" : "move-flat",
-    title: market.playerName,
-    meta: `${market.team} | ${market.position}`,
-    detail: `App ${market.currentLine.toFixed(1)} | NRL ${impliedScore.toFixed(1)}`,
-    statPrimary: formatSignedLine(value),
-    statSecondary: "Projection difference"
-  }), {
-    variant: "compact-list-group",
-    headingEyebrow: "Projection vs NRL price",
-    headingTitle: "Projection compared with fantasy implied score",
-    emptyMessage: "Projection comparisons will appear here once player baselines are available."
+    headingEyebrow: "What's moving",
+    headingTitle: "Markets shifting fastest right now"
   });
 
   renderHomeMarketLeaderboard(elements.homeMostTraded, mostTraded, ({ market }) => {
@@ -1758,8 +1769,8 @@ function renderHome() {
     };
   }, {
     variant: "featured-market-confidence",
-    headingEyebrow: "Market confidence",
-    headingTitle: "Most traded and crowd-backed markets",
+    headingEyebrow: "Most traded",
+    headingTitle: "Crowd-backed markets with real flow",
     summaryItems: mostTraded[0]
       ? [
           {
@@ -1774,10 +1785,75 @@ function renderHome() {
       : []
   });
 
+  renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
+    badge: "Proj",
+    badgeTone: "",
+    title: market.playerName,
+    meta: `${market.team} | ${market.position}`,
+    detail: matchupContext(market).label,
+    statPrimary: `${market.currentLine.toFixed(1)} pts`,
+    statSecondary: optionalTrendText(market)
+  }), {
+    variant: "compact-projection-group",
+    headingEyebrow: "Top projected",
+    headingTitle: "Where market consensus currently sits"
+  });
+
+  renderHomeMarketLeaderboard(elements.homeBestValue, projectionComparisons, ({ market, impliedScore, value }) => ({
+    badge: formatSignedLine(value),
+    badgeTone: value > 0 ? "move-up" : value < 0 ? "move-down" : "move-flat",
+    title: market.playerName,
+    meta: `${market.team} | ${market.position}`,
+    detail: `App ${market.currentLine.toFixed(1)} | NRL ${impliedScore.toFixed(1)}`,
+    statPrimary: formatSignedLine(value),
+    statSecondary: "Projection difference"
+  }), {
+    variant: "compact-list-group",
+    headingEyebrow: "Value spots",
+    headingTitle: "Where crowdIQ differs from NRL price",
+    emptyMessage: "Projection comparisons will appear here once player baselines are available."
+  });
+
   renderHomeUserLeaderboard(elements.homeUserLeaderboard, topLeaderboardRows, {
-    headingEyebrow: "User leaderboard",
+    headingEyebrow: "Leaderboard",
     headingTitle: "Community snapshot"
   });
+
+  window.requestAnimationFrame(() => {
+    syncHomeCarouselPosition();
+  });
+}
+
+function renderHomeCarouselControls() {
+  if (!elements.homeCarouselNav || !elements.homeCarouselMeta) return;
+  const panels = [
+    { key: "movers", label: "Movers", detail: "Markets shifting fastest" },
+    { key: "activity", label: "Most Traded", detail: "Crowd-backed activity" },
+    { key: "projected", label: "Projected", detail: "Top current lines" },
+    { key: "value", label: "Value", detail: "Gaps vs NRL price" },
+    { key: "leaderboard", label: "Leaderboard", detail: "Community standings" }
+  ];
+  elements.homeCarouselNav.innerHTML = panels
+    .map(
+      (panel) =>
+        `<button class="home-carousel-tab ${uiState.activeHomePanel === panel.key ? "active" : ""}" type="button" data-home-panel-target="${panel.key}">${panel.label}</button>`
+    )
+    .join("");
+  const activeIndex = panels.findIndex((panel) => panel.key === uiState.activeHomePanel);
+  const activePanel = panels[activeIndex] || panels[0];
+  elements.homeCarouselMeta.innerHTML = `<div class="home-carousel-progress">${panels
+    .map((panel) => `<span class="home-carousel-dot ${panel.key === uiState.activeHomePanel ? "active" : ""}"></span>`)
+    .join("")}</div><div class="home-carousel-status"><strong>${String((activeIndex >= 0 ? activeIndex : 0) + 1).padStart(2, "0")} / ${String(panels.length).padStart(2, "0")}</strong><span>${activePanel.detail}</span></div>`;
+}
+
+function syncHomeCarouselPosition() {
+  const carousel = elements.homeCarousel;
+  const panel = carousel?.querySelector(`[data-home-panel="${uiState.activeHomePanel}"]`);
+  if (!carousel || !panel) return;
+  const targetLeft = panel.offsetLeft;
+  if (Math.abs(carousel.scrollLeft - targetLeft) > 8) {
+    carousel.scrollLeft = targetLeft;
+  }
 }
 
 function sortLeaderboardRows(rows) {

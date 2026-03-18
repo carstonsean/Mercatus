@@ -104,27 +104,40 @@
 
       <section class="screen active" data-screen="home">
         <div class="screen-scroll">
-          <div class="home-carousel" aria-label="Home market insight categories">
-            <section class="section-block home-section-block home-carousel-section">
-              <div id="home-top-projected" class="home-leaderboard-list"></div>
-            </section>
-
-            <section class="section-block home-section-block market-signal-emphasis home-carousel-section">
+          <section class="home-hub">
+            <div class="home-hub-head">
+              <div>
+                <p class="eyebrow">Home</p>
+                <h2>Market Views</h2>
+              </div>
+              <p class="home-carousel-hint">Swipe or tap a view</p>
+            </div>
+            <div id="home-carousel-nav" class="home-carousel-nav" aria-label="Home market insight views"></div>
+            <div class="home-carousel-shell">
+              <div id="home-carousel" class="home-carousel" aria-label="Home market insight categories">
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="movers">
               <div id="home-biggest-movers" class="home-leaderboard-list"></div>
             </section>
 
-            <section class="section-block home-section-block home-carousel-section">
-              <div id="home-best-value" class="home-leaderboard-list"></div>
-            </section>
-
-            <section class="section-block home-section-block market-signal-emphasis home-carousel-section">
+            <section class="section-block home-section-block market-signal-emphasis home-carousel-section" data-home-panel="activity">
               <div id="home-most-traded" class="home-leaderboard-list"></div>
             </section>
 
-            <section class="section-block home-section-block home-carousel-section">
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="projected">
+              <div id="home-top-projected" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="value">
+              <div id="home-best-value" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="leaderboard">
               <div id="home-user-leaderboard" class="home-leaderboard-list"></div>
             </section>
-          </div>
+              </div>
+            </div>
+            <div id="home-carousel-meta" class="home-carousel-meta"></div>
+          </section>
         </div>
       </section>
 
