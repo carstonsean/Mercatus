@@ -72,7 +72,17 @@ function serveStatic(res,pathname){
       res.end("Not found");
       return;
     }
-    res.writeHead(200,{"Content-Type":MIME_TYPES[path.extname(filePath)]||"application/octet-stream"});
+    const extension=path.extname(filePath);
+    const headers={
+      "Content-Type":MIME_TYPES[extension]||"application/octet-stream"
+    };
+    if([".html",".css",".js"].includes(extension)){
+      headers["Cache-Control"]="no-store, no-cache, must-revalidate, proxy-revalidate";
+      headers["Pragma"]="no-cache";
+      headers["Expires"]="0";
+      headers["Surrogate-Control"]="no-store";
+    }
+    res.writeHead(200,headers);
     res.end(data);
   });
 }
