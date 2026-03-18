@@ -470,8 +470,9 @@ button {
 .home-carousel-shell {
   position: relative;
   overflow: hidden;
-  margin-right: -10px;
-  padding-right: 10px;
+  width: 100%;
+  margin-right: -6px;
+  padding-right: 6px;
 }
 
 .home-carousel-shell::after {
@@ -500,15 +501,14 @@ button {
 }
 
 .home-carousel {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, calc(100% - 28px));
+  display: flex;
   gap: 12px;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  padding: 2px 18px 6px 0;
+  width: 100%;
+  padding: 2px 14px 6px 0;
   overscroll-behavior-x: contain;
   touch-action: pan-x pinch-zoom;
   align-items: start;
@@ -520,6 +520,8 @@ button {
 }
 
 .home-carousel-section {
+  flex: 0 0 calc(100% - 44px);
+  max-width: calc(100% - 44px);
   scroll-snap-align: start;
   border-top: 0;
   padding-top: 0;
@@ -2430,10 +2432,20 @@ label {
 
 .home-confidence-subcard {
   grid-template-columns: auto minmax(0, 1fr) minmax(98px, auto);
+  align-items: center;
 }
 
 .home-confidence-subcard .home-projection-copy strong {
   font-size: 1rem;
+}
+
+.home-confidence-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.home-confidence-copy span {
+  margin-top: 0;
 }
 
 .home-confidence-meta {
@@ -2461,6 +2473,59 @@ label {
 
 .home-confidence-badge.move-flat {
   color: var(--blue);
+}
+
+.home-confidence-metric {
+  display: grid;
+  justify-items: end;
+  align-items: center;
+  width: 100%;
+}
+
+.home-confidence-metric-block {
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  min-width: 56px;
+  text-align: right;
+  gap: 4px;
+}
+
+.home-confidence-primary {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: var(--text);
+}
+
+.home-confidence-primary .market-confidence-row-icon {
+  width: 20px;
+  height: 14px;
+}
+
+.home-confidence-percent {
+  display: block;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.home-confidence-primary .market-confidence-row-icon.high {
+  color: var(--green);
+}
+
+.home-confidence-primary .market-confidence-row-icon.mid {
+  color: var(--gold);
+}
+
+.home-confidence-primary .market-confidence-row-icon.low {
+  color: #ff8aa0;
+}
+
+.home-confidence-secondary {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-align: right;
 }
 
 .home-card-copy {
@@ -3522,6 +3587,13 @@ th {
     grid-column: 2;
     min-width: 0;
     text-align: left;
+  }
+
+  .home-confidence-subcard .home-projection-metric {
+    grid-column: 3;
+    text-align: right;
+    justify-self: end;
+    min-width: 56px;
   }
 
   .quick-take-card {

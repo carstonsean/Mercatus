@@ -8,7 +8,7 @@ const {randomUUID}=require("crypto");
 require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
 const derivedData=require("./lib/derived-fantasy-data.js");
-const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,runSimulationTick}=require("./lib/bot-engine");
+const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
 const {isSupabaseConfigured}=require("./lib/config");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance}=require("./lib/supabase-market-sync");
@@ -132,6 +132,14 @@ async function handleApi(req,res,url){
     }
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
     persistState();
+    if(body.quickTake){
+      return json(res,200,{
+        trade,
+        balance:getUserBankroll(username),
+        market:buildQuickTakeMarketPayload(market),
+        backend:null
+      });
+    }
     return json(res,200,{state,trade,backend:null});
   }
   if(req.method==="POST"&&url.pathname==="/api/orders/cancel"){
@@ -247,8 +255,10 @@ async function handleApi(req,res,url){
     return json(res,200,{state,botSimulation:state.botSimulation});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/create"){
+    const body=await parseJson(req);
     state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
-    const bot=createRandomBot(state.botSimulation.bots);
+    const mode=body.mode==="random-prob"?"random-prob":"default";
+    const bot=mode==="random-prob"?createRandomProbBot(state.botSimulation.bots):createRandomBot(state.botSimulation.bots);
     state.botSimulation.bots=[...state.botSimulation.bots,bot];
     state.bankrolls[bot.userName]=bot.startingBankroll;
     syncDerivedBalances();
@@ -292,6 +302,20 @@ function buildFreshState(){
 
 function persistState(){
   fs.writeFileSync(STATE_PATH,JSON.stringify(state,null,2),"utf8");
+}
+
+function buildQuickTakeMarketPayload(market){
+  return {
+    id:market.id,
+    currentLine:Number(market.currentLine)||0,
+    initialLine:Number(market.initialLine)||0,
+    totalOverStake:Number(market.totalOverStake)||0,
+    totalUnderStake:Number(market.totalUnderStake)||0,
+    netPressure:Number(market.netPressure)||0,
+    pressureBalance:Number(market.pressureBalance)||0,
+    manuallyLocked:Boolean(market.manuallyLocked),
+    settlement:market.settlement||null
+  };
 }
 
 function ensureUser(userName){
