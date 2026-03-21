@@ -2,13 +2,14 @@
 const LINE_STEP = 1;
 const PRESSURE_STEP = 2;
 const BOT_PRESSURE_MULTIPLIER = 1;
-const STARTING_BANKROLL = 1000;
+const STARTING_BANKROLL = 200;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
 const USER_NAME_KEY = "mercatus-user-name";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 2500;
+const PRIZE_POOL_POLL_MS = 10000;
 
 const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
@@ -25,17 +26,31 @@ const BOT_BEHAVIOUR_PRESETS = {
 
 let state = { bankrolls: {}, markets: [] };
 let backendState = { mode: "local", user: null, dashboard: null };
+let prizePoolState = null;
 let toastTimer = null;
 let syncTimer = null;
+let kickoffTimer = null;
 let syncInFlight = false;
+let scrollInteractionTimer = null;
+let isScrollInteractionActive = false;
+let pendingRenderAfterScroll = false;
+let homePrizePoolAnimationFrame = null;
+let prizePoolPollTimer = null;
+let prizePoolLastPolledAmount = null;
+let prizePoolJarSurging = false;
+let prizePoolJarSurgeTimer = null;
+let prizePoolShareFitFrame = null;
 const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
 
 const uiState = {
   activeScreen: "home",
-  activeHomePanel: "movers",
+  activeHomePanel: "gainers",
+  activeHomeFeaturedIndex: 0,
+  activeHomeGameIndex: 0,
+  activeHomeGameTouched: false,
   activeAccountView: "portfolio",
-  currentGameId: "tigers-cowboys",
-  currentTeam: "Tigers",
+  currentGameId: "raiders-bulldogs",
+  currentTeam: "Raiders",
   selectedMarketId: "",
   expandedMarketId: "",
   marketTradeSides: {},
@@ -47,10 +62,21 @@ const uiState = {
   portfolioSort: "MOST_RECENT",
   pendingTradeMarketId: "",
   leaderboardSort: "BALANCE",
-  quickTakeMarketIds: [],
-  quickTakeSeenMarketIds: [],
-  quickTakePendingMarketId: "",
-  quickTakePendingSide: "",
+  quickPickShuffleSeed: String(Date.now()),
+  quickPickMarketIds: [],
+  quickPickSeenMarketIds: [],
+  quickPickActiveIndex: 0,
+  quickPickPendingCardId: "",
+  quickPickPendingSide: "",
+  quickPickPendingRequestId: "",
+  prizePoolPendingSide: "",
+  prizePoolPendingAction: "",
+  prizePoolStandingsExpanded: false,
+  prizePoolSubmissionToastShown: false,
+  prizePoolHowItWorksExpanded: false,
+  prizePoolInterchangeRulesExpanded: false,
+  prizePoolShareOpen: false,
+  prizePoolInterchangeDividerSeenDraftId: "",
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
@@ -62,13 +88,20 @@ const elements = {
   authForm: document.getElementById("auth-form"),
   authUsername: document.getElementById("auth-username"),
   authFeedback: document.getElementById("auth-feedback"),
-  authPreviewList: document.getElementById("auth-preview-list"),
+  authTickerMarquee: document.getElementById("auth-ticker-marquee"),
+  authLiveBadge: document.getElementById("auth-live-badge"),
+  authHeroCtaCopy: document.getElementById("auth-hero-cta-copy"),
+  authPhoneMockup: document.getElementById("auth-phone-mockup"),
+  authHeaderSignup: document.getElementById("auth-header-signup"),
+  authHeroEntry: document.getElementById("auth-hero-entry"),
   appFrame: document.querySelector(".mobile-frame"),
   headerBalance: document.getElementById("header-balance"),
   navButtons: [...document.querySelectorAll(".nav-button")],
   screens: [...document.querySelectorAll(".screen")],
+  screenScrolls: [...document.querySelectorAll(".screen .screen-scroll")],
   homeTopProjected: document.getElementById("home-top-projected"),
-  homeBiggestMovers: document.getElementById("home-biggest-movers"),
+  homeBiggestGainers: document.getElementById("home-biggest-gainers"),
+  homeBiggestLosers: document.getElementById("home-biggest-losers"),
   homeBestValue: document.getElementById("home-best-value"),
   homeMostTraded: document.getElementById("home-most-traded"),
   homeUserLeaderboard: document.getElementById("home-user-leaderboard"),
@@ -76,6 +109,9 @@ const elements = {
   homeCarousel: document.getElementById("home-carousel"),
   homeCarouselNav: document.getElementById("home-carousel-nav"),
   homeCarouselMeta: document.getElementById("home-carousel-meta"),
+  homeFeaturedSlate: document.getElementById("home-featured-slate"),
+  homePrizePoolBanner: document.getElementById("home-prize-pool-banner"),
+  homeGamesStrip: document.getElementById("home-games-strip"),
   searchInput: document.getElementById("search-input"),
   searchResults: document.getElementById("search-results"),
   marketsScreenScroll: document.getElementById("markets-screen-scroll"),
@@ -86,16 +122,19 @@ const elements = {
   leaderboardBalancePill: document.getElementById("leaderboard-balance-pill"),
   leaderboardSortChips: document.getElementById("leaderboard-sort-chips"),
   leaderboardList: document.getElementById("leaderboard-list"),
+  portfolioPageSubtitle: document.getElementById("portfolio-page-subtitle"),
   accountViewSwitch: document.getElementById("account-view-switch"),
   accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
   accountPortfolioView: document.getElementById("account-portfolio-view"),
   accountLeaderboardView: document.getElementById("account-leaderboard-view"),
+  prizePoolView: document.getElementById("prize-pool-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
   portfolioFilters: document.getElementById("portfolio-filters"),
   portfolioSortButton: document.getElementById("portfolio-sort-button"),
   portfolioList: document.getElementById("portfolio-list"),
-  quickTakeDeck: document.getElementById("quick-take-deck"),
+  quickPickDeck: document.getElementById("quick-take-deck"),
+  prizePoolShell: document.getElementById("prize-pool-shell"),
   userName: document.getElementById("user-name"),
   logoutButton: document.getElementById("logout-button"),
   profileSummary: document.getElementById("profile-summary"),
@@ -167,10 +206,20 @@ async function init() {
 }
 
 function bindEvents() {
+  [elements.authHeaderSignup, elements.authHeroEntry].forEach((button) =>
+    button?.addEventListener("click", () => {
+      elements.authUsername?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => elements.authUsername?.focus(), 120);
+    })
+  );
+
   elements.navButtons.forEach((button) =>
     button.addEventListener("click", () => {
+      if (button.dataset.screenTarget === "markets") {
+        focusPreferredMatchCentreGame(true);
+      }
       uiState.activeScreen = button.dataset.screenTarget;
-      renderScreens();
+      renderAll();
     })
   );
 
@@ -191,6 +240,12 @@ function bindEvents() {
 
   elements.logoutButton.addEventListener("click", () => {
     stopLiveSync();
+    stopPrizePoolPolling();
+    stopKickoffTimer();
+    randomizeQuickPickOrder();
+    uiState.prizePoolSubmissionToastShown = false;
+    uiState.prizePoolShareOpen = false;
+    renderPrizePoolShareOverlay();
     localStorage.removeItem(USER_NAME_KEY);
     backendState = { mode: "local", user: null, dashboard: null };
     elements.authUsername.value = "";
@@ -217,6 +272,11 @@ function bindEvents() {
     if (!button) return;
     uiState.activeAccountView = button.dataset.accountView;
     renderScreens();
+  });
+  elements.headerBalance?.addEventListener("click", () => {
+    uiState.activeScreen = "account";
+    uiState.activeAccountView = "portfolio";
+    renderAll();
   });
 
   elements.homeLeaderboardLink?.addEventListener("click", () => {
@@ -318,10 +378,14 @@ function bindEvents() {
   });
 
   bindSwipeNavigation();
+  document.addEventListener("scroll", trackScrollInteraction, { passive: true, capture: true });
+  document.addEventListener("wheel", trackScrollInteraction, { passive: true });
+  document.addEventListener("touchmove", trackScrollInteraction, { passive: true });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
     refreshSharedState();
   });
+  window.addEventListener("resize", schedulePrizePoolShareFit);
 
   document.addEventListener("click", (event) => {
     const infoButton = event.target.closest(".market-confidence-info");
@@ -392,10 +456,15 @@ function requestAdminAccess() {
   return true;
 }
 
-async function syncSession() {
-  const response = await api("/api/session", { userName: currentUserName() });
+function applySharedSnapshot(response) {
   state = response.state;
   backendState = response.backend || { mode: "local", user: null, dashboard: null };
+  prizePoolState = response.prizePool || null;
+}
+
+async function syncSession() {
+  const response = await api("/api/session", { userName: currentUserName() });
+  applySharedSnapshot(response);
 }
 
 async function completeLogin(userName) {
@@ -408,6 +477,7 @@ async function completeLogin(userName) {
   try {
     elements.userName.value = userName;
     localStorage.setItem(USER_NAME_KEY, userName);
+    randomizeQuickPickOrder();
     await syncSession();
     syncSelectedMarket();
     renderAll();
@@ -428,44 +498,103 @@ function renderAuthGate(isAuthenticated) {
 }
 
 function renderAuthPreview() {
-  if (!elements.authPreviewList) return;
   const markets = state.markets?.length ? state.markets : authPreviewMarkets;
-  const highestProjection = markets.slice().sort((left, right) => projectionValue(right) - projectionValue(left))[0];
-  const biggestMover = markets.slice().sort((left, right) => Math.abs(initialMovement(right)) - Math.abs(initialMovement(left)) || projectionValue(right) - projectionValue(left))[0];
-  const mostActive = markets.slice().sort((left, right) => authPreviewActivity(right) - authPreviewActivity(left) || projectionValue(right) - projectionValue(left))[0];
-  const topTrader = getLeaderboardRows().slice(0, 1)[0];
-  const items = [
-    {
-      label: "Most active market",
-      value: mostActive ? mostActive.playerName : "Opening soon",
-      meta: mostActive ? matchupContextForPreview(mostActive).label : "Trading activity builds after market open"
-    },
-    {
-      label: "Biggest mover today",
-      value: biggestMover ? movementCopyForPreview(biggestMover) : "No move yet",
-      meta: biggestMover ? biggestMover.playerName : "Live movement appears as orders match"
-    },
-    {
-      label: "Highest projection",
-      value: highestProjection ? `${projectionValue(highestProjection).toFixed(1)} pts` : "0.0 pts",
-      meta: highestProjection ? highestProjection.playerName : "Top projected player"
-    },
-    {
-      label: "Top trader",
-      value: topTrader ? topTrader.userName : "Board opens with first trade",
-      meta: topTrader ? `${formatStake(topTrader.balance)} wallet` : "Compete once the market is live"
-    }
-  ];
-  elements.authPreviewList.innerHTML = items
-    .map(
-      (item) =>
-        `<article class="auth-preview-card"><span>${item.label}</span><strong>${item.value}</strong><p>${item.meta}</p></article>`
-    )
-    .join("");
+  const roundLabel = CURRENT_ROUND_LABEL || "Round 3";
+  const liveTradeCount = state.markets?.length
+    ? state.markets.reduce((total, market) => total + tradeCountFor(market), 0)
+    : 127;
+  const tickerSegment = `${roundLabel} now open &middot; ${liveTradeCount} trades placed &middot; Live projections moving &middot; Markets close at kick-off`;
+  const featuredMarkets = markets
+    .slice()
+    .sort((left, right) => authPreviewActivity(right) - authPreviewActivity(left) || projectionValue(right) - projectionValue(left))
+    .slice(0, 3);
+  const previewRows = featuredMarkets.length
+    ? featuredMarkets.map((market) => {
+        const movement = getMovementText(market);
+        return {
+          playerName: market.playerName,
+          team: market.team,
+          position: market.position,
+          line: formatLine(market.currentLine),
+          movementLabel: `${movement.arrow} ${movement.label}`.trim(),
+          movementClassName: movement.value >= 0 ? "is-up" : "is-down"
+        };
+      })
+    : [
+        {
+          playerName: "Kalyn Ponga",
+          team: "Knights",
+          position: "Fullback",
+          line: "54.5 pts",
+          movementLabel: "↑ 2.0 today",
+          movementClassName: "is-up"
+        },
+        {
+          playerName: "Nathan Cleary",
+          team: "Panthers",
+          position: "Halfback",
+          line: "61.5 pts",
+          movementLabel: "↑ 1.5 today",
+          movementClassName: "is-up"
+        },
+        {
+          playerName: "Daly Cherry-Evans",
+          team: "Sea Eagles",
+          position: "Halfback",
+          line: "49.5 pts",
+          movementLabel: "↓ 1.0 today",
+          movementClassName: "is-down"
+        }
+      ];
+
+  if (elements.authTickerMarquee) {
+    elements.authTickerMarquee.innerHTML = `${tickerSegment} &middot; ${tickerSegment}`;
+  }
+  if (elements.authLiveBadge) {
+    elements.authLiveBadge.innerHTML = `Market live &middot; ${roundLabel}`;
+  }
+  if (elements.authHeroCtaCopy) {
+    elements.authHeroCtaCopy.textContent = `Start with ${formatStake(STARTING_BANKROLL)} in crowdIQ cash`;
+  }
+  if (!elements.authPhoneMockup) return;
+  elements.authPhoneMockup.innerHTML = `
+    <div class="auth-phone-status">
+      <span class="auth-phone-status-dot" aria-hidden="true"></span>
+      <span>${roundLabel}</span>
+    </div>
+    <div class="auth-phone-section-head">
+      <div>
+        <span class="auth-phone-label">Live market</span>
+        <strong>Most traded now</strong>
+      </div>
+      <span class="auth-phone-trades">${liveTradeCount} trades</span>
+    </div>
+    <div class="auth-phone-market-list">
+      ${previewRows
+        .map(
+          (market) => `
+            <article class="auth-phone-market-row">
+              <div class="auth-phone-market-copy">
+                <strong>${market.playerName}</strong>
+                <span>${market.team} &middot; ${market.position}</span>
+              </div>
+              <div class="auth-phone-market-metrics">
+                <span>${market.line}</span>
+                <strong class="${market.movementClassName}">${market.movementLabel}</strong>
+              </div>
+            </article>
+          `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function startLiveSync() {
   stopLiveSync();
+  if (backendState.mode === "local") {
+    return;
+  }
   syncTimer = window.setInterval(() => {
     refreshSharedState();
   }, LIVE_SYNC_MS);
@@ -480,10 +609,18 @@ function stopLiveSync() {
 async function refreshSharedState() {
   if (syncInFlight) return;
   syncInFlight = true;
+  const previousRenderSignature = buildRenderSignature(state, backendState);
   try {
     await syncSession();
-    syncSelectedMarket();
-    renderAll();
+    const nextRenderSignature = buildRenderSignature(state, backendState);
+    if (nextRenderSignature === previousRenderSignature) {
+      return;
+    }
+    if (isScrollInteractionActive) {
+      pendingRenderAfterScroll = true;
+      return;
+    }
+    applyLiveStateRender();
   } catch (error) {
     console.warn("Mercatus live sync failed", error);
   } finally {
@@ -502,6 +639,8 @@ function renderAll() {
   renderMarketsList();
   renderPortfolio();
   renderQuickTake();
+  renderPrizePool();
+  renderPrizePoolShareOverlay();
   renderLeaderboard();
   renderProfileSummary();
   renderAdminShell();
@@ -510,11 +649,13 @@ function renderAll() {
   renderBotSimulation();
   renderAdminTable();
   syncOpeningForm();
+  scheduleKickoffRefresh();
+  syncPrizePoolPolling();
 }
 
 function renderHeaderBalance() {
   const bankroll = getDisplayedCash(currentUserName());
-  elements.headerBalance.innerHTML = `<span>Wallet</span> ${formatStake(bankroll)}`;
+  elements.headerBalance.innerHTML = `<i class="ph-fill ph-wallet header-balance-icon" aria-hidden="true"></i><span class="header-balance-label">Wallet</span><strong>${formatStake(bankroll)}</strong>`;
 }
 
 function renderScreens() {
@@ -529,7 +670,7 @@ function renderScreens() {
   );
   elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
   elements.accountLeaderboardView?.classList.toggle("active", uiState.activeAccountView === "leaderboard");
-  elements.toast?.classList.toggle("toast-low", uiState.activeScreen === "quicktake");
+  elements.toast?.classList.toggle("toast-low", ["quickpick", "prizepool"].includes(uiState.activeScreen));
 }
 
 function renderTeamToggle() {
@@ -585,16 +726,18 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
     const comparisonWidth = comparisonPercent(market.currentLine, market.seasonAverage);
     const metrics = getMarketTradeMetrics(market);
     const isExpanded = expandable && market.id === uiState.expandedMarketId;
+    const status = getMarketStatus(market);
     row.dataset.marketId = market.id;
     row.classList.toggle("is-selected", market.id === uiState.selectedMarketId);
     row.classList.toggle("is-expanded", isExpanded);
+    row.classList.toggle("is-locked", status.className === "status-locked");
     row.querySelector(".player-name").textContent = market.playerName;
     row.querySelector(".player-meta").textContent = `${market.position} | Avg ${market.seasonAverage.toFixed(1)}`;
     row.querySelector(".season-average").textContent = "";
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
     row.querySelector(".projection-move").className = `projection-move ${movement.className}`;
-    row.querySelector(".market-confidence-slot").innerHTML = "";
+    row.querySelector(".market-confidence-slot").innerHTML = `<span class="status-chip ${status.className}">${status.label}</span>`;
     row.querySelector(".projection-average").textContent = "";
     row.querySelector(".comparison-fill").style.width = `${comparisonWidth}%`;
     row.addEventListener("click", () => {
@@ -629,6 +772,8 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
 function renderSelectedMarket() {
   const game = currentGame();
   const preview = adjacentGame(1) || adjacentGame(-1) || game;
+  const currentStatus = getGameLockStatus(game);
+  const previewStatus = getGameLockStatus(preview);
   const swipeHint = currentGameIndex() === 0
     ? "Swipe left to next game"
     : currentGameIndex() === roundGames.length - 1
@@ -636,7 +781,7 @@ function renderSelectedMarket() {
       : "Swipe left or right to change game";
   const homeColors = TEAM_COLORS[game.homeTeam] ?? TEAM_COLORS[normalizeTeamName(game.homeTeam)] ?? { primary: "#101722", secondary: "#68d9ff" };
   const awayColors = TEAM_COLORS[game.awayTeam] ?? TEAM_COLORS[normalizeTeamName(game.awayTeam)] ?? { primary: "#101722", secondary: "#00ffa3" };
-  elements.selectedMarketPanel.innerHTML = `<div class="match-card-stack"><div class="market-note-card preview-card" style="--match-primary:${teamPrimary(preview.homeTeam)};--match-secondary:${teamSecondary(preview.awayTeam)};"><p class="eyebrow">Queue</p><h3>${preview.title}</h3><span class="market-note-meta">${preview.kickoff}</span><p>${preview.venue}</p></div><div class="market-note-card active-card" style="--match-primary:${homeColors.primary};--match-secondary:${awayColors.secondary};"><p class="eyebrow">Match centre</p><h3>${game.title}</h3><span class="market-note-meta">${game.kickoff}</span><p>${game.venue}</p><div class="swipe-hint">${swipeHint}</div></div></div>`;
+  elements.selectedMarketPanel.innerHTML = `<div class="match-card-stack"><div class="market-note-card preview-card ${previewStatus.isLocked ? "is-locked" : ""}" style="--match-primary:${teamPrimary(preview.homeTeam)};--match-secondary:${teamSecondary(preview.awayTeam)};"><p class="eyebrow">Queue</p><h3>${preview.title}</h3><span class="market-note-meta">${formatGameKickoffLabel(preview)}</span><p>${preview.venue}</p><div class="match-lock-row"><span class="status-chip ${previewStatus.isLocked ? "status-locked" : "status-open"}">${previewStatus.label}</span></div></div><div class="market-note-card active-card ${currentStatus.isLocked ? "is-locked" : ""}" style="--match-primary:${homeColors.primary};--match-secondary:${awayColors.secondary};"><p class="eyebrow">Match centre</p><h3>${game.title}</h3><span class="market-note-meta">${formatGameKickoffLabel(game)}</span><p>${game.venue}</p><div class="match-lock-row"><span class="status-chip ${currentStatus.isLocked ? "status-locked" : "status-open"}">${currentStatus.label}</span><div class="swipe-hint">${swipeHint}</div></div></div></div>`;
   bindMatchCardSwipe();
 }
 
@@ -694,14 +839,14 @@ function openInlineTrade(market, side) {
 function marketDetailMarkup(market) {
   const stakeDraft = uiState.stakeDrafts[market.id] ?? 10;
   const isPending = uiState.pendingTradeMarketId === market.id;
+  const isLocked = isMarketLocked(market);
   const currentPair = linePairForMarket(market);
   const side = getMarketTradeSide(market.id);
-  const selectedLine = side === "OVER" ? currentPair.overLine : currentPair.underLine;
   const status = getMarketStatus(market);
   const movement = getMovementText(market);
   const nextLine = calculateNextLine(market, side, 10);
   const metrics = getMarketTradeMetrics(market);
-  return `<div class="trade-ticket"><div class="hero-head trade-ticket-head"><div><div class="hero-player">${market.playerName}</div><div class="hero-meta">${market.team} | ${market.position}</div></div><div class="trade-ticket-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="hero-price trade-ticket-price"><div class="hero-price-value">${market.currentLine.toFixed(1)}</div><div class="hero-delta ${movement.className}">${movement.arrow} ${movement.label}</div></div><div class="hero-comparison trade-spread-inline"><div class="trade-spread-grid"><div class="trade-spread-row"><span class="trade-label">Projection</span><strong>Under ${currentPair.underLine.toFixed(1)} <span class="trade-divider">|</span> Over ${currentPair.overLine.toFixed(1)}</strong></div><div class="trade-spread-row"><span class="trade-label">Next midpoint</span><strong>${nextLine.toFixed(1)}</strong></div></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${isPending ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><span class="trade-note-copy">Fills against waiting orders first, then shifts the projection if needed</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending ? "disabled" : ""}>${isPending ? "Placing..." : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : ""}</p></form></div>`;
+  return `<div class="trade-ticket"><div class="hero-head trade-ticket-head"><div><div class="hero-player">${market.playerName}</div><div class="hero-meta">${market.team} | ${market.position}</div></div><div class="trade-ticket-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="hero-price trade-ticket-price"><div class="hero-price-value">${market.currentLine.toFixed(1)}</div><div class="hero-delta ${movement.className}">${movement.arrow} ${movement.label}</div></div><div class="hero-comparison trade-spread-inline"><div class="trade-spread-grid"><div class="trade-spread-row"><span class="trade-label">Projection</span><strong>Under ${currentPair.underLine.toFixed(1)} <span class="trade-divider">|</span> Over ${currentPair.overLine.toFixed(1)}</strong></div><div class="trade-spread-row"><span class="trade-label">Next midpoint</span><strong>${nextLine.toFixed(1)}</strong></div></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${isLocked ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending || isLocked ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending || isLocked ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending || isLocked ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending || isLocked ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending || isLocked ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><span class="trade-note-copy">${isLocked ? "Trading closed at kickoff for this match." : "Fills against waiting orders first, then shifts the projection if needed"}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : ""}</p></form></div>`;
 }
 
 function bindTradeSheetEvents(panel, marketId) {
@@ -709,6 +854,9 @@ function bindTradeSheetEvents(panel, marketId) {
   const stakeInput = panel.querySelector("#stake-input");
   const stakeReturn = panel.querySelector("#stake-return");
   const market = findMarket(marketId);
+  if (isMarketLocked(market)) {
+    return;
+  }
 
   panel.querySelectorAll(".trade-button").forEach((button) =>
     button.addEventListener("click", () => {
@@ -740,14 +888,44 @@ function bindTradeSheetEvents(panel, marketId) {
     await submitTrade(marketId, Number(stakeInput.value) || 0, panel);
   });
 
-  if (market?.settlement || market?.manuallyLocked) {
+  if (isMarketLocked(market)) {
     tradeForm.querySelector("button[type='submit']").disabled = true;
   }
+}
+
+function trackScrollInteraction() {
+  isScrollInteractionActive = true;
+  window.clearTimeout(scrollInteractionTimer);
+  scrollInteractionTimer = window.setTimeout(() => {
+    isScrollInteractionActive = false;
+    if (pendingRenderAfterScroll) {
+      pendingRenderAfterScroll = false;
+      applyLiveStateRender();
+    }
+  }, 180);
+}
+
+function applyLiveStateRender() {
+  const pageScrollPosition = capturePageScrollPosition();
+  const scrollPositions = captureScreenScrollPositions();
+  const namedScrollPositions = captureNamedScrollPositions();
+  const persistentScrollPositions = capturePersistentScrollPositions();
+  syncSelectedMarket();
+  renderAll();
+  restorePageScrollPosition(pageScrollPosition);
+  restoreScreenScrollPositions(scrollPositions);
+  restoreNamedScrollPositions(namedScrollPositions);
+  restorePersistentScrollPositions(persistentScrollPositions);
 }
 
 async function submitTrade(marketId, stake, panel) {
   const feedback = panel.querySelector("#trade-feedback");
   const tradeSide = getMarketTradeSide(marketId);
+  const market = findMarket(marketId);
+  if (isMarketLocked(market)) {
+    feedback.textContent = "This market locked at kickoff.";
+    return;
+  }
   if (!Number.isFinite(stake) || stake <= 0) {
     feedback.textContent = "Enter a valid stake.";
     return;
@@ -756,8 +934,11 @@ async function submitTrade(marketId, stake, panel) {
   renderAll();
   try {
     const response = await executeTrade(marketId, stake, tradeSide);
-    state = response.state;
-    backendState = response.backend || backendState;
+    if (response.state) {
+      applySharedSnapshot({ ...response, backend: response.backend || backendState, prizePool: response.prizePool || prizePoolState });
+    } else {
+      applyIncrementalTradeResponse(response, marketId);
+    }
     const submittedTrade = response.trade;
     delete uiState.stakeDrafts[marketId];
     uiState.pendingTradeMarketId = "";
@@ -770,7 +951,9 @@ async function submitTrade(marketId, stake, panel) {
         ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
         : `Posted ${formatStake(submittedTrade?.unmatchedStake || stake)} on ${tradeSide}`;
     showToast("Position submitted", toastMessage);
-    refreshSharedState();
+    if (backendState.mode !== "local") {
+      refreshSharedState();
+    }
   } catch (error) {
     uiState.pendingTradeMarketId = "";
     uiState.focusStakeMarketId = marketId;
@@ -792,13 +975,33 @@ function executeTrade(marketId, stake, side) {
   });
 }
 
+function applyIncrementalTradeResponse(response, marketId) {
+  if (response.prizePool) {
+    prizePoolState = response.prizePool;
+  }
+  if (response.backend) {
+    backendState = response.backend;
+  }
+  if (Number.isFinite(Number(response.balance))) {
+    state.bankrolls[currentUserName()] = Number(response.balance);
+  }
+  const market = findMarket(marketId);
+  if (!market) return;
+  if (response.market) {
+    Object.assign(market, response.market);
+  }
+  if (response.trade && !market.trades.some((trade) => trade.id === response.trade.id)) {
+    market.trades.push(response.trade);
+  }
+}
+
 function executeQuickTakeTrade(marketId, side) {
   return api("/api/trades", {
     userName: currentUserName(),
     marketId,
     side,
     stake: 1,
-    quickTake: true
+    quickPick: true
   });
 }
 
@@ -811,18 +1014,21 @@ function renderPortfolio() {
   const winRate = portfolio.winRate;
   const matchedBalance = openTrades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
   const unmatchedBalance = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
+  const leaderboardRows = getLeaderboardRows();
+  const rank = leaderboardRows.findIndex((row) => row.userName.toLowerCase() === currentUserName().toLowerCase()) + 1;
   const positions = sortPortfolioPositions(filterPortfolioPositions(buildPortfolioItems(openTrades, settledTrades)));
   if (elements.portfolioBalancePill) {
     elements.portfolioBalancePill.innerHTML = `<span>Wallet</span><strong>${formatStake(cash)}</strong>`;
   }
-  elements.portfolioSummary.innerHTML = [
-    portfolioMetricCard("Balance", formatStake(cash)),
-    portfolioMetricCard("Open positions", String(openTrades.length)),
-    portfolioMetricCard("Matched stake", formatStake(matchedBalance)),
-    portfolioMetricCard("Unmatched stake", formatStake(unmatchedBalance)),
-    portfolioMetricCard("Realized P/L", formatSignedStake(realized), realized),
-    portfolioMetricCard("Win rate", `${winRate}%`, winRate >= 50 ? 1 : winRate === 0 ? 0 : -1)
-  ].join("");
+  elements.portfolioSummary.innerHTML = portfolioPerformanceCardMarkup({
+    realized,
+    winRate,
+    rank,
+    cash,
+    openPositions: openTrades.length,
+    matchedBalance,
+    unmatchedBalance
+  });
   renderPortfolioFilters();
   renderPortfolioPositionCards(elements.portfolioList, positions, "No positions match that filter yet.");
 }
@@ -862,23 +1068,29 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
   trades.forEach((trade) => {
     const market = findMarket(trade.marketId);
     const card = template.content.firstElementChild.cloneNode(true);
-    const status = getTradeStatus(trade);
+    const status = portfolioPositionStatus(trade);
     const currentLine = trade.currentLine ?? market?.currentLine;
     const plValue = trade.result ? trade.result.profit : currentLine !== undefined ? (currentLine - trade.entryLine) * (trade.side === "OVER" ? 1 : -1) : 0;
-    const timeLabel = trade.result ? `${formatTradeResultLabel(trade.result)} | ${formatTimestamp(trade.timestamp)}` : `Updated ${formatTimestamp(trade.timestamp)}`;
+    const timeLabel = `Updated ${formatTimestamp(trade.timestamp)}`;
     applyStatusChip(card.querySelector(".status-chip"), status);
     card.querySelector(".position-side-badge").textContent = trade.side;
     card.querySelector(".position-side-badge").className = `position-side-badge ${trade.side === "OVER" ? "side-over" : "side-under"}`;
     card.querySelector(".position-title").textContent = trade.playerName ?? market?.playerName ?? "Unknown player";
-    const matchedStake = Number(trade.matchedStake) || 0;
-    const unmatchedStake = Number(trade.unmatchedStake) || 0;
     const lineLabel = trade.side === "OVER" ? trade.entryOverLine ?? trade.entryLine : trade.entryUnderLine ?? trade.entryLine;
-    const matchedLabel = matchedStake ? ` | Matched ${formatStake(matchedStake)}` : "";
-    const unmatchedLabel = unmatchedStake ? ` | Unmatched ${formatStake(unmatchedStake)}` : "";
-    card.querySelector(".position-meta").textContent = `${trade.position ?? market?.position ?? "Market"} | Line ${Number(lineLabel).toFixed(1)}${matchedLabel}${unmatchedLabel}`;
+    card.querySelector(".position-meta").textContent = `${trade.position ?? market?.position ?? "Market"} | Line ${Number(lineLabel).toFixed(1)} | Stake ${formatStake(trade.stake)}`;
     card.querySelector(".position-pl-value").textContent = formatSignedStake(plValue);
     card.querySelector(".position-pl-value").className = `position-pl-value ${plValue > 0 ? "positive" : plValue < 0 ? "negative" : ""}`;
     card.querySelector(".position-time").textContent = timeLabel;
+    card.classList.remove("is-win", "is-loss", "is-unmatched", "is-matched", "is-settled");
+    if (trade.result?.outcome === "WIN" || trade.status === "MATCHED") {
+      card.classList.add("is-win");
+    } else if (trade.result?.outcome === "LOSS" || trade.result?.outcome === "MIDDLE") {
+      card.classList.add("is-loss");
+    } else if (trade.status === "PENDING" || trade.status === "PARTIALLY_MATCHED") {
+      card.classList.add("is-unmatched");
+    } else if (trade.result || trade.status === "CANCELLED") {
+      card.classList.add("is-settled");
+    }
     const actionButton = card.querySelector(".position-action");
     if ((trade.cancelableOrderIds || []).length) {
       actionButton.hidden = false;
@@ -970,26 +1182,46 @@ function portfolioMetricCard(label, value, tone = 0) {
   return `<article class="portfolio-metric-card"><span>${label}</span><strong class="${tone > 0 ? "positive" : tone < 0 ? "negative" : ""}">${value}</strong></article>`;
 }
 
+function portfolioPerformanceCardMarkup({ realized, winRate, rank, cash, openPositions, matchedBalance, unmatchedBalance }) {
+  const progress = Math.max(0, Math.min(100, Number(winRate) || 0));
+  return `<article class="portfolio-performance-card">
+    <div class="portfolio-performance-primary">
+      <span><em>P&L</em><strong class="${realized > 0 ? "positive" : realized < 0 ? "negative" : ""}">${formatSignedStake(realized)}</strong></span>
+      <span><em>Win Rate</em><strong>${winRate}%</strong></span>
+      <span><em>Rank</em><strong class="rank-value">${rank ? `#${rank}` : "—"}</strong></span>
+    </div>
+    <div class="portfolio-performance-secondary">
+      <span><em>Balance</em><strong>${formatStake(cash)}</strong></span>
+      <span><em>Open Positions</em><strong>${openPositions}</strong></span>
+      <span><em>Matched Stake</em><strong>${formatStake(matchedBalance)}</strong></span>
+      <span><em>Unmatched Stake</em><strong>${formatStake(unmatchedBalance)}</strong></span>
+    </div>
+    <div class="portfolio-performance-progress"><span style="width:${progress}%"></span></div>
+  </article>`;
+}
+
 function renderQuickTake() {
-  if (!elements.quickTakeDeck) return;
+  if (!elements.quickPickDeck) return;
   syncQuickTakeQueue();
   const queue = getQuickTakeQueueMarkets();
   if (!queue.length) {
-    elements.quickTakeDeck.innerHTML = `<div class="portfolio-empty-state"><strong>No open markets right now</strong><span>Quick Take only shows player markets that are currently open.</span></div>`;
+    elements.quickPickDeck.innerHTML = `<div class="portfolio-empty-state"><strong>No open markets right now</strong><span>Quick Pick only shows player markets that are currently open.</span></div>`;
     return;
   }
-  const current = queue[0];
-  const next = queue[1];
+  const activeIndex = Math.min(uiState.quickPickActiveIndex, queue.length - 1);
+  const current = queue[activeIndex];
+  const next = queue[activeIndex + 1];
   const currentPair = linePairForMarket(current);
   const movement = getMovementText(current);
   const metrics = getMarketTradeMetrics(current);
   const matchup = matchupContext(current);
-  const scores = quickTakeRecentScores(current);
-  const isPending = Boolean(uiState.quickTakePendingMarketId);
+  const performance = quickPickPerformanceSummary(current);
+  const isPending = uiState.quickPickPendingCardId === current.id;
+  const isLocked = isMarketLocked(current);
   const teamColors = TEAM_COLORS[current.team] ?? TEAM_COLORS[normalizeTeamName(current.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
   const nextColors = next ? TEAM_COLORS[next.team] ?? TEAM_COLORS[normalizeTeamName(next.team)] ?? { primary: "#101722", secondary: "#68d9ff" } : null;
-  elements.quickTakeDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span><span class="quick-take-mini-context">${matchupContext(next).label}</span></div></article>` : ""}<article class="quick-take-card is-front player-card-shell" data-market-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(current)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Take</span><span class="quick-take-counter">${queue.length} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip status-open">Open</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-spread"><span><strong>Under</strong> ${currentPair.underLine.toFixed(1)}</span><span><strong>Over</strong> ${currentPair.overLine.toFixed(1)}</span><span><strong>Stake</strong> $1</span></div><div class="quick-take-stats"><span class="trade-label">Recent</span><div class="quick-take-score-row">${scores.map((score) => `<span class="quick-take-score-pill">${score}</span>`).join("")}</div><div class="quick-take-statline"><span>Avg ${current.seasonAverage.toFixed(1)}</span><span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "UNDER" ? "Submitting..." : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending ? "disabled" : ""}>${isPending && uiState.quickTakePendingSide === "OVER" ? "Submitting..." : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
-  const activeCard = elements.quickTakeDeck.querySelector(".quick-take-card.is-front");
+  elements.quickPickDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span><span class="quick-take-mini-context">${matchupContext(next).label}</span></div></article>` : ""}<article class="quick-take-card is-front player-card-shell ${isPending || isLocked ? "is-locked" : ""}" data-market-id="${current.id}" data-card-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(current)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Pick</span><span class="quick-take-counter">${queue.length - activeIndex} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${isLocked ? "status-locked" : "status-open"}">${isLocked ? "Locked" : "Open"}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "UNDER" ? "Submitting..." : isLocked ? "Locked" : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "OVER" ? "Submitting..." : isLocked ? "Locked" : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
+  const activeCard = elements.quickPickDeck.querySelector(".quick-take-card.is-front");
   activeCard?.querySelectorAll("[data-quick-side]").forEach((button) =>
     button.addEventListener("click", async () => {
       await submitQuickTake(current.id, button.dataset.quickSide, activeCard);
@@ -998,23 +1230,32 @@ function renderQuickTake() {
 }
 
 async function submitQuickTake(marketId, side, card) {
-  if (uiState.quickTakePendingMarketId) return;
-  uiState.quickTakePendingMarketId = marketId;
-  uiState.quickTakePendingSide = side;
-  const request = executeQuickTakeTrade(marketId, side);
-  const liveCard = elements.quickTakeDeck.querySelector(`.quick-take-card.is-front[data-market-id="${marketId}"]`) || card;
-  if (liveCard) {
-    liveCard.classList.add(side === "OVER" ? "is-exit-over" : "is-exit-under");
+  const activeCardId = getActiveQuickTakeMarketId();
+  if (!marketId || marketId !== activeCardId || uiState.quickPickPendingRequestId) return;
+  if (isMarketLocked(findMarket(marketId))) {
+    renderQuickTake();
+    showToast("Quick Pick locked", "This match has already kicked off.");
+    return;
   }
-  await wait(140);
-  advanceQuickTakeQueue(marketId);
+  const requestId = `${marketId}:${Date.now()}`;
+  uiState.quickPickPendingCardId = marketId;
+  uiState.quickPickPendingSide = side;
+  uiState.quickPickPendingRequestId = requestId;
   renderQuickTake();
   try {
-    const response = await request;
+    const response = await executeQuickTakeTrade(marketId, side);
+    if (uiState.quickPickPendingRequestId !== requestId) return;
     applyQuickTakeTradeResponse(response, marketId);
     const submittedTrade = response.trade;
-    uiState.quickTakePendingMarketId = "";
-    uiState.quickTakePendingSide = "";
+    const liveCard = elements.quickPickDeck.querySelector(`.quick-take-card.is-front[data-card-id="${marketId}"]`) || card;
+    if (liveCard) {
+      liveCard.classList.add(side === "OVER" ? "is-exit-over" : "is-exit-under");
+      await wait(140);
+    }
+    advanceQuickTakeQueue(marketId);
+    uiState.quickPickPendingCardId = "";
+    uiState.quickPickPendingSide = "";
+    uiState.quickPickPendingRequestId = "";
     renderHeaderBalance();
     renderQuickTake();
     triggerBalanceFlash();
@@ -1023,20 +1264,26 @@ async function submitQuickTake(marketId, side, card) {
       : submittedTrade?.status === "PARTIALLY_MATCHED"
         ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
         : `Posted ${formatStake(submittedTrade?.unmatchedStake || 1)} on ${side}`;
-    showToast("Quick Take submitted", toastMessage);
-    window.setTimeout(() => {
-      refreshSharedState();
-    }, 150);
+    showToast("Quick Pick submitted", toastMessage);
+    if (backendState.mode !== "local") {
+      window.setTimeout(() => {
+        refreshSharedState();
+      }, 150);
+    }
   } catch (error) {
-    restoreQuickTakeMarket(marketId);
-    uiState.quickTakePendingMarketId = "";
-    uiState.quickTakePendingSide = "";
+    if (uiState.quickPickPendingRequestId !== requestId) return;
+    uiState.quickPickPendingCardId = "";
+    uiState.quickPickPendingSide = "";
+    uiState.quickPickPendingRequestId = "";
     renderQuickTake();
-    showToast("Quick Take failed", error.message);
+    showToast("Quick Pick failed", error.message);
   }
 }
 
 function applyQuickTakeTradeResponse(response, marketId) {
+  if (response.prizePool) {
+    prizePoolState = response.prizePool;
+  }
   if (response.backend) {
     backendState = response.backend;
   }
@@ -1053,19 +1300,631 @@ function applyQuickTakeTradeResponse(response, marketId) {
   }
 }
 
+function syncPrizePoolPolling() {
+  if (uiState.activeScreen !== "prizepool") {
+    stopPrizePoolPolling();
+    return;
+  }
+  if (prizePoolLastPolledAmount == null) {
+    prizePoolLastPolledAmount = Number(prizePoolState?.poolAmount) || 0;
+  }
+  if (prizePoolPollTimer) return;
+  prizePoolPollTimer = window.setInterval(() => {
+    const nextAmount = Number(prizePoolState?.poolAmount) || 0;
+    if (nextAmount > (prizePoolLastPolledAmount || 0)) {
+      triggerPrizePoolJarSurge();
+    }
+    prizePoolLastPolledAmount = nextAmount;
+  }, PRIZE_POOL_POLL_MS);
+}
+
+function stopPrizePoolPolling() {
+  if (prizePoolPollTimer) {
+    window.clearInterval(prizePoolPollTimer);
+    prizePoolPollTimer = null;
+  }
+  prizePoolLastPolledAmount = null;
+}
+
+function triggerPrizePoolJarSurge() {
+  prizePoolJarSurging = false;
+}
+
+function isPrizePoolInterchangePick(pick) {
+  return pick?.position === "INTERCHANGE" || String(pick?.slotId || "").startsWith("INT");
+}
+
+function splitPrizePoolPicks(picks = []) {
+  return {
+    starting: picks.filter((pick) => !isPrizePoolInterchangePick(pick)),
+    interchange: picks.filter((pick) => isPrizePoolInterchangePick(pick))
+  };
+}
+
+function prizePoolDraftNeedsInterchangeDivider(draft) {
+  if (!draft) return false;
+  const startingSlots = Number(draft.startingSlots) || 13;
+  const interchangeSlots = Number(draft.interchangeSlots) || 4;
+  return draft.currentIndex >= startingSlots
+    && draft.currentIndex < startingSlots + interchangeSlots
+    && uiState.prizePoolInterchangeDividerSeenDraftId !== draft.id;
+}
+
+function renderPrizePool() {
+  if (!elements.prizePoolShell) return;
+  const view = prizePoolState;
+  if (!view) {
+    elements.prizePoolShell.innerHTML = `<div class="portfolio-empty-state"><strong>Prize Pool loading</strong><span>Fetching this week's pool and leaderboard.</span></div>`;
+    return;
+  }
+  if (view.hasEntry && view.entry) {
+    renderPrizePoolEntryState(view);
+    return;
+  }
+  if (view.draft) {
+    renderPrizePoolDraftState(view);
+    return;
+  }
+  const payouts = prizePoolPayoutRows(view);
+  elements.prizePoolShell.innerHTML = `
+    <section class="prize-pool-strip">
+      <section class="prize-pool-hero ${prizePoolJarSurging ? "is-surging" : ""}">
+        <p class="prize-pool-kicker">Prize Pool</p>
+        <h2 class="prize-pool-hero-title">Weekly Cash Pool</h2>
+        <p class="prize-pool-hero-copy">Pay $10, get 13 randomly assigned players plus 4 interchange players, lock in Over or Under on each line. Highest correct percentage wins.</p>
+        ${renderPrizePoolTipJar(view)}
+      </section>
+      <section class="section-block prize-pool-breakdown-block">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">Live Payouts</p>
+            <h3>Current breakdown</h3>
+          </div>
+        </div>
+        <div class="prize-pool-payout-grid">${payouts}</div>
+      </section>
+      <section class="section-block prize-pool-how-block">
+        <button id="prize-pool-toggle-how" class="prize-pool-collapse-button" type="button" aria-expanded="${uiState.prizePoolHowItWorksExpanded}">
+          <span>How it works</span>
+          <span aria-hidden="true">${uiState.prizePoolHowItWorksExpanded ? "−" : "+"}</span>
+        </button>
+        ${uiState.prizePoolHowItWorksExpanded ? `<div class="prize-pool-how-copy"><p>Starting 13: one player per position, randomly assigned.</p><p>Interchange 4: randomly assigned, any position. Replaces any starting player who does not play due to injury or non-selection.</p><p>Tiebreak: if two users finish with equal correct %, the user with more correct interchange picks wins.</p><p>Substitution order: first interchange replaces first unavailable starting player, in the order they were assigned.</p></div>` : ""}
+      </section>
+      <div class="prize-pool-sticky-cta">
+        ${view.canEnter ? `<button id="prize-pool-enter" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "start" ? "Opening..." : "Enter for $10"}</button>` : `<button class="secondary-button prize-pool-cta-muted" type="button" disabled>Entry Closed</button>`}
+      </div>
+      ${!view.canEnter ? `<div class="portfolio-empty-state"><strong>Entry closed</strong><span>Prize Pool stays open only while at least one round game has not yet kicked off.</span></div>` : ""}
+      ${renderPrizePoolLeaderboard(view, "Current Standings")}
+    </section>
+  `;
+  elements.prizePoolShell.querySelector("#prize-pool-enter")?.addEventListener("click", async () => {
+    await startPrizePoolDraft();
+  });
+  elements.prizePoolShell.querySelector("#prize-pool-toggle-how")?.addEventListener("click", () => {
+    uiState.prizePoolHowItWorksExpanded = !uiState.prizePoolHowItWorksExpanded;
+    renderPrizePool();
+  });
+  animatePrizePoolDeltaValue();
+}
+
+function renderPrizePoolDraftState(view) {
+  const draft = view.draft;
+  const currentCard = draft.currentCard;
+  if (draft.readyToSubmit) {
+    const split = splitPrizePoolPicks(draft.picks);
+    elements.prizePoolShell.innerHTML = `
+      <section class="hero-strip prize-pool-strip">
+        <div class="portfolio-title-row"><div><p class="eyebrow">Prize Pool</p><h2>Review your team</h2></div></div>
+        <p class="section-meta prize-pool-subtitle">Your projection lines are now locked. Submit once to enter this week's pool.</p>
+        <section class="section-block prize-pool-summary-block">
+          <div class="prize-pool-section-label">Starting 13</div>
+          <div class="prize-pool-team-list">
+            ${split.starting.map((pick, index) => prizePoolPickRowMarkup(pick, index + 1)).join("")}
+          </div>
+          <div class="prize-pool-line-divider"></div>
+          <div class="prize-pool-section-head"><div class="prize-pool-section-label is-interchange">Interchange</div></div>
+          <div class="prize-pool-team-list prize-pool-team-list-interchange">
+            ${split.interchange.map((pick, index) => prizePoolPickRowMarkup(pick, index + 1)).join("")}
+          </div>
+        </section>
+        <div class="prize-pool-sticky-cta">
+          <button id="prize-pool-submit" class="primary-button prize-pool-submit-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "submit" ? "Submitting..." : "Submit Team"}</button>
+        </div>
+      </section>
+    `;
+    elements.prizePoolShell.querySelector("#prize-pool-submit")?.addEventListener("click", async () => {
+      await submitPrizePoolEntry();
+    });
+    return;
+  }
+  if (prizePoolDraftNeedsInterchangeDivider(draft)) {
+    elements.prizePoolShell.innerHTML = `
+      <section class="section-block prize-pool-interchange-intro">
+        <p class="eyebrow">Prize Pool</p>
+        <h2>Now pick your 4 interchange players</h2>
+        <p class="section-meta prize-pool-subtitle">These replace any starting player who doesn't take the field. They also act as your tiebreaker.</p>
+        <button id="prize-pool-start-interchange" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">Continue</button>
+      </section>
+    `;
+    elements.prizePoolShell.querySelector("#prize-pool-start-interchange")?.addEventListener("click", () => {
+      uiState.prizePoolInterchangeDividerSeenDraftId = draft.id;
+      renderPrizePool();
+    });
+    return;
+  }
+  if (!currentCard) {
+    elements.prizePoolShell.innerHTML = `<div class="portfolio-empty-state"><strong>No eligible player available</strong><span>One of the required positions has already locked across all remaining games.</span></div>`;
+    return;
+  }
+  const market = findMarket(currentCard.marketId);
+  const movement = market ? getMovementText(market) : { className: "", arrow: "", label: "Live line" };
+  const matchup = market ? matchupContext(market) : { label: currentCard.team };
+  const performance = market ? quickPickPerformanceSummary(market) : { seasonAverageLabel: "—", lastFive: [] };
+  const teamColors = TEAM_COLORS[currentCard.team] ?? TEAM_COLORS[normalizeTeamName(currentCard.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
+  const isInterchange = Boolean(currentCard.isInterchange);
+  elements.prizePoolShell.innerHTML = `
+    <section class="hero-strip prize-pool-strip">
+      <div class="portfolio-title-row"><div><p class="eyebrow">Prize Pool</p><h2>Pick ${draft.currentIndex + 1} of ${draft.totalSlots}</h2></div></div>
+      <p class="section-meta prize-pool-subtitle">Players are assigned at random. Tap Over or Under and that pick locks instantly.</p>
+    </section>
+    <section class="section-block quick-take-stage-block">
+      <article class="quick-take-card is-front player-card-shell prize-pool-card ${isInterchange ? "is-interchange" : ""}" data-card-id="${currentCard.marketId}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${market ? playerCardTone(market) : ""}">
+        <div class="quick-take-backdrop"></div>
+        <div class="quick-take-topline"><span class="eyebrow">${isInterchange ? "Interchange" : "Prize Pool"}</span><span class="quick-take-counter">${draft.totalSlots - draft.currentIndex} left</span></div>
+        <div class="prize-pool-position-pill ${isInterchange ? "is-interchange" : ""}">${currentCard.positionLabel}</div>
+        <div class="quick-take-header"><div><h3>${currentCard.playerName}</h3><p>${currentCard.team} | ${currentCard.position === "INTERCHANGE" ? currentCard.positionLabel : currentCard.position}</p><p class="quick-take-context">${matchup.label}</p></div></div>
+        <div class="quick-take-line">${Number(currentCard.line).toFixed(1)}</div>
+        <div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div>
+        <div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div></div>
+        <div class="quick-take-actions">
+          <button class="quick-take-action quick-take-under" type="button" data-prize-side="UNDER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Under ${Number(currentCard.line).toFixed(1)}</button>
+          <button class="quick-take-action quick-take-over" type="button" data-prize-side="OVER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Over ${Number(currentCard.line).toFixed(1)}</button>
+        </div>
+      </article>
+    </section>
+  `;
+  const activeCard = elements.prizePoolShell.querySelector(".quick-take-card.is-front");
+  elements.prizePoolShell.querySelectorAll("[data-prize-side]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      await submitPrizePoolDraftPick(button.dataset.prizeSide, activeCard);
+    })
+  );
+}
+
+function renderPrizePoolEntryState(view) {
+  const entry = view.entry;
+  const split = splitPrizePoolPicks(entry.picks || []);
+  const summaryPct = Number(entry.correctPct) || 0;
+  const payoutCards = view.isFinal
+    ? `<div class="prize-pool-final-banner"><strong>Final rank #${entry.rank}</strong><span>${entry.payout ? `Payout ${formatStake(entry.payout)}` : "No payout this week"}</span></div>`
+    : "";
+  const standings = (view.leaderboard || []).slice(0, uiState.prizePoolStandingsExpanded ? undefined : 5);
+  elements.prizePoolShell.innerHTML = `
+    <section class="hero-strip prize-pool-strip">
+      <div class="portfolio-title-row"><div><p class="eyebrow">Prize Pool</p><h2>${currentUserName()}'s Round ${view.roundNumber} Lineup</h2><p class="section-meta prize-pool-subtitle">${view.roundLabel} · Settles ${formatPrizePoolSettlement(view.settlementAt)}</p></div></div>
+      <div class="prize-pool-team-header-card">
+        <div>
+          <strong>${currentUserName()}</strong>
+          <span>Round ${view.roundNumber} · Entered ${formatPrizePoolEntryDate(entry.submittedAt)}</span>
+        </div>
+        <span class="prize-pool-entered-badge">Entered</span>
+      </div>
+      <div class="prize-pool-live-balance"><span>Prize Pool</span><strong>${formatStake(prizePoolDisplayAmount(view))}</strong></div>
+      <div class="prize-pool-inline-stats-card">
+        <div class="prize-pool-inline-stats">
+          <span><em>Starting</em><strong>${entry.startingCorrectCount || 0}/${split.starting.length || Number(view.startingSlotCount) || 13}</strong></span>
+          <span><em>Correct %</em><strong>${prizePoolPercentLabel(summaryPct)}</strong></span>
+          <span><em>Rank</em><strong>#${entry.rank || "—"}</strong></span>
+        </div>
+        <div class="prize-pool-progress"><span style="width:${Math.max(0, Math.min(100, summaryPct * 100))}%"></span></div>
+      </div>
+      <button id="prize-pool-share-lineup" class="prize-pool-share-trigger" type="button"><i class="ph-fill ph-share-network" aria-hidden="true"></i><span>Share Lineup</span></button>
+      ${payoutCards}
+    </section>
+    <section class="section-block prize-pool-summary-block">
+      <div class="prize-pool-section-label">Starting 13</div>
+      <div class="prize-pool-team-list">
+        ${split.starting.map((pick, index) => prizePoolPickRowMarkup(pick, index + 1, true)).join("")}
+      </div>
+      <div class="prize-pool-line-divider"></div>
+      <div class="prize-pool-section-head">
+        <div class="prize-pool-section-label is-interchange">Interchange</div>
+        <button id="prize-pool-toggle-interchange-rules" class="secondary-button inline-section-button prize-pool-inline-info" type="button">${uiState.prizePoolInterchangeRulesExpanded ? "Hide Interchange Rules" : "Interchange Rules"}</button>
+      </div>
+      ${uiState.prizePoolInterchangeRulesExpanded ? `<div class="prize-pool-inline-rules"><p>Interchange replaces unavailable starting players in the order assigned.</p><p>If teams tie on correct %, the side with more correct interchange picks wins the tiebreak.</p></div>` : ""}
+      <div class="prize-pool-team-list prize-pool-team-list-interchange">
+        ${split.interchange.map((pick, index) => prizePoolPickRowMarkup(pick, index + 1, true)).join("") || `<div class="portfolio-empty-state"><strong>No interchange picks recorded</strong><span>This entry was created before interchange slots were added.</span></div>`}
+      </div>
+    </section>
+    <section class="section-block prize-pool-leaderboard-block">
+      <div class="section-heading compact-heading"><div><p class="eyebrow">Standings</p><h3>Current Standings</h3></div><button id="prize-pool-toggle-standings" class="secondary-button inline-section-button" type="button">${uiState.prizePoolStandingsExpanded ? "Collapse" : "View Full Standings"}</button></div>
+      <div class="prize-pool-board">${standings.map((row) => prizePoolCompactStandingsRow(row)).join("")}</div>
+    </section>
+  `;
+  elements.prizePoolShell.querySelector("#prize-pool-toggle-standings")?.addEventListener("click", () => {
+    uiState.prizePoolStandingsExpanded = !uiState.prizePoolStandingsExpanded;
+    renderPrizePool();
+  });
+  elements.prizePoolShell.querySelector("#prize-pool-toggle-interchange-rules")?.addEventListener("click", () => {
+    uiState.prizePoolInterchangeRulesExpanded = !uiState.prizePoolInterchangeRulesExpanded;
+    renderPrizePool();
+  });
+  elements.prizePoolShell.querySelector("#prize-pool-share-lineup")?.addEventListener("click", () => {
+    openPrizePoolShareOverlay();
+  });
+}
+
+function renderPrizePoolLeaderboard(view, heading) {
+  const currentUser = currentUserName().toLowerCase();
+  const rows = (view.leaderboard || []).length
+    ? view.leaderboard.map((row) => {
+      const tone = row.rank === 1 ? "is-first" : row.rank === 2 ? "is-second" : row.rank === 3 ? "is-third" : "";
+      const width = Math.max(0, Math.min(100, (Number(row.correctPct) || 0) * 100));
+      return `<article class="prize-pool-leader-card ${row.userName.toLowerCase() === currentUser ? "is-current-user" : ""}"><div class="prize-pool-rank-badge ${tone}">${row.rank}</div><div class="prize-pool-leader-copy"><div class="prize-pool-leader-top"><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct)}</span></div><div class="prize-pool-progress"><span style="width:${width}%"></span></div><div class="prize-pool-leader-foot">${row.startingCorrectCount || 0} starting correct · ${row.interchangeCorrectCount || 0} interchange${view.isFinal && row.payout ? ` | ${formatStake(row.payout)}` : ""}</div></div></article>`;
+    }).join("")
+    : `<div class="portfolio-empty-state"><strong>No entrants yet</strong><span>The pool amount updates as users submit teams.</span></div>`;
+  return `
+    <section class="section-block leaderboard-list-block prize-pool-leaderboard-block">
+      <div class="section-heading compact-heading"><div><p class="eyebrow">Standings</p><h3>${heading}</h3></div></div>
+      <div class="prize-pool-board">${rows}</div>
+    </section>
+  `;
+}
+
+function prizePoolPickRowMarkup(pick, index, includeResult = false) {
+  const statusTone = pick.resultStatus === "CORRECT" ? "correct" : pick.resultStatus === "INCORRECT" ? "incorrect" : "pending";
+  const isInterchange = isPrizePoolInterchangePick(pick);
+  const resultMeta = includeResult
+    ? pick.resultStatus === "PENDING"
+      ? `<span class="prize-pool-result-chip pending"><span aria-hidden="true">◷</span><span>Pending</span></span>`
+      : `<span class="prize-pool-result-chip ${statusTone}"><span aria-hidden="true">${pick.resultStatus === "CORRECT" ? "✅" : "❌"}</span><span>${Number(pick.actualScore).toFixed(1)}</span></span>`
+    : "";
+  return `<article class="prize-pool-pick-row is-${statusTone} ${isInterchange ? "is-interchange" : ""}"><div class="prize-pool-pick-copy"><span class="prize-pool-position-label ${isInterchange ? "is-interchange" : ""}">${pick.positionLabel}</span><strong>${pick.playerName}</strong><span class="prize-pool-team-meta">${pick.team}</span></div><div class="prize-pool-call-block"><span class="prize-pool-call-pill ${pick.side === "OVER" ? "over" : "under"}">${pick.side}</span><strong>${Number(pick.line).toFixed(1)}</strong></div><div class="prize-pool-pick-status">${resultMeta || `<span class="prize-pool-result-chip pending"><span aria-hidden="true">◷</span><span>Pending</span></span>`}</div></article>`;
+}
+
+function prizePoolCompactStandingsRow(row) {
+  return `<article class="prize-pool-compact-row"><span class="prize-pool-compact-rank">#${row.rank}</span><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct)}</span><small>${row.interchangeCorrectCount || 0} INT</small></article>`;
+}
+
+function prizePoolPayoutRows(view) {
+  const pool = prizePoolDisplayAmount(view);
+  return [["1st", 0.5, "is-first", "Gold"], ["2nd", 0.3, "is-second", "Silver"], ["3rd", 0.2, "is-third", "Bronze"]]
+    .map(([label, split, tone, iconLabel]) => `<article class="prize-pool-payout-card ${tone}"><span class="prize-pool-payout-rank">${label} <small>${iconLabel}</small></span><strong>${formatStake(pool * split)}</strong><p>${Math.round(split * 100)}%</p></article>`)
+    .join("");
+}
+
+function prizePoolStatCard(label, value, foot, accent = "money") {
+  return `<article class="prize-pool-stat-card"><span class="prize-pool-stat-label">${label}</span><strong class="prize-pool-stat-value ${accent === "settlement" ? "" : accent === "count" ? "is-secondary" : ""}">${value}</strong><span class="prize-pool-stat-foot">${foot}</span></article>`;
+}
+
+function prizePoolDisplayAmount(view) {
+  return Math.max(Number(view?.poolAmount) || 0, Number(view?.seedAmount) || 100);
+}
+
+function prizePoolPercentLabel(value) {
+  return `${((Number(value) || 0) * 100).toFixed(0)}%`;
+}
+
+function formatPrizePoolSettlement(timestamp) {
+  if (!timestamp) return "Monday";
+  return new Date(timestamp).toLocaleString([], { weekday: "short", month: "short", day: "numeric" });
+}
+
+const PRIZE_POOL_SHARE_ROW_ORDER = [
+  { key: "HOK", slots: ["HK"], align: "center" },
+  { key: "MID", slots: ["P1", "LK", "P2"], align: "spread" },
+  { key: "EDG", slots: ["SR1", "SR2"], align: "spread" },
+  { key: "HLF", slots: ["HB", "FE"], align: "spread" },
+  { key: "CTR", slots: ["C1", "C2"], align: "spread" },
+  { key: "WFB", slots: ["W1", "FB", "W2"], align: "spread" }
+];
+
+const PRIZE_POOL_SHARE_POSITION_TO_SLOT = {
+  FULLBACK: ["FB"],
+  WINGER: ["W1", "W2"],
+  CENTRE: ["C1", "C2"],
+  "FIVE-EIGHTH": ["FE"],
+  HALFBACK: ["HB"],
+  HOOKER: ["HK"],
+  PROP: ["P1", "P2"],
+  "2ND ROW": ["SR1", "SR2"],
+  LOCK: ["LK"]
+};
+
+function openPrizePoolShareOverlay() {
+  if (!prizePoolState?.entry) return;
+  uiState.prizePoolShareOpen = true;
+  renderPrizePoolShareOverlay();
+}
+
+function closePrizePoolShareOverlay() {
+  if (!uiState.prizePoolShareOpen) return;
+  uiState.prizePoolShareOpen = false;
+  renderPrizePoolShareOverlay();
+}
+
+function ensurePrizePoolShareOverlay() {
+  let overlay = document.getElementById("prize-pool-share-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "prize-pool-share-overlay";
+    overlay.className = "prize-pool-share-overlay";
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+
+function renderPrizePoolShareOverlay() {
+  const overlay = document.getElementById("prize-pool-share-overlay");
+  if (!uiState.prizePoolShareOpen || !prizePoolState?.entry) {
+    if (overlay) overlay.remove();
+    document.body.classList.remove("prize-pool-share-open");
+    if (prizePoolShareFitFrame) {
+      window.cancelAnimationFrame(prizePoolShareFitFrame);
+      prizePoolShareFitFrame = null;
+    }
+    return;
+  }
+  const view = prizePoolState;
+  const entry = view.entry;
+  const split = splitPrizePoolPicks(entry.picks || []);
+  const shareOverlay = ensurePrizePoolShareOverlay();
+  const formation = buildPrizePoolShareFormation(split.starting);
+  shareOverlay.innerHTML = `
+    <div class="prize-pool-share-backdrop">
+      <button class="prize-pool-share-close" type="button" aria-label="Close share lineup view">✕ Close</button>
+      <div class="prize-pool-share-card">
+        <div class="prize-pool-share-topbar">
+          <h1 class="brand-wordmark prize-pool-share-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
+          <span class="prize-pool-share-round">ROUND ${view.roundNumber || currentRoundNumber() || "—"}</span>
+        </div>
+        <section class="prize-pool-share-hero">
+          <h2>${currentUserName()}'s Lineup</h2>
+          <p>Rank #${entry.rank || "—"} · Settles ${formatPrizePoolShareSettlement(view.settlementAt)}</p>
+          <div class="prize-pool-share-pool-lockup">
+            <span>PRIZE POOL</span>
+            <strong>${formatStake(prizePoolDisplayAmount(view))}</strong>
+          </div>
+        </section>
+        <section class="prize-pool-share-formation-shell">
+          <div class="prize-pool-share-formation-scale" data-prize-pool-share-scale>
+            ${formation}
+          </div>
+        </section>
+        <footer class="prize-pool-share-footer">
+          <span>crowdiq.app</span>
+          <em>Hold to save · Share your lineup</em>
+        </footer>
+      </div>
+    </div>
+  `;
+  shareOverlay.querySelector(".prize-pool-share-close")?.addEventListener("click", () => {
+    closePrizePoolShareOverlay();
+  });
+  document.body.classList.add("prize-pool-share-open");
+  schedulePrizePoolShareFit();
+}
+
+function buildPrizePoolShareFormation(picks = []) {
+  const slotMap = assignPrizePoolShareSlots(picks);
+  return PRIZE_POOL_SHARE_ROW_ORDER
+    .map((row, rowIndex) => {
+      const cards = row.slots.map((slotId) => {
+        const pick = slotMap.get(slotId);
+        return pick ? prizePoolSharePlayerCardMarkup(pick) : `<div class="prize-pool-share-player-card is-empty" aria-hidden="true"></div>`;
+      }).join("");
+      return `
+        <div class="prize-pool-share-row ${row.align === "center" ? "is-center" : ""}">
+          <span class="prize-pool-share-row-label">${row.key}</span>
+          <div class="prize-pool-share-row-cards prize-pool-share-row-cards-${row.slots.length}">
+            ${cards}
+          </div>
+        </div>
+        ${rowIndex < PRIZE_POOL_SHARE_ROW_ORDER.length - 1 ? `<div class="prize-pool-share-row-divider"></div>` : ""}
+      `;
+    })
+    .join("");
+}
+
+function assignPrizePoolShareSlots(picks = []) {
+  const remaining = [...picks];
+  const assigned = new Map();
+  PRIZE_POOL_SHARE_ROW_ORDER.flatMap((row) => row.slots).forEach((slotId) => {
+    const exactIndex = remaining.findIndex((pick) => String(pick?.slotId || "").toUpperCase() === slotId);
+    if (exactIndex >= 0) {
+      assigned.set(slotId, remaining.splice(exactIndex, 1)[0]);
+    }
+  });
+  remaining.splice(0).forEach((pick) => {
+    const candidateSlots = prizePoolShareSlotCandidates(pick);
+    const openSlot = candidateSlots.find((slotId) => !assigned.has(slotId));
+    if (openSlot) {
+      assigned.set(openSlot, pick);
+      return;
+    }
+    const fallbackSlot = PRIZE_POOL_SHARE_ROW_ORDER.flatMap((row) => row.slots).find((slotId) => !assigned.has(slotId));
+    if (fallbackSlot) assigned.set(fallbackSlot, pick);
+  });
+  return assigned;
+}
+
+function prizePoolShareSlotCandidates(pick) {
+  const rawPosition = String(pick?.position || pick?.positionLabel || "").toUpperCase();
+  const normalized = rawPosition
+    .replace(/\bSECOND\b/g, "2ND")
+    .replace(/\bROW\b/g, "ROW")
+    .replace(/\s+/g, " ")
+    .trim();
+  return PRIZE_POOL_SHARE_POSITION_TO_SLOT[normalized] || [];
+}
+
+function prizePoolSharePlayerCardMarkup(pick) {
+  const isSettled = pick.resultStatus && pick.resultStatus !== "PENDING" && Number.isFinite(Number(pick.actualScore));
+  const surname = prizePoolShareSurname(pick.playerName);
+  return `
+    <article class="prize-pool-share-player-card">
+      <strong class="prize-pool-share-player-name" title="${pick.playerName}">${surname}</strong>
+      <span class="prize-pool-share-call-pill ${pick.side === "OVER" ? "is-over" : "is-under"}">${pick.side}</span>
+      <span class="prize-pool-share-line ${isSettled ? `is-${pick.resultStatus === "CORRECT" ? "correct" : "incorrect"}` : ""}">${isSettled ? `${Number(pick.actualScore).toFixed(1)} ${pick.resultStatus === "CORRECT" ? "✅" : "❌"}` : Number(pick.line).toFixed(1)}</span>
+    </article>
+  `;
+}
+
+function prizePoolShareSurname(playerName) {
+  const parts = String(playerName || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "Player";
+}
+
+function formatPrizePoolShareSettlement(timestamp) {
+  if (!timestamp) return "Mon 00 Mar";
+  return new Date(timestamp).toLocaleDateString("en-NZ", { weekday: "short", day: "2-digit", month: "short" }).replace(",", "");
+}
+
+function schedulePrizePoolShareFit() {
+  if (!uiState.prizePoolShareOpen) return;
+  if (prizePoolShareFitFrame) {
+    window.cancelAnimationFrame(prizePoolShareFitFrame);
+  }
+  prizePoolShareFitFrame = window.requestAnimationFrame(() => {
+    prizePoolShareFitFrame = null;
+    fitPrizePoolShareFormation();
+  });
+}
+
+function fitPrizePoolShareFormation() {
+  const shell = document.querySelector(".prize-pool-share-formation-shell");
+  const scaleNode = document.querySelector("[data-prize-pool-share-scale]");
+  if (!shell || !scaleNode) return;
+  scaleNode.style.transform = "scale(1)";
+  const availableHeight = shell.clientHeight;
+  const naturalHeight = scaleNode.scrollHeight;
+  if (!availableHeight || !naturalHeight) return;
+  const scale = Math.max(0.74, Math.min(1, availableHeight / naturalHeight));
+  scaleNode.style.transform = `scale(${scale})`;
+}
+
+function renderPrizePoolTipJar(view) {
+  const deltaAmount = Number(view.recentDeltaAmount) || Number(view.entryFee) || 10;
+  const deltaLabel = view.recentDeltaWindowLabel || "in the last hour";
+  return `
+    <div class="prize-pool-jar-block">
+      <div class="prize-pool-hero-balance-lockup">
+        <div class="prize-pool-tipjar-amount">${formatStake(prizePoolDisplayAmount(view))}</div>
+        <div class="prize-pool-tipjar-delta">+${formatStake(deltaAmount)} ${deltaLabel}</div>
+      </div>
+    </div>
+  `;
+}
+
+function formatPrizePoolEntryDate(timestamp) {
+  if (!timestamp) return "today";
+  return new Date(timestamp).toLocaleString([], { month: "short", day: "numeric" });
+}
+
+function animatePrizePoolDeltaValue() {
+  const node = elements.prizePoolShell?.querySelector("[data-prize-pool-delta-value]");
+  if (!node) return;
+  const target = Number(node.dataset.prizePoolDeltaValue) || 0;
+  const start = performance.now();
+  const duration = 800;
+  const step = (now) => {
+    const progress = Math.min(1, (now - start) / duration);
+    node.textContent = `+${formatStake(Math.round(target * progress))}`;
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+async function startPrizePoolDraft() {
+  uiState.prizePoolPendingAction = "start";
+  renderPrizePool();
+  try {
+    const response = await api("/api/prize-pool/draft/start", { userName: currentUserName() });
+    applySharedSnapshot({ ...response, backend: backendState });
+    uiState.prizePoolPendingAction = "";
+    uiState.prizePoolPendingSide = "";
+    uiState.prizePoolInterchangeDividerSeenDraftId = "";
+    renderAll();
+  } catch (error) {
+    uiState.prizePoolPendingAction = "";
+    renderPrizePool();
+    showToast("Prize Pool unavailable", error.message);
+  }
+}
+
+async function submitPrizePoolDraftPick(side, card) {
+  if (!prizePoolState?.draft?.id || !side) return;
+  uiState.prizePoolPendingAction = "pick";
+  renderPrizePool();
+  try {
+    const response = await api("/api/prize-pool/draft/pick", {
+      userName: currentUserName(),
+      draftId: prizePoolState.draft.id,
+      side
+    });
+    const marketId = prizePoolState?.draft?.currentCard?.marketId;
+    const liveCard = marketId
+      ? elements.prizePoolShell.querySelector(`.quick-take-card.is-front[data-card-id="${marketId}"]`) || card
+      : card;
+    if (liveCard) {
+      liveCard.classList.add(side === "OVER" ? "is-exit-over" : "is-exit-under");
+      await wait(140);
+    }
+    applySharedSnapshot({ ...response, backend: backendState });
+    uiState.prizePoolPendingAction = "";
+    renderAll();
+  } catch (error) {
+    uiState.prizePoolPendingAction = "";
+    renderPrizePool();
+    showToast("Prize Pool pick failed", error.message);
+  }
+}
+
+async function submitPrizePoolEntry() {
+  if (!prizePoolState?.draft?.id) return;
+  uiState.prizePoolPendingAction = "submit";
+  renderPrizePool();
+  try {
+    const response = await api("/api/prize-pool/submit", {
+      userName: currentUserName(),
+      draftId: prizePoolState.draft.id
+    });
+    applySharedSnapshot({ ...response, backend: backendState });
+    uiState.prizePoolPendingAction = "";
+    renderAll();
+    triggerBalanceFlash();
+    showPrizePoolSubmissionToast();
+  } catch (error) {
+    uiState.prizePoolPendingAction = "";
+    renderPrizePool();
+    showToast("Prize Pool submit failed", error.message);
+  }
+}
+
+function showPrizePoolSubmissionToast() {
+  if (uiState.prizePoolSubmissionToastShown) return;
+  uiState.prizePoolSubmissionToastShown = true;
+  document.querySelectorAll(".prize-pool-submission-toast").forEach((node) => node.remove());
+  const toast = document.createElement("div");
+  toast.className = "toast visible toast-low prize-pool-submission-toast";
+  toast.setAttribute("aria-live", "polite");
+  toast.innerHTML = `<span class="toast-title">Team Submitted</span><span class="toast-meta">Your lineup is locked for this round.</span>`;
+  document.body.appendChild(toast);
+  window.setTimeout(() => {
+    toast.remove();
+  }, 2500);
+}
+
 function renderProfileSummary() {
   const userName = currentUserName();
-  const bankroll = getDisplayedCash(userName);
-  const trades = getUserTrades(userName);
-  const leaderboardRows = getLeaderboardRows();
-  const rank = leaderboardRows.findIndex((row) => row.userName.toLowerCase() === userName.toLowerCase()) + 1;
-  const openTrades = trades.filter((trade) => !trade.result && trade.status !== "CANCELLED").length;
-  elements.profileSummary.innerHTML = [
-    summaryStat("Username", userName),
-    summaryStat("Wallet", formatStake(bankroll), bankroll >= STARTING_BANKROLL ? 1 : 0),
-    summaryStat("Open positions", String(openTrades)),
-    summaryStat("Leaderboard rank", rank ? `#${rank}` : "Unranked")
-  ].join("");
+  if (elements.portfolioPageSubtitle) {
+    elements.portfolioPageSubtitle.textContent = userName;
+  }
+  if (elements.profileSummary) {
+    elements.profileSummary.innerHTML = "";
+  }
 }
 
 function renderAdminShell() {
@@ -1197,7 +2056,7 @@ function renderBotSimulation() {
             `<article class="bot-log-card"><div class="bot-log-head"><strong>${log.botName}</strong><span>Tick ${log.tick}</span></div><p>${log.playerName} Â· ${log.side} Â· Edge ${Number(log.edge).toFixed(1)}</p><span>${log.reason}</span></article>`
         )
         .join("")
-    : `<div class="section-meta">No bot events yet. Create a bot to start autonomous Quick Take activity.</div>`;
+    : `<div class="section-meta">No bot events yet. Create a bot to start autonomous Quick Pick activity.</div>`;
 }
 
 function renderAdminTable() {
@@ -1472,7 +2331,7 @@ async function saveLines() {
       openingLine: Number(elements.openingLineInput.value),
       currentLine: Number(elements.currentLineInput.value)
     });
-    state = response.state;
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
     elements.openingFeedback.textContent = `${findMarket(elements.openingMarket.value)?.playerName ?? "Market"} updated.`;
     refreshSharedState();
@@ -1488,7 +2347,7 @@ async function settleMarket() {
       marketId: settledMarketId,
       finalScore: Number(elements.finalScoreInput.value)
     });
-    state = response.state;
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
     elements.finalScoreInput.value = "";
     elements.settlementFeedback.textContent = `${findMarket(settledMarketId)?.playerName ?? "Market"} settled.`;
@@ -1501,7 +2360,7 @@ async function settleMarket() {
 async function settleCurrentRoundFromImportedScores() {
   try {
     const response = await api("/api/admin/settle-round", {});
-    state = response.state;
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
     const settledCount = response.settlementBatch?.settledCount ?? 0;
     const scoredCount = response.settlementBatch?.scoredCount ?? 0;
@@ -1522,7 +2381,7 @@ async function settleCurrentRoundFromImportedScores() {
 async function undoSettlementBatch() {
   try {
     const response = await api("/api/admin/undo-settlement", {});
-    state = response.state;
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
     elements.settlementFeedback.textContent = `Restored ${response.restoredCount ?? 0} settled markets from the last batch.`;
     refreshSharedState();
@@ -1546,7 +2405,7 @@ async function saveBotConfig() {
         threshold: Number(elements.botThresholdWeight.value)
       }
     });
-    state = response.state;
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
     elements.botConfigFeedback.textContent = "Bot settings updated.";
   } catch (error) {
@@ -1557,12 +2416,12 @@ async function saveBotConfig() {
 async function createSimulationBot(mode = "default") {
   try {
     const response = await api("/api/admin/bots/create", { mode });
-    state = response.state;
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
-    const botName = response.bot?.userName || "Quick Take bot";
-    const botDescription = mode === "random-prob" ? "50/50 random-probability bot" : "Quick Take bot";
+    const botName = response.bot?.userName || "Quick Pick bot";
+    const botDescription = mode === "random-prob" ? "50/50 random-probability bot" : "Quick Pick bot";
     elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a ${botDescription}.`;
-    showToast("Bot created", `${botName} joined the Quick Take market.`);
+    showToast("Bot created", `${botName} joined the Quick Pick market.`);
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
   }
@@ -1658,6 +2517,16 @@ function shiftGame(direction) {
   renderAll();
 }
 
+function focusPreferredMatchCentreGame(force = false) {
+  const preferredGame = nextGameToLock();
+  if (!preferredGame) return;
+  if (!force) return;
+  uiState.currentGameId = preferredGame.id;
+  uiState.currentTeam = preferredGame.homeTeam;
+  uiState.expandedMarketId = "";
+  syncSelectedMarket();
+}
+
 function syncSelectedMarket() {
   const visibleMarkets = getVisibleMarkets();
   if (!visibleMarkets.some((market) => market.id === uiState.selectedMarketId)) {
@@ -1673,6 +2542,10 @@ function currentGame() {
   return roundGames.find((game) => game.id === uiState.currentGameId) ?? roundGames[0];
 }
 
+function findGame(gameId) {
+  return roundGames.find((game) => game.id === gameId) || null;
+}
+
 function getGameMarkets(gameId) {
   return state.markets.filter((market) => market.gameId === gameId);
 }
@@ -1682,50 +2555,65 @@ function getVisibleMarkets() {
 }
 
 function syncQuickTakeQueue() {
-  const openMarketIds = state.markets.filter(isMarketOpen).map((market) => market.id);
-  const openIdSet = new Set(openMarketIds);
-  const seen = uiState.quickTakeSeenMarketIds.filter((marketId) => openIdSet.has(marketId));
-  const seenSet = new Set(seen);
-  const unseen = openMarketIds.filter((marketId) => !seenSet.has(marketId));
-  const rankedQueue = unseen
-    .map((marketId) => findMarket(marketId))
-    .filter(Boolean)
+  const sortedOpenIds = state.markets
+    .filter(isMarketOpen)
     .sort(compareQuickTakeMarkets)
     .map((market) => market.id);
-  let nextQueue = rankedQueue;
-  let nextSeen = seen;
+  const openIdSet = new Set(sortedOpenIds);
+  let nextSeen = uiState.quickPickSeenMarketIds.filter((marketId) => openIdSet.has(marketId));
+  const seenSet = new Set(nextSeen);
+  const currentQueue = uiState.quickPickMarketIds.filter((marketId) => openIdSet.has(marketId) && !seenSet.has(marketId));
+  const queuedSet = new Set(currentQueue);
+  const appendedQueue = sortedOpenIds.filter((marketId) => !seenSet.has(marketId) && !queuedSet.has(marketId));
+  let nextQueue = [...currentQueue, ...appendedQueue];
   if (!nextQueue.length) {
-    nextSeen = [];
-    nextQueue = openMarketIds
-      .map((marketId) => findMarket(marketId))
-      .filter(Boolean)
+    uiState.quickPickShuffleSeed = randomToken();
+    const reshuffledOpenIds = state.markets
+      .filter(isMarketOpen)
       .sort(compareQuickTakeMarkets)
       .map((market) => market.id);
+    nextSeen = [];
+    nextQueue = [...reshuffledOpenIds];
   }
-  if (!arraysEqual(nextSeen, uiState.quickTakeSeenMarketIds)) {
-    uiState.quickTakeSeenMarketIds = nextSeen;
+  const activeCardId = uiState.quickPickPendingCardId || uiState.quickPickMarketIds[uiState.quickPickActiveIndex] || nextQueue[0] || "";
+  let nextActiveIndex = activeCardId ? nextQueue.indexOf(activeCardId) : 0;
+  if (nextActiveIndex < 0) {
+    nextActiveIndex = Math.min(uiState.quickPickActiveIndex, Math.max(nextQueue.length - 1, 0));
   }
-  if (!arraysEqual(nextQueue, uiState.quickTakeMarketIds)) {
-    uiState.quickTakeMarketIds = nextQueue;
+  if (!arraysEqual(nextSeen, uiState.quickPickSeenMarketIds)) {
+    uiState.quickPickSeenMarketIds = nextSeen;
+  }
+  if (!arraysEqual(nextQueue, uiState.quickPickMarketIds)) {
+    uiState.quickPickMarketIds = nextQueue;
+  }
+  if (uiState.quickPickActiveIndex !== nextActiveIndex) {
+    uiState.quickPickActiveIndex = nextActiveIndex;
   }
 }
 
 function getQuickTakeQueueMarkets() {
   syncQuickTakeQueue();
-  return uiState.quickTakeMarketIds.map((marketId) => findMarket(marketId)).filter(Boolean);
+  return uiState.quickPickMarketIds.map((marketId) => findMarket(marketId)).filter(Boolean);
+}
+
+function getActiveQuickTakeMarketId() {
+  syncQuickTakeQueue();
+  return uiState.quickPickMarketIds[uiState.quickPickActiveIndex] || "";
 }
 
 function advanceQuickTakeQueue(marketId) {
-  if (marketId && !uiState.quickTakeSeenMarketIds.includes(marketId)) {
-    uiState.quickTakeSeenMarketIds = [...uiState.quickTakeSeenMarketIds, marketId];
+  if (marketId && !uiState.quickPickSeenMarketIds.includes(marketId)) {
+    uiState.quickPickSeenMarketIds = [...uiState.quickPickSeenMarketIds, marketId];
   }
-  uiState.quickTakeMarketIds = uiState.quickTakeMarketIds.filter((id) => id !== marketId);
+  uiState.quickPickMarketIds = uiState.quickPickMarketIds.filter((id) => id !== marketId);
+  uiState.quickPickActiveIndex = Math.min(uiState.quickPickActiveIndex, Math.max(uiState.quickPickMarketIds.length - 1, 0));
   syncQuickTakeQueue();
 }
 
 function restoreQuickTakeMarket(marketId) {
-  uiState.quickTakeSeenMarketIds = uiState.quickTakeSeenMarketIds.filter((id) => id !== marketId);
-  uiState.quickTakeMarketIds = [marketId, ...uiState.quickTakeMarketIds.filter((id) => id !== marketId)];
+  uiState.quickPickSeenMarketIds = uiState.quickPickSeenMarketIds.filter((id) => id !== marketId);
+  uiState.quickPickMarketIds = [marketId, ...uiState.quickPickMarketIds.filter((id) => id !== marketId)];
+  uiState.quickPickActiveIndex = 0;
 }
 
 function getUserTrades(userName) {
@@ -1790,105 +2678,151 @@ function renderHome() {
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine)
     .slice(0, 20);
-  const biggestMovers = state.markets
+  const biggestGainers = state.markets
     .slice()
-    .sort((left, right) => Math.abs(getMovementValue(right)) - Math.abs(getMovementValue(left)) || right.currentLine - left.currentLine)
+    .filter((market) => getMovementValue(market) > 0)
+    .sort((left, right) => getMovementValue(right) - getMovementValue(left) || right.currentLine - left.currentLine)
+    .slice(0, 20);
+  const biggestLosers = state.markets
+    .slice()
+    .filter((market) => getMovementValue(market) < 0)
+    .sort((left, right) => getMovementValue(left) - getMovementValue(right) || left.currentLine - right.currentLine)
+    .slice(0, 20);
+  const fallbackMovers = state.markets
+    .slice()
+    .sort((left, right) => right.currentLine - left.currentLine || right.seasonAverage - left.seasonAverage)
     .slice(0, 20);
   const projectionComparisons = state.markets
     .map((market) => {
-      const impliedScore = impliedFantasyScoreForMarket(market);
+      const impliedScore = priceImpliedProjectionForMarket(market);
       return {
         market,
         impliedScore,
         value: roundToHalf(market.currentLine - impliedScore)
       };
     })
+    .filter((entry) => Number.isFinite(entry.impliedScore))
     .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine)
     .slice(0, 20);
   const mostTraded = state.markets
     .slice()
     .sort((left, right) => tradeCountFor(right) - tradeCountFor(left) || tradeVolumeFor(right) - tradeVolumeFor(left))
     .slice(0, 20);
+  const roundStarted = isRoundStarted();
   const leaderboardRows = getLeaderboardRows();
-  const topLeaderboardRows = leaderboardRows.slice(0, 20);
+  const topLeaderboardRows = (roundStarted
+    ? leaderboardRows
+    : leaderboardRows.slice().sort((a, b) => {
+        if (b.balance !== a.balance) return b.balance - a.balance;
+        if (b.realized !== a.realized) return b.realized - a.realized;
+        return b.tradesCount - a.tradesCount;
+      })).slice(0, 20);
 
   renderHomeCarouselControls();
+  renderHomeFeaturedSlate((topProjected.length ? topProjected : fallbackMovers).slice(0, 5));
+  renderHomePrizePoolBanner(prizePoolState);
+  renderHomeGamesStrip();
 
-  renderHomeMarketLeaderboard(elements.homeBiggestMovers, biggestMovers, ({ market }) => {
+  renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
     return {
-      badge: movement.arrow,
-      badgeTone: movement.className,
+      badge: homeTeamAbbreviation(market.team),
+      badgeTone: movement.value > 0 ? "move-up" : "move-flat",
       title: market.playerName,
-      meta: `${market.team} | ${market.position}`,
-      detail: `Now ${market.currentLine.toFixed(1)} pts`,
-      statPrimary: movement.label,
-      statSecondary: movement.value > 0 ? "Projection rising" : movement.value < 0 ? "Projection falling" : "No movement"
+      meta: market.team,
+      detail: market.position,
+      statPrimary: `${market.currentLine.toFixed(1)} pts`,
+      statSecondary: movement.value === 0 ? "—" : movement.label,
+      inlinePrimaryClass: "is-muted",
+      statSecondaryClass: movement.className,
+      metricLayout: "inline"
     };
   }, {
     variant: "compact-list-group",
-    headingEyebrow: "What's moving",
-    headingTitle: "Markets shifting fastest right now"
+    headingTitle: "Gainers"
+  });
+
+  renderHomeMarketLeaderboard(elements.homeBiggestLosers, biggestLosers.length ? biggestLosers : fallbackMovers.slice().reverse().slice(0, 20), ({ market }) => {
+    const movement = getMovementText(market);
+    return {
+      badge: homeTeamAbbreviation(market.team),
+      badgeTone: movement.value < 0 ? "move-down" : "move-flat",
+      title: market.playerName,
+      meta: market.team,
+      detail: market.position,
+      statPrimary: `${market.currentLine.toFixed(1)} pts`,
+      statSecondary: movement.value === 0 ? "—" : movement.label,
+      inlinePrimaryClass: "is-muted",
+      statSecondaryClass: movement.className,
+      metricLayout: "inline"
+    };
+  }, {
+    variant: "compact-list-group",
+    headingTitle: "Losers"
   });
 
   renderHomeMarketLeaderboard(elements.homeMostTraded, mostTraded, ({ market }) => {
-    const metrics = getMarketTradeMetrics(market);
+    const movement = getMovementText(market);
     return {
       title: market.playerName,
+      badge: homeTeamAbbreviation(market.team),
       meta: market.team,
-      metricMarkup: `<span class="home-confidence-primary">${marketConfidenceRowIcon(metrics.confidence)}<span class="home-confidence-percent">${metrics.confidence}%</span></span>`,
-      statSecondary: `${tradeVolumeFor(market)} traded`
+      detail: market.position,
+      statPrimary: formatHomeMovementValue(movement.value),
+      statSecondary: ""
     };
   }, {
     variant: "featured-market-confidence",
-    headingEyebrow: "Market confidence",
-    headingTitle: "Crowd-backed markets with real flow",
+    headingTitle: "Most Traded",
+    skipFirstListItem: Boolean(mostTraded[0]),
     summaryItems: mostTraded[0]
       ? [
           {
             label: "Most active",
             value: mostTraded[0].playerName
           },
-          {
-            label: "Top volume",
-            value: tradeVolumeFor(mostTraded[0])
-          }
+          ...(getMarketTradeMetrics(mostTraded[0]).volume > 0
+            ? [
+                {
+                  label: "Top volume",
+                  value: tradeVolumeFor(mostTraded[0])
+                }
+              ]
+            : [])
         ]
       : []
   });
 
   renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
-    badge: "Proj",
+    badge: homeTeamAbbreviation(market.team),
     badgeTone: "",
     title: market.playerName,
-    meta: `${market.team} | ${market.position}`,
-    detail: matchupContext(market).label,
-    statPrimary: `${market.currentLine.toFixed(1)} pts`,
-    statSecondary: optionalTrendText(market)
+    meta: market.team,
+    detail: market.position,
+    statPrimary: `${market.currentLine.toFixed(1)} pts`
   }), {
     variant: "compact-projection-group",
-    headingEyebrow: "Top projected",
-    headingTitle: "Where market consensus currently sits"
+    headingTitle: "Projected"
   });
 
   renderHomeMarketLeaderboard(elements.homeBestValue, projectionComparisons, ({ market, impliedScore, value }) => ({
-    badge: formatSignedLine(value),
+    badge: homeTeamAbbreviation(market.team),
     badgeTone: value > 0 ? "move-up" : value < 0 ? "move-down" : "move-flat",
     title: market.playerName,
-    meta: `${market.team} | ${market.position}`,
-    detail: `App ${market.currentLine.toFixed(1)} | NRL ${impliedScore.toFixed(1)}`,
+    meta: market.team,
+    detail: market.position,
     statPrimary: formatSignedLine(value),
-    statSecondary: "Projection difference"
+    note: `${market.currentLine.toFixed(1)} pts`
   }), {
     variant: "compact-list-group",
-    headingEyebrow: "Value spots",
-    headingTitle: "Where crowdIQ differs from NRL price",
-    emptyMessage: "Projection comparisons will appear here once player baselines are available."
+    headingTitle: "Value",
+    emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
   });
 
   renderHomeUserLeaderboard(elements.homeUserLeaderboard, topLeaderboardRows, {
     headingEyebrow: "Leaderboard",
-    headingTitle: "Community snapshot"
+    headingTitle: "Community snapshot",
+    roundStarted
   });
 
   window.requestAnimationFrame(() => {
@@ -1896,15 +2830,279 @@ function renderHome() {
   });
 }
 
+function renderHomeFeaturedSlate(featuredMarkets) {
+  if (!elements.homeFeaturedSlate) return;
+  const items = Array.isArray(featuredMarkets) ? featuredMarkets.filter(Boolean).slice(0, 5) : [];
+  if (!items.length) {
+    elements.homeFeaturedSlate.innerHTML = "";
+    return;
+  }
+  uiState.activeHomeFeaturedIndex = Math.max(0, Math.min(uiState.activeHomeFeaturedIndex || 0, items.length - 1));
+  const featuredMarket = items[uiState.activeHomeFeaturedIndex];
+  const movement = getMovementText(featuredMarket);
+  const matchup = matchupContext(featuredMarket);
+  elements.homeFeaturedSlate.innerHTML = `<div class="home-featured-carousel" aria-label="Featured this week players"><div class="home-featured-stage"><button class="home-featured-slate" type="button" data-market-id="${featuredMarket.id}" style="${teamSurfaceTone(featuredMarket.team)}"><div class="home-featured-copy"><span class="home-featured-label">Featured This Week</span><strong class="home-featured-name">${featuredMarket.playerName}</strong><div class="home-featured-meta"><span class="home-team-badge" style="${homeTeamPillStyle(featuredMarket.team)}">${homeTeamAbbreviation(featuredMarket.team)}</span><span>${featuredMarket.team}</span><span>${matchup.label}</span></div></div><div class="home-featured-metric"><span class="home-featured-metric-label">Crowd projection</span><strong>${featuredMarket.currentLine.toFixed(1)}<small>pts</small></strong><span class="home-featured-support">Season avg ${Number(featuredMarket.seasonAverage || 0).toFixed(1)}</span><span class="home-featured-trend ${movement.className}">${homeMovementLabel(movement)}</span></div></button></div><div class="home-featured-dots">${items.map((item, index) => `<button class="home-featured-dot ${index === uiState.activeHomeFeaturedIndex ? "active" : ""}" type="button" data-featured-index="${index}" aria-label="Show featured player ${index + 1}"></button>`).join("")}</div></div>`;
+  elements.homeFeaturedSlate.querySelector("[data-market-id]")?.addEventListener("click", () => {
+    openMarketFromHome(featuredMarket.id);
+  });
+  elements.homeFeaturedSlate.querySelectorAll("[data-featured-index]").forEach((button) =>
+    button.addEventListener("click", () => {
+      uiState.activeHomeFeaturedIndex = Number(button.dataset.featuredIndex) || 0;
+      renderHomeFeaturedSlate(items);
+    })
+  );
+  bindHomeFeaturedSwipe(items);
+}
+
+function renderHomePrizePoolBanner(view) {
+  if (!elements.homePrizePoolBanner) return;
+  if (!view) {
+    elements.homePrizePoolBanner.innerHTML = "";
+    return;
+  }
+  const poolAmount = prizePoolDisplayAmount(view);
+  elements.homePrizePoolBanner.innerHTML = `<button class="home-prize-pool-banner" type="button"><span class="home-prize-pool-label"><span class="home-prize-pool-icon" aria-hidden="true">💰</span><span>Prize Pool</span></span><span class="home-prize-pool-divider" aria-hidden="true"></span><span class="home-prize-pool-amount" data-home-prize-pool-amount="${poolAmount}">${formatStake(0)}</span><span class="home-prize-pool-chevron" aria-hidden="true">›</span></button>`;
+  elements.homePrizePoolBanner.querySelector(".home-prize-pool-banner")?.addEventListener("click", () => {
+    uiState.activeScreen = "prizepool";
+    renderAll();
+  });
+  animateHomePrizePoolAmount(poolAmount);
+}
+
+function renderHomeGamesStrip() {
+  if (!elements.homeGamesStrip) return;
+  const games = roundGames
+    .slice()
+    .sort((left, right) => kickoffTimestampForGame(left) - kickoffTimestampForGame(right));
+  if (!games.length) {
+    elements.homeGamesStrip.innerHTML = "";
+    return;
+  }
+  const openPositions = getPortfolioData().openPositions || [];
+  const positionCountsByGameId = openPositions.reduce((counts, position) => {
+    const market = findMarket(position.marketId);
+    if (!market?.gameId) return counts;
+    counts.set(market.gameId, (counts.get(market.gameId) || 0) + 1);
+    return counts;
+  }, new Map());
+  const nextUpcomingIndex = games.findIndex((game) => !isGameLocked(game));
+  if (!uiState.activeHomeGameTouched) {
+    uiState.activeHomeGameIndex = nextUpcomingIndex >= 0 ? nextUpcomingIndex : 0;
+  } else {
+    uiState.activeHomeGameIndex = ((uiState.activeHomeGameIndex % games.length) + games.length) % games.length;
+  }
+  elements.homeGamesStrip.innerHTML = `
+    <div class="games-carousel">
+      <div class="games-carousel-viewport">
+        ${homeGameCardMarkup(games[uiState.activeHomeGameIndex], positionCountsByGameId.get(games[uiState.activeHomeGameIndex].id) || 0)}
+      </div>
+      <div class="home-featured-dots games-carousel-dots">
+        ${games.map((game, index) => `<button class="home-featured-dot ${index === uiState.activeHomeGameIndex ? "active" : ""}" type="button" data-home-game-index="${index}" aria-label="Show game ${index + 1}: ${homeTeamAbbreviation(game.homeTeam)} vs ${homeTeamAbbreviation(game.awayTeam)}"></button>`).join("")}
+      </div>
+    </div>
+  `;
+  elements.homeGamesStrip.querySelectorAll("[data-home-game-id]").forEach((card) =>
+    card.addEventListener("click", () => {
+      openMatchCentreGame(card.dataset.homeGameId);
+    })
+  );
+  elements.homeGamesStrip.querySelectorAll("[data-home-game-index]").forEach((dot) =>
+    dot.addEventListener("click", () => {
+      uiState.activeHomeGameTouched = true;
+      uiState.activeHomeGameIndex = Number(dot.dataset.homeGameIndex) || 0;
+      renderHomeGamesStrip();
+    })
+  );
+  bindHomeGamesSwipe(games);
+}
+
+function homeGameCardMarkup(game, openPositionCount = 0) {
+  const status = homeGameStatus(game);
+  return `<button class="game-card ${openPositionCount > 0 ? "has-positions" : ""}" type="button" data-home-game-id="${game.id}" style="--match-primary:${teamPrimary(game.homeTeam)}CC;--match-secondary:${teamPrimary(game.awayTeam)}CC;"><div class="game-card-copy"><div class="game-card-topline"><span class="game-card-status ${status.className}">${status.label}</span><span class="game-card-kickoff">${formatHomeGameKickoffTime(game)}</span></div><div class="game-card-teams">${game.title || `${homeTeamAbbreviation(game.homeTeam)} vs ${homeTeamAbbreviation(game.awayTeam)}`}</div><div class="game-card-meta">${game.venue || ""}</div></div><div class="game-card-positions">${openPositionCount > 0 ? `<span class="game-card-positions-copy"><span class="game-card-positions-dot" aria-hidden="true"></span><span>${openPositionCount} position${openPositionCount === 1 ? "" : "s"}</span></span>` : ""}</div></button>`;
+}
+
+function homeGameStatus(game) {
+  if (!isGameLocked(game)) {
+    return { label: "OPEN", className: "is-open" };
+  }
+  return { label: "LOCKED", className: "is-locked" };
+}
+
+function formatHomeGameKickoffTime(game) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return game?.kickoff || "";
+  return new Date(kickoffAt).toLocaleString([], {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function openMatchCentreGame(gameId) {
+  const game = findGame(gameId);
+  if (!game) return;
+  uiState.activeScreen = "markets";
+  uiState.currentGameId = game.id;
+  uiState.currentTeam = game.homeTeam;
+  uiState.expandedMarketId = "";
+  syncSelectedMarket();
+  renderAll();
+}
+
+function bindHomeGamesSwipe(items) {
+  const viewport = elements.homeGamesStrip?.querySelector(".games-carousel-viewport");
+  if (!viewport || !items.length) return;
+  let touchStartX = 0;
+  let touchEndX = 0;
+  viewport.addEventListener("touchstart", (event) => {
+    touchStartX = event.changedTouches?.[0]?.screenX || 0;
+  }, { passive: true });
+  viewport.addEventListener("touchend", (event) => {
+    touchEndX = event.changedTouches?.[0]?.screenX || 0;
+    if (touchStartX - touchEndX > 50) {
+      uiState.activeHomeGameTouched = true;
+      uiState.activeHomeGameIndex = (uiState.activeHomeGameIndex + 1) % items.length;
+      renderHomeGamesStrip();
+    }
+    if (touchEndX - touchStartX > 50) {
+      uiState.activeHomeGameTouched = true;
+      uiState.activeHomeGameIndex = (uiState.activeHomeGameIndex - 1 + items.length) % items.length;
+      renderHomeGamesStrip();
+    }
+  }, { passive: true });
+}
+
+function animateHomePrizePoolAmount(targetAmount) {
+  const amountNode = elements.homePrizePoolBanner?.querySelector("[data-home-prize-pool-amount]");
+  if (!amountNode) return;
+  if (homePrizePoolAnimationFrame) {
+    window.cancelAnimationFrame(homePrizePoolAnimationFrame);
+    homePrizePoolAnimationFrame = null;
+  }
+  const previousAmount = Number(amountNode.dataset.renderedAmount) || 0;
+  const startAmount = previousAmount > 0 ? previousAmount : 0;
+  const startTime = performance.now();
+  const duration = 800;
+  const step = (now) => {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const nextValue = Math.round(startAmount + ((targetAmount - startAmount) * eased));
+    amountNode.textContent = formatStake(nextValue);
+    amountNode.dataset.renderedAmount = String(nextValue);
+    if (progress < 1) {
+      homePrizePoolAnimationFrame = window.requestAnimationFrame(step);
+    } else {
+      amountNode.textContent = formatStake(targetAmount);
+      amountNode.dataset.renderedAmount = String(targetAmount);
+      homePrizePoolAnimationFrame = null;
+    }
+  };
+  homePrizePoolAnimationFrame = window.requestAnimationFrame(step);
+}
+
+function bindHomeFeaturedSwipe(items) {
+  const stage = elements.homeFeaturedSlate?.querySelector(".home-featured-stage");
+  if (!stage || !items.length) return;
+  let touchStartX = 0;
+  stage.addEventListener("touchstart", (event) => {
+    touchStartX = event.changedTouches?.[0]?.clientX || 0;
+  }, { passive: true });
+  stage.addEventListener("touchend", (event) => {
+    const touchEndX = event.changedTouches?.[0]?.clientX || 0;
+    const deltaX = touchEndX - touchStartX;
+    if (Math.abs(deltaX) < 32) return;
+    if (deltaX < 0) {
+      uiState.activeHomeFeaturedIndex = (uiState.activeHomeFeaturedIndex + 1) % items.length;
+    } else {
+      uiState.activeHomeFeaturedIndex = (uiState.activeHomeFeaturedIndex - 1 + items.length) % items.length;
+    }
+    renderHomeFeaturedSlate(items);
+  }, { passive: true });
+}
+
+function homeTeamAbbreviation(team) {
+  const map = {
+    Broncos: "BRI",
+    Raiders: "CBR",
+    Bulldogs: "CAN",
+    Sharks: "CRO",
+    Dolphins: "DOL",
+    Titans: "GLD",
+    "Sea Eagles": "MAN",
+    Storm: "MEL",
+    Knights: "NEW",
+    Warriors: "NZW",
+    Cowboys: "NQL",
+    Eels: "PAR",
+    Panthers: "PEN",
+    Rabbitohs: "SOU",
+    Dragons: "STI",
+    Roosters: "SYD",
+    "Wests Tigers": "WST",
+    Tigers: "WST"
+  };
+  return map[String(team || "")] || String(team || "").slice(0, 3).toUpperCase();
+}
+
+function homeTeamPillStyle(team) {
+  const colors = TEAM_COLORS[team] ?? TEAM_COLORS[normalizeTeamName(team)] ?? null;
+  if (!colors?.primary) {
+    return "";
+  }
+  return `background:${colors.primary};color:${colors.secondary || "#ffffff"};`;
+}
+
+function homeMarketsQuietText() {
+  return "—";
+}
+
+function homeMovementLabel(movement) {
+  if (!movement || !Number.isFinite(Number(movement.value))) return "—";
+  if (Number(movement.value) === 0) return "—";
+  return movement.label;
+}
+
+function formatHomeMovementValue(value) {
+  const numeric = Number(value) || 0;
+  if (numeric === 0) return "—";
+  return `${numeric > 0 ? "+" : "-"}${Math.abs(numeric).toFixed(1)}`;
+}
+
+function homeRankTone(index) {
+  if (index === 0) return "is-gold";
+  if (index === 1) return "is-silver";
+  if (index === 2) return "is-bronze";
+  return "";
+}
+
+function homeRankMarkup(index) {
+  return `<span class="home-card-rank ${homeRankTone(index)}">${index + 1}</span>`;
+}
+
+function renderHomeMetricMarkup(view = {}, fallbackTone = "") {
+  if (view.metricLayout === "inline") {
+    return `<div class="home-projection-metric home-inline-metric${view.metricHero ? " is-hero" : ""}"><span class="home-inline-metric-primary ${view.inlinePrimaryClass || ""}">${view.statPrimary || ""}</span><strong class="${view.statSecondaryClass || fallbackTone || ""}">${view.statSecondary || "—"}</strong></div>`;
+  }
+  return `<div class="home-projection-metric"><strong class="${view.statPrimaryClass || fallbackTone || ""}">${view.statPrimary || "—"}</strong>${view.statSecondary ? `<span class="${view.statSecondaryClass || ""}">${view.statSecondary}</span>` : ""}</div>`;
+}
+
+function isRoundStarted() {
+  return roundGames.some((game) => isGameLocked(game));
+}
+
 function renderHomeCarouselControls() {
   if (!elements.homeCarouselNav || !elements.homeCarouselMeta) return;
   const panels = [
-    { key: "movers", label: "Movers", detail: "Markets shifting fastest" },
+    { key: "gainers", label: "Gainers", detail: "Biggest gainers" },
+    { key: "losers", label: "Losers", detail: "Biggest losers" },
     { key: "activity", label: "Most Traded", detail: "Crowd-backed activity" },
     { key: "projected", label: "Projected", detail: "Top current lines" },
     { key: "value", label: "Value", detail: "Gaps vs NRL price" },
     { key: "leaderboard", label: "Leaderboard", detail: "Community standings" }
   ];
+  if (!panels.some((panel) => panel.key === uiState.activeHomePanel)) {
+    uiState.activeHomePanel = panels[0].key;
+  }
   elements.homeCarouselNav.innerHTML = panels
     .map(
       (panel) =>
@@ -1976,6 +3174,7 @@ function buildLeaderboardRows() {
 
 function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
   if (!container) return;
+  const scrollKey = options.scrollKey || container.id || "home-group";
   if (!rows.length) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No markets yet</strong><span>${options.emptyMessage || "Market activity will appear here once trading begins."}</span></div>`;
     return;
@@ -1985,12 +3184,18 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
         .map((item) => `<span><strong>${item.value}</strong><em>${item.label}</em></span>`)
         .join("")}</div>`
     : "";
+  const visibleRows = options.skipFirstListItem ? rows.slice(1) : rows;
+  if (!visibleRows.length) {
+    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="portfolio-empty-state compact-empty"><strong>No additional players yet</strong><span>${options.emptyMessage || "More player movement will appear here as the round develops."}</span></div></article>`;
+    return;
+  }
   if (options.variant === "compact-projection-group") {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body">${rows
+    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
       .map((row, index) => {
         const market = row.market || row;
-        const movement = getMovementText(market);
-        return `<button class="home-projection-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}"><span class="home-card-rank">${index + 1}</span><div class="home-projection-copy"><strong>${market.playerName}</strong><span>${matchupContext(market).label}</span></div><div class="home-projection-metric"><strong>${market.currentLine.toFixed(1)} pts</strong><span class="${movement.className}">${movement.value === 0 ? "Holding steady" : `${movement.arrow} ${movement.label} today`}</span></div></button>`;
+        const view = presenter({ market, ...row }, index);
+        const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
+        return `<button class="home-projection-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${market.playerName}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${homeTeamAbbreviation(market.team)}</span><span>${market.position}</span></div>${note}</div><div class="home-projection-metric"><strong>${view.statPrimary || `${market.currentLine.toFixed(1)} pts`}</strong></div></button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -2001,11 +3206,13 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
     return;
   }
   if (options.variant === "compact-list-group") {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body">${rows
+    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
-        return `<button class="home-projection-subcard home-list-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}"><span class="home-card-rank">${index + 1}</span><div class="home-projection-copy"><strong>${view.title}</strong><span>${view.detail}</span></div><div class="home-projection-metric"><strong>${view.statPrimary}</strong><span class="${view.badgeTone || ""}">${view.statSecondary}</span></div></button>`;
+        const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
+        const isHeroCard = index === 0 && (options.headingTitle === "Gainers" || options.headingTitle === "Losers");
+        return `<button class="home-projection-subcard home-list-subcard ${isHeroCard ? "is-rank-hero" : ""}" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}</div>${renderHomeMetricMarkup({ ...view, metricHero: isHeroCard }, view.badgeTone)}</button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -2016,11 +3223,13 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
     return;
   }
   if (options.variant === "featured-market-confidence") {
-    container.innerHTML = `<article class="home-group-card home-group-card-featured"><div class="home-group-card-head"><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body">${rows
+    container.innerHTML = `<article class="home-group-card home-group-card-featured"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
-        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}"><span class="home-card-rank">${index + 1}</span><div class="home-projection-copy home-confidence-copy"><strong>${view.title}</strong><span>${view.meta}</span></div><div class="home-projection-metric home-confidence-metric-block">${view.metricMarkup ? `<strong class="home-confidence-metric">${view.metricMarkup}</strong>` : `<strong>${view.statPrimary}</strong>`}<span class="home-confidence-secondary">${view.statSecondary}</span></div></button>`;
+        const movement = getMovementText(market);
+        const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
+        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy home-confidence-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail || matchupContext(market).label}</span></div>${note}</div><div class="home-projection-metric home-confidence-metric-block"><strong class="${movement.className}">${view.statPrimary}</strong></div></button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -2030,11 +3239,12 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
     );
     return;
   }
-  container.innerHTML = rows
+  container.innerHTML = visibleRows
     .map((row, index) => {
       const market = row.market || row;
       const view = presenter({ market, ...row }, index);
-      return `<button class="home-leaderboard-card" type="button" data-market-id="${market.id}"><span class="home-card-rank">${index + 1}</span><div class="home-card-copy"><div class="home-card-topline"><strong>${view.title}</strong><span class="home-card-badge ${view.badgeTone || ""}">${view.badge}</span></div><span>${view.meta}</span><span>${view.detail}</span></div><div class="home-card-metric"><strong>${view.statPrimary}</strong><span>${view.statSecondary}</span></div></button>`;
+      const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
+      return `<button class="home-leaderboard-card" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-card-copy"><div class="home-card-topline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}<span class="home-projection-label">Crowd projection ${market.currentLine.toFixed(1)} pts</span></div><div class="home-card-metric"><strong>${view.statPrimary}</strong></div></button>`;
     })
     .join("");
   container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -2050,11 +3260,14 @@ function renderHomeUserLeaderboard(container, rows, options = {}) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No leaderboard yet</strong><span>Community rankings will appear once users place trades.</span></div>`;
     return;
   }
-  container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head has-action"><div><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3></div><button id="home-inline-leaderboard-link" class="secondary-button inline-section-button" type="button">View full board</button></div><div class="home-group-card-body">${rows
-    .map(
-      (row, index) =>
-        `<button class="home-projection-subcard home-list-subcard home-user-subcard" type="button" data-open-leaderboard="true"><span class="home-card-rank">#${index + 1}</span><div class="home-projection-copy"><strong>${row.userName}</strong><span>${row.tradesCount} trades | ${row.winRate}% win rate</span></div><div class="home-projection-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : ""}">${formatSignedStake(row.realized)}</span></div></button>`
-    )
+  const activeUser = currentUserName();
+  container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head has-action"><div><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3></div><button id="home-inline-leaderboard-link" class="secondary-button inline-section-button" type="button">View full board</button></div><div class="home-group-card-body" data-scroll-key="${container.id || "home-leaderboard"}">${rows
+    .map((row, index) => {
+      const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
+      const secondaryMetric = row.realized === 0 ? "—" : formatSignedStake(row.realized);
+      const accentClass = row.userName === activeUser ? "is-current-user" : homeRankTone(index);
+      return `<button class="home-projection-subcard home-list-subcard home-user-subcard ${accentClass}" type="button" data-open-leaderboard="true">${homeRankMarkup(index)}<div class="home-projection-copy"><strong>${row.userName}</strong><span>${metaLabel}</span></div><div class="home-projection-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : "is-muted"}">${options.roundStarted ? secondaryMetric : "Wallet balance"}</span></div></button>`;
+    })
     .join("")}</div></article>`;
   container.querySelector("#home-inline-leaderboard-link")?.addEventListener("click", () => {
     openFullLeaderboard();
@@ -2092,6 +3305,34 @@ function openFullLeaderboard() {
   });
 }
 
+function renderHomeSplitMarketLeaderboard(container, options = {}) {
+  if (!container) return;
+  const gainers = options.gainers || [];
+  const losers = options.losers || [];
+  const fallbackRows = options.fallbackRows || [];
+  const fallbackGainers = !gainers.length && !losers.length ? fallbackRows.slice(0, 10) : [];
+  const fallbackLosers = !gainers.length && !losers.length ? fallbackRows.slice(10, 20) : [];
+  const buildCard = (rows, headingEyebrow, headingTitle) => {
+    if (!rows.length) {
+      return `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${headingEyebrow}</p><h3>${headingTitle}</h3></div><div class="portfolio-empty-state compact-empty"><strong>No movement yet</strong><span>This side of the board is still flat.</span></div></article>`;
+    }
+    const keySlug = headingTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return `<article class="home-group-card"><div class="home-group-card-head"><p class="eyebrow">${headingEyebrow}</p><h3>${headingTitle}</h3></div><div class="home-group-card-body" data-scroll-key="${container.id || "home-movers"}:${keySlug}">${rows
+      .map((row, index) => {
+        const market = row.market || row;
+        const view = options.presenter({ market, ...row }, index);
+        return `<button class="home-projection-subcard home-list-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}"><span class="home-card-rank">${index + 1}</span><div class="home-projection-copy"><strong>${view.title}</strong><span>${view.detail}</span></div><div class="home-projection-metric"><strong>${view.statPrimary}</strong><span>${view.statSecondary}</span></div></button>`;
+      })
+      .join("")}</div></article>`;
+  };
+  container.innerHTML = `<div class="home-split-grid">${buildCard(gainers.length ? gainers : fallbackGainers, "What's moving", "Biggest Gainers")}${buildCard(losers.length ? losers : fallbackLosers, "What's fading", "Biggest Losers")}</div>`;
+  container.querySelectorAll("[data-market-id]").forEach((card) =>
+    card.addEventListener("click", () => {
+      openMarketFromHome(card.dataset.marketId);
+    })
+  );
+}
+
 function calculateCurrentLine(market) {
   const imbalance = calculatePressureImbalance(market);
   const steps = Math.trunc(imbalance / PRESSURE_STEP) + (market.manualAdjustmentSteps ?? 0);
@@ -2125,17 +3366,52 @@ function getMovementText(market) {
   return { value: 0, arrow: "\u2192", label: "0.0", className: "move-flat" };
 }
 
-function quickTakeRecentScores(market) {
-  const seedValue = [...market.id].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 3), 0);
-  return Array.from({ length: 4 }, (_, index) => {
-    const offset = ((seedValue >> (index * 2)) % 13) - 6;
-    return Math.max(8, Math.round(market.seasonAverage + offset));
-  });
+function quickPickPerformanceSummary(market) {
+  const roundNumber = currentRoundNumber();
+  const playerKey = normalizePlayerKey(market.playerName);
+  const seasonScores = (derivedData.roundScoresByPlayer?.[playerKey] || [])
+    .filter((entry) => Number.isFinite(Number(entry?.score)))
+    .sort((left, right) => Number(right.round) - Number(left.round));
+  const recentSeasonScores = seasonScores
+    .filter((entry) => !Number.isFinite(roundNumber) || Number(entry.round) < roundNumber)
+    .slice(0, 5)
+    .map((entry) => ({
+      label: `Round ${entry.round}`,
+      value: String(Math.round(Number(entry.score))),
+      score: Number(entry.score),
+      isMissing: false
+    }));
+  const needsPreviousSeasonFill = Number(roundNumber) === 3 ? Math.max(0, 5 - recentSeasonScores.length) : 0;
+  const previousSeasonFill = Array.from({ length: needsPreviousSeasonFill }, (_, index) => ({
+    label: `Previous season game ${index + 1} unavailable`,
+    value: "—",
+    score: null,
+    isMissing: true
+  }));
+  const lastFive = [...previousSeasonFill, ...recentSeasonScores].slice(-5);
+  const availableScores = seasonScores
+    .filter((entry) => !Number.isFinite(roundNumber) || Number(entry.round) < roundNumber)
+    .map((entry) => Number(entry.score))
+    .filter(Number.isFinite);
+  const stats = fantasyPlayerStatsFor(market);
+  const seasonAverage = availableScores.length
+    ? availableScores.reduce((sum, score) => sum + score, 0) / availableScores.length
+    : Number(stats?.seasonAverage ?? market.seasonAverage ?? market.initialLine ?? 0);
+  const seasonAverageLabel = Number.isFinite(seasonAverage) ? seasonAverage.toFixed(1) : "—";
+  return {
+    lastFive: lastFive.length ? lastFive : Array.from({ length: 5 }, (_, index) => ({
+      label: `Game ${index + 1} unavailable`,
+      value: "—",
+      score: null,
+      isMissing: true
+    })),
+    seasonAverageLabel
+  };
 }
 
 function getMarketStatus(market) {
   if (market.settlement) return { label: "Resolved", className: "status-resolved" };
-  if (market.manuallyLocked) return { label: "Locked", className: "status-locked" };
+  if (isMarketLocked(market)) return { label: "Locked", className: "status-locked" };
   return { label: "Open", className: "status-open" };
 }
 
@@ -2156,6 +3432,16 @@ function getTradeStatus(trade) {
 function applyStatusChip(element, status) {
   element.className = `status-chip ${status.className}`;
   element.textContent = status.label;
+}
+
+function portfolioPositionStatus(trade) {
+  if (trade.result || trade.status === "CANCELLED") {
+    return { label: "Settled", className: "status-push" };
+  }
+  if (trade.status === "PENDING" || trade.status === "PARTIALLY_MATCHED" || (Number(trade.unmatchedStake) || 0) > 0) {
+    return { label: "Unmatched", className: "status-locked" };
+  }
+  return { label: "Matched", className: "status-open" };
 }
 
 function summaryStat(label, value, tone = 0) {
@@ -2209,13 +3495,49 @@ function normalizePlayerKey(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+function stableHash(value) {
+  let hash = 2166136261;
+  const input = String(value || "");
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function randomToken() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function randomizeQuickPickOrder() {
+  uiState.quickPickShuffleSeed = randomToken();
+  uiState.quickPickSeenMarketIds = [];
+  uiState.quickPickMarketIds = [];
+  uiState.quickPickActiveIndex = 0;
+  uiState.quickPickPendingCardId = "";
+  uiState.quickPickPendingSide = "";
+  uiState.quickPickPendingRequestId = "";
+}
+
+function quickPickShuffleRank(market) {
+  return stableHash(`${uiState.quickPickShuffleSeed}:${market?.id || ""}`);
+}
+
 function fantasyPlayerStatsFor(market) {
   return derivedData.playerStatsByName?.[normalizePlayerKey(market.playerName)] || null;
 }
 
-function impliedFantasyScoreForMarket(market) {
+function currentRoundNumber() {
+  const match = String(CURRENT_ROUND_LABEL).match(/(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
+function priceImpliedProjectionForMarket(market) {
   const stats = fantasyPlayerStatsFor(market);
-  return Number(stats?.seasonAverage ?? market.seasonAverage ?? market.initialLine ?? 0);
+  return Number(stats?.priceImpliedProjection ?? market.priceImpliedProjection ?? 0) || null;
 }
 
 function confidenceLabel(confidence) {
@@ -2364,12 +3686,8 @@ function marketConfidenceScore({ matchedTradeCount, volume, uniqueTraders }) {
 }
 
 function compareQuickTakeMarkets(left, right) {
-  const leftMetrics = getMarketTradeMetrics(left);
-  const rightMetrics = getMarketTradeMetrics(right);
-  return rightMetrics.unmatchedOrderCount - leftMetrics.unmatchedOrderCount
-    || rightMetrics.volume - leftMetrics.volume
-    || Math.abs(getMovementValue(right)) - Math.abs(getMovementValue(left))
-    || left.playerName.localeCompare(right.playerName);
+  return quickPickShuffleRank(left) - quickPickShuffleRank(right)
+    || left.id.localeCompare(right.id);
 }
 
 function marketConfidenceMarkup(confidence, compact = false) {
@@ -2410,7 +3728,88 @@ function roundToHalf(value) {
 }
 
 function isMarketOpen(market) {
-  return !market.settlement && !market.manuallyLocked;
+  return !isMarketLocked(market);
+}
+
+function stopKickoffTimer() {
+  if (!kickoffTimer) return;
+  window.clearTimeout(kickoffTimer);
+  kickoffTimer = null;
+}
+
+function scheduleKickoffRefresh() {
+  stopKickoffTimer();
+  const nextGame = nextScheduledKickoff();
+  if (!nextGame) return;
+  const nextKickoff = kickoffTimestampForGame(nextGame);
+  if (!Number.isFinite(nextKickoff)) return;
+  kickoffTimer = window.setTimeout(() => {
+    renderAll();
+  }, Math.min(Math.max(nextKickoff - Date.now(), 0) + 50, 2147483647));
+}
+
+function nextScheduledKickoff() {
+  return roundGames.find((game) => {
+    const kickoffAt = kickoffTimestampForGame(game);
+    return Number.isFinite(kickoffAt) && kickoffAt > Date.now();
+  }) || null;
+}
+
+function nextGameToLock() {
+  return roundGames.find((game) => !isGameLocked(game)) || roundGames[roundGames.length - 1] || null;
+}
+
+function kickoffTimestampForGame(game) {
+  if (!game) return null;
+  const kickoffAt = Number(new Date(game.kickoffAt || "").getTime());
+  if (Number.isFinite(kickoffAt) && kickoffAt > 0) return kickoffAt;
+  const fallback = parseKickoffLabel(game.kickoff);
+  return Number.isFinite(fallback) ? fallback : null;
+}
+
+function parseKickoffLabel(label) {
+  const match = String(label || "").match(/^[A-Za-z]{3}\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{1,2}):(\d{2})\s+(AM|PM)$/i);
+  if (!match) return null;
+  const [, day, monthLabel, hourLabel, minuteLabel, period] = match;
+  const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  const month = monthMap[monthLabel];
+  if (month === undefined) return null;
+  let hour = Number(hourLabel);
+  if (period.toUpperCase() === "PM" && hour !== 12) hour += 12;
+  if (period.toUpperCase() === "AM" && hour === 12) hour = 0;
+  return new Date(new Date().getFullYear(), month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+}
+
+function isGameLocked(game, now = Date.now()) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  return Number.isFinite(kickoffAt) ? now >= kickoffAt : false;
+}
+
+function isMarketLocked(market, now = Date.now()) {
+  if (!market) return true;
+  if (market.settlement || market.manuallyLocked) return true;
+  return isGameLocked(findGame(market.gameId), now);
+}
+
+function getGameLockStatus(game) {
+  const isLocked = isGameLocked(game);
+  return {
+    isLocked,
+    label: isLocked ? "Locked" : "Open"
+  };
+}
+
+function formatGameKickoffLabel(game) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return game?.kickoff || "";
+  return new Date(kickoffAt).toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short"
+  });
 }
 
 function normalizeProjectionLine(value) {
@@ -2445,6 +3844,130 @@ function hexToRgba(hex, alpha) {
 
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function captureScreenScrollPositions() {
+  return new Map(
+    elements.screenScrolls
+      .map((element) => [element.closest(".screen")?.dataset.screen, element.scrollTop])
+      .filter(([screenKey]) => Boolean(screenKey))
+  );
+}
+
+function restoreScreenScrollPositions(scrollPositions) {
+  if (!(scrollPositions instanceof Map) || !scrollPositions.size) return;
+  window.requestAnimationFrame(() => {
+    elements.screenScrolls.forEach((element) => {
+      const screenKey = element.closest(".screen")?.dataset.screen;
+      if (!screenKey || !scrollPositions.has(screenKey)) return;
+      element.scrollTop = scrollPositions.get(screenKey);
+    });
+  });
+}
+
+function captureNamedScrollPositions() {
+  return new Map(
+    [...document.querySelectorAll("[data-scroll-key]")]
+      .map((element) => [element.dataset.scrollKey, element.scrollTop])
+      .filter(([scrollKey]) => Boolean(scrollKey))
+  );
+}
+
+function restoreNamedScrollPositions(scrollPositions) {
+  if (!(scrollPositions instanceof Map) || !scrollPositions.size) return;
+  window.requestAnimationFrame(() => {
+    document.querySelectorAll("[data-scroll-key]").forEach((element) => {
+      const scrollKey = element.dataset.scrollKey;
+      if (!scrollKey || !scrollPositions.has(scrollKey)) return;
+      element.scrollTop = scrollPositions.get(scrollKey);
+    });
+  });
+}
+
+function capturePersistentScrollPositions() {
+  const persistentTargets = [
+    ["home-carousel", elements.homeCarousel, "top"],
+    ["home-carousel-nav", elements.homeCarouselNav, "top"],
+    ["bot-log", elements.botLog, "smart"]
+  ];
+  return new Map(
+    persistentTargets
+      .filter(([, element]) => element)
+      .map(([key, element, mode]) => [
+        key,
+        captureElementScrollPosition(element, mode)
+      ])
+  );
+}
+
+function restorePersistentScrollPositions(scrollPositions) {
+  if (!(scrollPositions instanceof Map) || !scrollPositions.size) return;
+  window.requestAnimationFrame(() => {
+    const persistentTargets = [
+      ["home-carousel", elements.homeCarousel],
+      ["home-carousel-nav", elements.homeCarouselNav],
+      ["bot-log", elements.botLog]
+    ];
+    persistentTargets.forEach(([key, element]) => {
+      const position = scrollPositions.get(key);
+      if (!element || !position) return;
+      restoreElementScrollPosition(element, position);
+    });
+  });
+}
+
+function capturePageScrollPosition() {
+  return {
+    left: window.scrollX,
+    top: window.scrollY
+  };
+}
+
+function restorePageScrollPosition(position) {
+  if (!position) return;
+  window.requestAnimationFrame(() => {
+    window.scrollTo(position.left, position.top);
+  });
+}
+
+function captureElementScrollPosition(element, mode = "top") {
+  if (!element) return null;
+  if (mode === "smart") {
+    const isNearTop = element.scrollTop <= 8;
+    return {
+      mode: isNearTop ? "top" : "bottom",
+      left: element.scrollLeft,
+      top: element.scrollTop,
+      bottomOffset: element.scrollHeight - element.scrollTop
+    };
+  }
+  return {
+    mode: "top",
+    left: element.scrollLeft,
+    top: element.scrollTop
+  };
+}
+
+function restoreElementScrollPosition(element, position) {
+  if (!element || !position) return;
+  element.scrollLeft = position.left || 0;
+  if (position.mode === "bottom" && Number.isFinite(position.bottomOffset)) {
+    element.scrollTop = Math.max(0, element.scrollHeight - position.bottomOffset);
+    return;
+  }
+  element.scrollTop = position.top || 0;
+}
+
+function buildRenderSignature(nextState, nextBackendState) {
+  try {
+    return JSON.stringify({
+      state: nextState,
+      backend: nextBackendState,
+      prizePool: prizePoolState
+    });
+  } catch (error) {
+    return `${Date.now()}`;
+  }
 }
 
 function aggregateOpenPositions(trades) {
@@ -2512,8 +4035,7 @@ async function cancelPendingOrders(orderIds) {
       userName: currentUserName(),
       orderIds
     });
-    state = response.state;
-    backendState = response.backend || { mode: "local", user: null, dashboard: null };
+    applySharedSnapshot(response);
     renderAll();
     refreshSharedState();
     showToast("Unmatched order cancelled", "The waiting order has been removed from the book.");
@@ -2557,14 +4079,18 @@ function bindMatchCardSwipe() {
   const previewCard = elements.selectedMarketPanel.querySelector(".preview-card");
   if (!activeCard || !previewCard) return;
   let startX = 0;
+  let startY = 0;
   let currentDelta = 0;
   let previewDirection = 1;
+  let swipeIntent = null;
 
   activeCard.addEventListener(
     "touchstart",
     (event) => {
       startX = event.changedTouches[0].clientX;
+      startY = event.changedTouches[0].clientY;
       currentDelta = 0;
+      swipeIntent = null;
       activeCard.style.transition = "none";
     },
     { passive: true }
@@ -2573,16 +4099,35 @@ function bindMatchCardSwipe() {
   activeCard.addEventListener(
     "touchmove",
     (event) => {
-      currentDelta = event.changedTouches[0].clientX - startX;
+      const deltaX = event.changedTouches[0].clientX - startX;
+      const deltaY = event.changedTouches[0].clientY - startY;
+      if (swipeIntent === null) {
+        if (Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
+          swipeIntent = "vertical";
+        } else if (Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          swipeIntent = "horizontal";
+        } else {
+          return;
+        }
+      }
+      if (swipeIntent !== "horizontal") {
+        activeCard.style.transform = "";
+        return;
+      }
+      currentDelta = deltaX;
       previewDirection = currentDelta < 0 ? 1 : -1;
       const preview = adjacentGame(previewDirection);
       if (!preview) {
         activeCard.style.transform = "";
         return;
       }
+      const previewStatus = getGameLockStatus(preview);
       previewCard.querySelector("h3").textContent = preview.title;
-      previewCard.querySelector(".market-note-meta").textContent = preview.kickoff;
-      previewCard.querySelector("p").textContent = preview.venue;
+      previewCard.querySelector(".market-note-meta").textContent = formatGameKickoffLabel(preview);
+      previewCard.querySelector("p:not(.eyebrow)").textContent = preview.venue;
+      previewCard.classList.toggle("is-locked", previewStatus.isLocked);
+      previewCard.querySelector(".match-lock-row .status-chip").className = `status-chip ${previewStatus.isLocked ? "status-locked" : "status-open"}`;
+      previewCard.querySelector(".match-lock-row .status-chip").textContent = previewStatus.label;
       previewCard.style.setProperty("--match-primary", teamPrimary(preview.homeTeam));
       previewCard.style.setProperty("--match-secondary", teamSecondary(preview.awayTeam));
       activeCard.style.transform = `translateX(${currentDelta}px) rotate(${currentDelta / 30}deg)`;
@@ -2594,7 +4139,7 @@ function bindMatchCardSwipe() {
     "touchend",
     () => {
       activeCard.style.transition = "";
-      if (Math.abs(currentDelta) < SWIPE_THRESHOLD || !adjacentGame(previewDirection)) {
+      if (swipeIntent !== "horizontal" || Math.abs(currentDelta) < SWIPE_THRESHOLD || !adjacentGame(previewDirection)) {
         activeCard.style.transform = "";
         return;
       }
@@ -2604,6 +4149,17 @@ function bindMatchCardSwipe() {
         activeCard.style.transform = "";
         shiftGame(previewDirection);
       }, 220);
+    },
+    { passive: true }
+  );
+
+  activeCard.addEventListener(
+    "touchcancel",
+    () => {
+      activeCard.style.transition = "";
+      activeCard.style.transform = "";
+      swipeIntent = null;
+      currentDelta = 0;
     },
     { passive: true }
   );

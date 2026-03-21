@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>crowdIQ</title>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,54 +15,93 @@
     <div class="mobile-frame">
       <section id="auth-gate" class="auth-gate">
         <div class="auth-card">
-          <div class="brand-lockup auth-lockup">
-            <div class="brand-mark" aria-hidden="true">
-              <span></span>
-              <span></span>
-            </div>
-            <div>
-              <p class="eyebrow">Projection market</p>
-              <div class="brand-title-row">
-                <h1>crowdIQ</h1>
-                <span class="beta-badge">Beta 2.0</span>
+          <div class="auth-ticker" aria-hidden="true">
+            <div id="auth-ticker-marquee" class="auth-ticker-marquee"></div>
+          </div>
+          <header class="auth-header">
+            <div class="brand-lockup auth-lockup">
+              <div class="brand-copy">
+                <div class="brand-title-row">
+                  <h1 class="brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="auth-copy">
-            <h2>Trade the crowd's view</h2>
-            <p>crowdIQ turns crowd trading into live NRL Fantasy score projections. Enter the market, spot movement, and back your read.</p>
-            <div class="auth-signal-list" aria-label="Why trade on crowdIQ">
-              <article class="auth-signal-card">
-                <strong>Live projections shaped by market activity</strong>
-                <span>Player lines move when traders disagree and matched orders hit the market.</span>
-              </article>
-              <article class="auth-signal-card">
-                <strong>Fast discovery of movers and pricing gaps</strong>
-                <span>See where sentiment is shifting and where the crowd differs from fantasy expectations.</span>
-              </article>
-              <article class="auth-signal-card">
-                <strong>Leaderboards reward sharp trading</strong>
-                <span>Trade well, climb the rankings, and earn visible status inside the market.</span>
-              </article>
+            <button id="auth-header-signup" class="auth-header-signup" type="button">Sign Up</button>
+          </header>
+          <section class="auth-copy auth-hero">
+            <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
+            <p class="auth-hero-subtitle">Back your opinion on NRL fantasy projections</p>
+            <div class="auth-live-signal">
+              <span class="auth-live-dot" aria-hidden="true"></span>
+              <span id="auth-live-badge">Market live &middot; Round 3</span>
             </div>
-            <div class="auth-incentive-strip">
-              <strong>Start with $200 in crowdIQ cash</strong>
-              <span>No signup flow. Just choose a username and enter the market.</span>
+          </section>
+          <section class="auth-hero-cta-wrap">
+            <div class="auth-hero-cta">
+              <strong id="auth-hero-cta-copy">Start with $200 in crowdIQ cash</strong>
+              <button id="auth-hero-entry" class="auth-hero-entry" type="button">Enter the Market &rarr;</button>
             </div>
-            <section class="auth-preview-panel" aria-label="Market snapshot before entry">
-              <div class="auth-preview-head">
-                <p class="eyebrow">Market snapshot</p>
-                <h3>See what's moving before you enter</h3>
+          </section>
+          <section class="auth-phone-showcase" aria-label="crowdIQ home screen preview">
+            <div class="auth-phone-frame">
+              <div id="auth-phone-mockup" class="auth-phone-mockup">
+                <div class="auth-phone-status">
+                  <span class="auth-phone-status-dot" aria-hidden="true"></span>
+                  <span>Round 3</span>
+                </div>
+                <div class="auth-phone-section-head">
+                  <div>
+                    <span class="auth-phone-label">Live market</span>
+                    <strong>Most traded now</strong>
+                  </div>
+                  <span class="auth-phone-trades">127 trades</span>
+                </div>
+                <div class="auth-phone-market-list">
+                  <article class="auth-phone-market-row">
+                    <div class="auth-phone-market-copy">
+                      <strong>Kalyn Ponga</strong>
+                      <span>Knights &middot; Fullback</span>
+                    </div>
+                    <div class="auth-phone-market-metrics">
+                      <span>54.5 pts</span>
+                      <strong class="is-up">↑ 2.0 today</strong>
+                    </div>
+                  </article>
+                  <article class="auth-phone-market-row">
+                    <div class="auth-phone-market-copy">
+                      <strong>Nathan Cleary</strong>
+                      <span>Panthers &middot; Halfback</span>
+                    </div>
+                    <div class="auth-phone-market-metrics">
+                      <span>61.5 pts</span>
+                      <strong class="is-up">↑ 1.5 today</strong>
+                    </div>
+                  </article>
+                  <article class="auth-phone-market-row">
+                    <div class="auth-phone-market-copy">
+                      <strong>Daly Cherry-Evans</strong>
+                      <span>Sea Eagles &middot; Halfback</span>
+                    </div>
+                    <div class="auth-phone-market-metrics">
+                      <span>49.5 pts</span>
+                      <strong class="is-down">↓ 1.0 today</strong>
+                    </div>
+                  </article>
+                </div>
               </div>
-              <div id="auth-preview-list" class="auth-preview-grid"></div>
-            </section>
-          </div>
+            </div>
+          </section>
+          <section class="auth-feature-list" aria-label="Product highlights">
+            <div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div>
+            <div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div>
+            <div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div>
+          </section>
           <form id="auth-form" class="stack-form auth-form">
-            <label>
-              Username
+            <label class="auth-field-label">
+              CHOOSE YOUR USERNAME
               <input id="auth-username" name="authUsername" type="text" maxlength="24" placeholder="Johnny" required>
             </label>
-            <button class="primary-button" type="submit">Enter the Market</button>
+            <button class="primary-button auth-submit-button" type="submit">Enter the Market</button>
             <p id="auth-feedback" class="feedback" aria-live="polite"></p>
           </form>
         </div>
@@ -70,14 +110,9 @@
       <div id="app-content" class="app-content">
       <header class="app-header">
         <div class="brand-lockup">
-          <div class="brand-mark" aria-hidden="true">
-            <span></span>
-            <span></span>
-          </div>
-          <div>
-            <p class="eyebrow">Projection market</p>
+          <div class="brand-copy">
             <div class="brand-title-row">
-              <h1>crowdIQ</h1>
+              <h1 class="brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
               <span class="beta-badge">Beta 2.0</span>
             </div>
           </div>
@@ -112,11 +147,18 @@
               </div>
               <p class="home-carousel-hint">Swipe or tap a view</p>
             </div>
+            <div id="home-featured-slate"></div>
+            <div id="home-prize-pool-banner"></div>
+            <div id="home-games-strip"></div>
             <div id="home-carousel-nav" class="home-carousel-nav" aria-label="Home market insight views"></div>
             <div class="home-carousel-shell">
               <div id="home-carousel" class="home-carousel" aria-label="Home market insight categories">
-            <section class="section-block home-section-block home-carousel-section" data-home-panel="movers">
-              <div id="home-biggest-movers" class="home-leaderboard-list"></div>
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="gainers">
+              <div id="home-biggest-gainers" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="losers">
+              <div id="home-biggest-losers" class="home-leaderboard-list"></div>
             </section>
 
             <section class="section-block home-section-block market-signal-emphasis home-carousel-section" data-home-panel="activity">
@@ -158,15 +200,15 @@
         </div>
       </section>
 
-      <section class="screen" data-screen="quicktake">
+      <section class="screen" data-screen="quickpick">
         <div class="screen-scroll quick-take-scroll">
           <section class="hero-strip quick-take-strip">
             <div class="portfolio-title-row">
               <div>
-                <h2>Quick Take</h2>
+                <h2>Quick Pick</h2>
               </div>
             </div>
-            <p class="section-meta quick-take-subtitle">Swipe-style player calls with a fixed $1 stake on open markets only.</p>
+            <p class="section-meta quick-take-subtitle">Swipe-style player picks with a fixed $1 stake on open markets only.</p>
           </section>
 
           <section class="section-block quick-take-stage-block">
@@ -175,16 +217,21 @@
         </div>
       </section>
 
+      <section id="prize-pool-view" class="screen" data-screen="prizepool">
+        <div class="screen-scroll quick-take-scroll">
+          <div id="prize-pool-shell"></div>
+        </div>
+      </section>
+
       <section class="screen" data-screen="account">
         <div class="screen-scroll">
           <section class="hero-strip profile-strip">
             <div class="portfolio-title-row">
               <div>
-                <p class="eyebrow">Your activity</p>
                 <h2>Portfolio</h2>
+                <p id="portfolio-page-subtitle" class="section-meta portfolio-page-subtitle"></p>
               </div>
             </div>
-            <div id="profile-summary" class="summary-grid"></div>
             <div id="account-view-switch" class="account-view-switch">
               <button class="account-view-tab active" type="button" data-account-view="portfolio">Portfolio</button>
               <button class="account-view-tab" type="button" data-account-view="leaderboard">Leaderboard</button>
@@ -193,19 +240,13 @@
 
           <div id="account-portfolio-view" class="account-view-panel active">
             <section class="hero-strip portfolio-strip premium-portfolio-strip portfolio-mode-hero">
-              <div class="portfolio-mode-head">
-                <p class="eyebrow">Your book</p>
-                <h2>Portfolio</h2>
-                <p class="section-meta">Track open exposure, matched stake, and realized performance in one place.</p>
-              </div>
               <div id="portfolio-summary" class="portfolio-summary-grid"></div>
             </section>
 
             <section class="section-block portfolio-controls-block">
               <div class="section-heading compact-heading portfolio-controls-heading">
                 <div>
-                  <p class="eyebrow">View and sort</p>
-                  <h3>Positions</h3>
+                  <h3>Your Positions</h3>
                 </div>
               </div>
               <div class="portfolio-controls">
@@ -279,25 +320,25 @@
       </section>
 
       <nav class="bottom-nav" aria-label="User navigation">
-        <button class="nav-button active" type="button" data-screen-target="home">
-          <span class="nav-icon nav-icon-home"></span>
+        <button class="nav-button tab active" type="button" data-screen-target="home">
+          <i class="ph-fill ph-house" aria-hidden="true"></i>
           <span class="nav-label">Home</span>
-          <span class="nav-dot" aria-hidden="true"></span>
         </button>
-        <button class="nav-button" type="button" data-screen-target="markets">
-          <span class="nav-icon nav-icon-markets"></span>
+        <button class="nav-button tab" type="button" data-screen-target="markets">
+          <i class="ph-fill ph-chart-bar" aria-hidden="true"></i>
           <span class="nav-label">Match Centre</span>
-          <span class="nav-dot" aria-hidden="true"></span>
         </button>
-        <button class="nav-button" type="button" data-screen-target="quicktake">
-          <span class="nav-icon nav-icon-quicktake"></span>
-          <span class="nav-label">Quick Take</span>
-          <span class="nav-dot" aria-hidden="true"></span>
+        <button class="nav-button tab" type="button" data-screen-target="quickpick">
+          <i class="ph-fill ph-lightning" aria-hidden="true"></i>
+          <span class="nav-label">Quick Pick</span>
         </button>
-        <button class="nav-button" type="button" data-screen-target="account">
-          <span class="nav-icon nav-icon-profile"></span>
+        <button class="nav-button tab prize-pool" type="button" data-screen-target="prizepool">
+          <i class="ph-fill ph-tip-jar" aria-hidden="true"></i>
+          <span class="nav-label">Prize Pool</span>
+        </button>
+        <button class="nav-button tab" type="button" data-screen-target="account">
+          <i class="ph-fill ph-user" aria-hidden="true"></i>
           <span class="nav-label">Portfolio</span>
-          <span class="nav-dot" aria-hidden="true"></span>
         </button>
       </nav>
       </div>
@@ -386,7 +427,7 @@
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Bot simulation</p>
-            <h3>Quick Take bots</h3>
+            <h3>Quick Pick bots</h3>
           </div>
         </div>
         <div class="bot-admin-layout">
@@ -480,7 +521,7 @@
           <div class="stack-form bot-overview-panel">
             <div>
               <p class="panel-label">Bot operations</p>
-              <p class="section-meta">Create a new $200 Quick Take bot with either a random personality variant or a pure 50/50 over-under coin flip, then track how it performs once markets settle.</p>
+              <p class="section-meta">Create a new $200 Quick Pick bot with either a random personality variant or a pure 50/50 over-under coin flip, then track how it performs once markets settle.</p>
             </div>
             <div class="bot-overview-head">
               <div id="bot-summary" class="position-grid bot-summary-grid"></div>
