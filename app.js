@@ -15,9 +15,11 @@ const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
 const roundGames = seed.roundGames;
 const TEAM_COLORS = seed.TEAM_COLORS;
-const CURRENT_ROUND_LABEL = roundGames[0]?.roundLabel || "Current round";
+const SEEDED_ROUND_NUMBERS = [...new Set(roundGames.map((game) => parseRoundNumberFromLabel(game.roundLabel)).filter(Number.isFinite))].sort((left, right) => left - right);
+const CURRENT_ROUND_NUMBER = SEEDED_ROUND_NUMBERS[SEEDED_ROUND_NUMBERS.length - 1] || 1;
+const CURRENT_ROUND_LABEL = roundGames.find((game) => parseRoundNumberFromLabel(game.roundLabel) === CURRENT_ROUND_NUMBER)?.roundLabel || `Round ${CURRENT_ROUND_NUMBER}`;
 const AVAILABLE_ROUND_NUMBERS = [...new Set([
-  ...roundGames.map((game) => parseRoundNumberFromLabel(game.roundLabel)).filter(Number.isFinite),
+  ...SEEDED_ROUND_NUMBERS,
   ...((derivedData.metadata?.roundsIncluded) || []).map((round) => Number(round)).filter(Number.isFinite)
 ])].sort((left, right) => left - right);
 const BOT_BEHAVIOUR_PRESETS = {
@@ -580,11 +582,11 @@ function renderAuthPreview() {
         },
         {
           playerName: "Daly Cherry-Evans",
-          team: "Sea Eagles",
-          position: "Halfback",
-          line: "49.5 pts",
-          movementLabel: "↓ 1.0 today",
-          movementClassName: "is-down"
+          team: "Roosters",
+          position: "Five-Eighth",
+          line: "43.0 pts",
+          movementLabel: "↑ 0.5 today",
+          movementClassName: "is-up"
         }
       ];
 
@@ -767,23 +769,28 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
   markets.forEach((market) => {
     const row = template.content.firstElementChild.cloneNode(true);
     const movement = getMovementText(market);
-    const comparisonWidth = comparisonPercent(market.currentLine, market.seasonAverage);
     const metrics = getMarketTradeMetrics(market);
     const isExpanded = expandable && market.id === uiState.expandedMarketId;
     const status = getMarketStatus(market);
+    const teamColors = TEAM_COLORS[market.team] ?? TEAM_COLORS[normalizeTeamName(market.team)] ?? { primary: "#101722", secondary: "#ffffff" };
     row.dataset.marketId = market.id;
     row.classList.toggle("is-selected", market.id === uiState.selectedMarketId);
     row.classList.toggle("is-expanded", isExpanded);
     row.classList.toggle("is-locked", status.className === "status-locked");
     row.querySelector(".player-name").textContent = market.playerName;
     row.querySelector(".player-meta").textContent = `${market.position} | Avg ${market.seasonAverage.toFixed(1)}`;
-    row.querySelector(".season-average").textContent = "";
+    const teamPill = row.querySelector(".match-centre-team-pill");
+    if (teamPill) {
+      teamPill.textContent = homeTeamAbbreviation(market.team);
+      teamPill.style.background = `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary || "#ffffff"} 100%)`;
+      teamPill.style.color = "#ffffff";
+      teamPill.style.border = `1px solid ${hexToRgba(teamColors.secondary || "#ffffff", 0.35)}`;
+      teamPill.style.boxShadow = `inset 0 0 0 1px ${hexToRgba(teamColors.primary, 0.18)}`;
+    }
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
     row.querySelector(".projection-move").className = `projection-move ${movement.className}`;
     row.querySelector(".market-confidence-slot").innerHTML = `<span class="status-chip ${status.className}">${status.label}</span>`;
-    row.querySelector(".projection-average").textContent = "";
-    row.querySelector(".comparison-fill").style.width = `${comparisonWidth}%`;
     row.addEventListener("click", () => {
       uiState.currentGameId = market.gameId;
       uiState.currentTeam = market.team;
@@ -1143,8 +1150,9 @@ function renderPortfolioPrizePoolCard() {
     return;
   }
   if (view.hasEntry && view.entry) {
+    const hasLivePrizePoolResults = view.isFinal || (Number(view.entry.startingSettledCount) || 0) > 0;
     const correctPct = Math.round((Number(view.entry.correctPct) || 0) * 100);
-    const progress = Math.max(0, Math.min(100, correctPct));
+    const progress = hasLivePrizePoolResults ? Math.max(0, Math.min(100, correctPct)) : 0;
     elements.portfolioPrizePoolCard.innerHTML = `
       <button class="profile-prize-pool-card is-entered" type="button" data-open-prize-pool="lineup">
         <div class="profile-prize-pool-topline">
@@ -1153,7 +1161,7 @@ function renderPortfolioPrizePoolCard() {
         </div>
         <div class="profile-prize-pool-stats">
           <span><em>Stake</em><strong>${formatStake(view.entryFee || 10)}</strong></span>
-          <span><em>Correct %</em><strong>${correctPct}%</strong></span>
+          <span><em>Correct %</em><strong>${prizePoolPercentLabel(view.entry.correctPct, { settledCount: view.entry.startingSettledCount, isFinal: view.isFinal })}</strong></span>
           <span><em>Rank</em><strong class="is-rank">${view.entry.rank ? `#${view.entry.rank}` : "—"}</strong></span>
         </div>
         <div class="portfolio-performance-progress profile-prize-pool-progress"><span style="width:${progress}%"></span></div>
@@ -1784,6 +1792,7 @@ function renderPrizePoolEntryState(view) {
   const entry = view.entry;
   const split = splitPrizePoolPicks(entry.picks || []);
   const summaryPct = Number(entry.correctPct) || 0;
+  const hasLivePrizePoolResults = view.isFinal || (Number(entry.startingSettledCount) || 0) > 0;
   const payoutCards = view.isFinal
     ? `<div class="prize-pool-final-banner"><strong>Final rank #${entry.rank}</strong><span>${entry.payout ? `Payout ${formatStake(entry.payout)}` : "No payout this week"}</span></div>`
     : "";
@@ -1802,10 +1811,10 @@ function renderPrizePoolEntryState(view) {
       <div class="prize-pool-inline-stats-card">
         <div class="prize-pool-inline-stats">
           <span><em>Starting</em><strong>${entry.startingCorrectCount || 0}/${split.starting.length || Number(view.startingSlotCount) || 13}</strong></span>
-          <span><em>Correct %</em><strong>${prizePoolPercentLabel(summaryPct)}</strong></span>
+          <span><em>Correct %</em><strong>${prizePoolPercentLabel(summaryPct, { settledCount: entry.startingSettledCount, isFinal: view.isFinal })}</strong></span>
           <span><em>Rank</em><strong>#${entry.rank || "—"}</strong></span>
         </div>
-        <div class="prize-pool-progress"><span style="width:${Math.max(0, Math.min(100, summaryPct * 100))}%"></span></div>
+        <div class="prize-pool-progress"><span style="width:${hasLivePrizePoolResults ? Math.max(0, Math.min(100, summaryPct * 100)) : 0}%"></span></div>
       </div>
       <button id="prize-pool-share-lineup" class="prize-pool-share-trigger" type="button"><i class="ph-fill ph-share-network" aria-hidden="true"></i><span>Share Lineup</span></button>
       ${payoutCards}
@@ -1848,8 +1857,9 @@ function renderPrizePoolLeaderboard(view, heading) {
   const rows = (view.leaderboard || []).length
     ? view.leaderboard.map((row) => {
       const tone = row.rank === 1 ? "is-first" : row.rank === 2 ? "is-second" : row.rank === 3 ? "is-third" : "";
-      const width = Math.max(0, Math.min(100, (Number(row.correctPct) || 0) * 100));
-      return `<article class="prize-pool-leader-card ${row.userName.toLowerCase() === currentUser ? "is-current-user" : ""}"><div class="prize-pool-rank-badge ${tone}">${row.rank}</div><div class="prize-pool-leader-copy"><div class="prize-pool-leader-top"><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct)}</span></div><div class="prize-pool-progress"><span style="width:${width}%"></span></div><div class="prize-pool-leader-foot">${row.startingCorrectCount || 0} starting correct · ${row.interchangeCorrectCount || 0} interchange${view.isFinal && row.payout ? ` | ${formatStake(row.payout)}` : ""}</div></div></article>`;
+      const hasLivePrizePoolResults = view.isFinal || (Number(row.startingSettledCount) || 0) > 0;
+      const width = hasLivePrizePoolResults ? Math.max(0, Math.min(100, (Number(row.correctPct) || 0) * 100)) : 0;
+      return `<article class="prize-pool-leader-card ${row.userName.toLowerCase() === currentUser ? "is-current-user" : ""}"><div class="prize-pool-rank-badge ${tone}">${row.rank}</div><div class="prize-pool-leader-copy"><div class="prize-pool-leader-top"><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct, { settledCount: row.startingSettledCount, isFinal: view.isFinal })}</span></div><div class="prize-pool-progress"><span style="width:${width}%"></span></div><div class="prize-pool-leader-foot">${row.startingCorrectCount || 0} starting correct · ${row.interchangeCorrectCount || 0} interchange${view.isFinal && row.payout ? ` | ${formatStake(row.payout)}` : ""}</div></div></article>`;
     }).join("")
     : `<div class="portfolio-empty-state"><strong>No entrants yet</strong><span>The pool amount updates as users submit teams.</span></div>`;
   return `
@@ -1872,7 +1882,7 @@ function prizePoolPickRowMarkup(pick, index, includeResult = false) {
 }
 
 function prizePoolCompactStandingsRow(row) {
-  return `<article class="prize-pool-compact-row"><span class="prize-pool-compact-rank">#${row.rank}</span><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct)}</span><small>${row.interchangeCorrectCount || 0} INT</small></article>`;
+  return `<article class="prize-pool-compact-row"><span class="prize-pool-compact-rank">#${row.rank}</span><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct, { settledCount: row.startingSettledCount, isFinal: false })}</span><small>${row.interchangeCorrectCount || 0} INT</small></article>`;
 }
 
 function prizePoolPayoutRows(view) {
@@ -1890,7 +1900,10 @@ function prizePoolDisplayAmount(view) {
   return Math.max(Number(view?.poolAmount) || 0, Number(view?.seedAmount) || 100);
 }
 
-function prizePoolPercentLabel(value) {
+function prizePoolPercentLabel(value, options = {}) {
+  if (!options.isFinal && (Number(options.settledCount) || 0) <= 0) {
+    return "Pending";
+  }
   return `${((Number(value) || 0) * 100).toFixed(0)}%`;
 }
 

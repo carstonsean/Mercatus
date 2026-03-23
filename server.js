@@ -48,12 +48,13 @@ const STATE_PATH=path.join(__dirname,"server-state.json");
 const BOT_AUTOPLAY_INTERVAL_MS=3000;
 const SEEDED_MARKETS=buildRoundMarkets();
 const SEEDED_MARKETS_BY_ID=new Map(SEEDED_MARKETS.map((market)=>[market.id,market]));
-const CURRENT_ROUND_LABEL=roundGames[0]?.roundLabel||"Current round";
-const CURRENT_ROUND_NUMBER=parseRoundNumber(roundGames[0]?.roundLabel);
+const SEEDED_ROUND_NUMBERS=[...new Set(roundGames.map((game)=>parseRoundNumber(game.roundLabel)).filter(Number.isFinite))].sort((left,right)=>left-right);
+const CURRENT_ROUND_NUMBER=SEEDED_ROUND_NUMBERS[SEEDED_ROUND_NUMBERS.length-1]||1;
+const CURRENT_ROUND_LABEL=roundGames.find((game)=>parseRoundNumber(game.roundLabel)===CURRENT_ROUND_NUMBER)?.roundLabel||`Round ${CURRENT_ROUND_NUMBER}`;
 const DEFAULT_ACTIVE_ROUND_NUMBER=CURRENT_ROUND_NUMBER||1;
 const ROUND_NUMBER_BY_GAME_ID=new Map(roundGames.map((game)=>[game.id,parseRoundNumber(game.roundLabel)]));
 const AVAILABLE_ROUND_NUMBERS=[...new Set([
-  ...roundGames.map((game)=>parseRoundNumber(game.roundLabel)).filter(Number.isFinite),
+  ...SEEDED_ROUND_NUMBERS,
   ...((derivedData?.metadata?.roundsIncluded)||[]).map((round)=>Number(round)).filter(Number.isFinite)
 ])].sort((left,right)=>left-right);
 const SUPABASE_STATE_SYNC_TTL_MS=30000;

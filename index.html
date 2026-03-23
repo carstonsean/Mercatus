@@ -667,20 +667,21 @@
   <template id="market-row-template">
     <button class="market-row" type="button">
       <div class="player-block">
-        <div class="player-copy">
+        <div class="card-row market-row-main">
           <strong class="player-name"></strong>
-          <div class="player-subrow">
-            <span class="player-meta"></span>
-            <span class="season-average"></span>
-          </div>
+          <strong class="projection-line"></strong>
         </div>
-      </div>
-      <div class="projection-block">
-        <strong class="projection-line"></strong>
-        <div class="projection-support">
-          <span class="projection-move"></span>
-          <span class="market-confidence-slot"></span>
-          <span class="projection-average"></span>
+        <div class="card-row market-row-secondary">
+          <div class="player-subrow">
+            <span class="match-centre-team-pill"></span>
+            <span class="player-meta"></span>
+            <span class="season-average" hidden></span>
+          </div>
+          <div class="projection-support">
+            <span class="projection-move"></span>
+            <span class="market-confidence-slot"></span>
+            <span class="projection-average" hidden></span>
+          </div>
         </div>
         <div class="comparison-track" aria-hidden="true">
           <span class="comparison-fill"></span>
