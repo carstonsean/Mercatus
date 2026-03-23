@@ -216,6 +216,11 @@ init();
 
 async function init() {
   bindEvents();
+  try {
+    await syncSession();
+  } catch (error) {
+    console.warn("Initial session sync failed", error.message);
+  }
   renderAuthPreview();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (!savedUserName) {
@@ -541,11 +546,13 @@ function renderAuthGate(isAuthenticated) {
 }
 
 function renderAuthPreview() {
-  const markets = state.markets?.length ? state.markets : authPreviewMarkets;
-  const roundLabel = CURRENT_ROUND_LABEL || "Round 3";
-  const liveTradeCount = state.markets?.length
-    ? state.markets.reduce((total, market) => total + tradeCountFor(market), 0)
-    : 127;
+  const markets = state.markets?.length
+    ? getActiveRoundMarkets()
+    : authPreviewMarkets.filter((market) => marketRoundNumber(market) === activeRoundNumber());
+  const roundLabel = activeRoundLabel();
+  const liveTradeCount = markets.length
+    ? markets.reduce((total, market) => total + tradeCountFor(market), 0)
+    : 0;
   const tickerSegment = `${roundLabel} now open &middot; ${liveTradeCount} trades placed &middot; Live projections moving &middot; Markets close at kick-off`;
   const featuredMarkets = markets
     .slice()
