@@ -4048,14 +4048,14 @@ label {
   align-content: center;
   min-width: 88px;
   text-align: right;
-  gap: 8px;
+  gap: 4px;
 }
 
 .home-confidence-projection {
-  font-size: 18px;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.04em;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(239,247,255,0.78);
+  letter-spacing: -0.01em;
 }
 
 .home-confidence-primary {
@@ -4064,6 +4064,7 @@ label {
   justify-content: flex-end;
   gap: 8px;
   color: var(--text);
+  min-height: 20px;
 }
 
 .home-confidence-gauge {
