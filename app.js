@@ -782,10 +782,10 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
     const teamPill = row.querySelector(".match-centre-team-pill");
     if (teamPill) {
       teamPill.textContent = homeTeamAbbreviation(market.team);
-      teamPill.style.background = `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary || "#ffffff"} 100%)`;
-      teamPill.style.color = "#ffffff";
-      teamPill.style.border = `1px solid ${hexToRgba(teamColors.secondary || "#ffffff", 0.35)}`;
-      teamPill.style.boxShadow = `inset 0 0 0 1px ${hexToRgba(teamColors.primary, 0.18)}`;
+      teamPill.style.background = teamColors.primary;
+      teamPill.style.color = teamColors.secondary || "#ffffff";
+      teamPill.style.border = "none";
+      teamPill.style.boxShadow = "none";
     }
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
