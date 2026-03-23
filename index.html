@@ -234,6 +234,7 @@
             </div>
             <div id="account-view-switch" class="account-view-switch">
               <button class="account-view-tab active" type="button" data-account-view="portfolio">Portfolio</button>
+              <button class="account-view-tab" type="button" data-account-view="wallet">Wallet</button>
               <button class="account-view-tab" type="button" data-account-view="leaderboard">Leaderboard</button>
             </div>
           </section>
@@ -241,6 +242,10 @@
           <div id="account-portfolio-view" class="account-view-panel active">
             <section class="hero-strip portfolio-strip premium-portfolio-strip portfolio-mode-hero">
               <div id="portfolio-summary" class="portfolio-summary-grid"></div>
+            </section>
+
+            <section class="section-block profile-prize-pool-block">
+              <div id="portfolio-prize-pool-card"></div>
             </section>
 
             <section class="section-block portfolio-controls-block">
@@ -282,6 +287,56 @@
               </div>
               <button id="logout-button" class="secondary-button" type="button">Log out</button>
               <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
+            </section>
+          </div>
+
+          <div id="account-wallet-view" class="account-view-panel">
+            <section class="hero-strip portfolio-strip wallet-strip">
+              <div class="leaderboard-title-row">
+                <div>
+                  <p class="eyebrow">Wallet</p>
+                  <h2>Balance & Activity</h2>
+                </div>
+              </div>
+              <div id="wallet-summary" class="portfolio-summary-grid"></div>
+            </section>
+
+            <section class="section-block wallet-actions-block">
+              <div class="section-heading compact-heading">
+                <div>
+                  <p class="eyebrow">Actions</p>
+                  <h3>Deposit or withdraw</h3>
+                </div>
+              </div>
+              <div class="wallet-actions-card">
+                <label class="wallet-amount-field">
+                  Amount
+                  <input id="wallet-amount-input" type="number" min="1" step="1" placeholder="25">
+                </label>
+                <div class="wallet-amount-presets" id="wallet-amount-presets">
+                  <button class="portfolio-chip" type="button" data-wallet-amount="10">$10</button>
+                  <button class="portfolio-chip" type="button" data-wallet-amount="25">$25</button>
+                  <button class="portfolio-chip" type="button" data-wallet-amount="50">$50</button>
+                  <button class="portfolio-chip" type="button" data-wallet-amount="100">$100</button>
+                </div>
+                <div class="wallet-action-row">
+                  <button id="wallet-deposit-button" class="primary-button" type="button">Deposit Funds</button>
+                  <button id="wallet-withdraw-button" class="secondary-button" type="button">Withdraw</button>
+                </div>
+                <p id="wallet-feedback" class="feedback wallet-feedback" aria-live="polite"></p>
+                <p class="section-meta wallet-helper-copy">Funds only leave your wallet when a trade matches. Withdrawals are demo-only and stop here.</p>
+              </div>
+            </section>
+
+            <section class="section-block wallet-transactions-block">
+              <div class="section-heading compact-heading">
+                <div>
+                  <p class="eyebrow">History</p>
+                  <h3>Transaction feed</h3>
+                </div>
+              </div>
+              <div id="wallet-filters" class="portfolio-chip-row"></div>
+              <div id="wallet-transaction-list" class="wallet-transaction-list"></div>
             </section>
           </div>
 
@@ -356,6 +411,19 @@
 
       <section class="admin-panel">
         <div class="admin-grid">
+          <form id="admin-round-form" class="stack-form">
+            <div>
+              <p class="panel-label">Active round</p>
+              <p id="admin-round-summary" class="section-meta">Choose which round admin tools and Prize Pool views should target.</p>
+            </div>
+            <label>
+              Round
+              <select id="admin-round-select" name="roundNumber"></select>
+            </label>
+            <button class="secondary-button" type="submit">Switch round</button>
+            <p id="admin-round-feedback" class="feedback" aria-live="polite"></p>
+          </form>
+
           <form id="opening-line-form" class="stack-form">
             <div>
               <p class="panel-label">Line management</p>

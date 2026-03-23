@@ -322,9 +322,17 @@
     {id:"sharks-dolphins",title:"Sharks vs Dolphins",homeTeam:"Sharks",awayTeam:"Dolphins",venue:"Sharks Stadium",roundLabel:"Round 3",kickoff:"Sat 21 Mar 5:30 PM",kickoffAt:"2026-03-21T17:30:00+11:00"},
     {id:"rabbitohs-wests-tigers",title:"Rabbitohs vs Wests Tigers",homeTeam:"Rabbitohs",awayTeam:"Wests Tigers",venue:"Polytec Stadium, Gosford",roundLabel:"Round 3",kickoff:"Sat 21 Mar 7:35 PM",kickoffAt:"2026-03-21T19:35:00+11:00"},
     {id:"eels-dragons",title:"Eels vs Dragons",homeTeam:"Eels",awayTeam:"Dragons",venue:"CommBank Stadium",roundLabel:"Round 3",kickoff:"Sun 22 Mar 4:05 PM",kickoffAt:"2026-03-22T16:05:00+11:00"},
-    {id:"cowboys-titans",title:"Cowboys vs Titans",homeTeam:"Cowboys",awayTeam:"Titans",venue:"Queensland Country Bank Stadium",roundLabel:"Round 3",kickoff:"Sun 22 Mar 6:15 PM",kickoffAt:"2026-03-22T18:15:00+10:00"}
+    {id:"cowboys-titans",title:"Cowboys vs Titans",homeTeam:"Cowboys",awayTeam:"Titans",venue:"Queensland Country Bank Stadium",roundLabel:"Round 3",kickoff:"Sun 22 Mar 6:15 PM",kickoffAt:"2026-03-22T18:15:00+10:00"},
+    {id:"sea-eagles-roosters",title:"Sea Eagles vs Roosters",homeTeam:"Sea Eagles",awayTeam:"Roosters",venue:"4 Pines Park",roundLabel:"Round 4",kickoff:"Thu 26 Mar 8:00 PM",kickoffAt:"2026-03-26T20:00:00+11:00"},
+    {id:"warriors-wests-tigers",title:"Warriors vs Wests Tigers",homeTeam:"Warriors",awayTeam:"Wests Tigers",venue:"Go Media Stadium",roundLabel:"Round 4",kickoff:"Fri 27 Mar 6:00 PM",kickoffAt:"2026-03-27T18:00:00+13:00"},
+    {id:"broncos-dolphins",title:"Broncos vs Dolphins",homeTeam:"Broncos",awayTeam:"Dolphins",venue:"Suncorp Stadium",roundLabel:"Round 4",kickoff:"Fri 27 Mar 8:00 PM",kickoffAt:"2026-03-27T20:00:00+10:00"},
+    {id:"bulldogs-knights",title:"Bulldogs vs Knights",homeTeam:"Bulldogs",awayTeam:"Knights",venue:"Accor Stadium",roundLabel:"Round 4",kickoff:"Sat 28 Mar 3:00 PM",kickoffAt:"2026-03-28T15:00:00+11:00"},
+    {id:"cowboys-storm",title:"Cowboys vs Storm",homeTeam:"Cowboys",awayTeam:"Storm",venue:"Queensland Country Bank Stadium",roundLabel:"Round 4",kickoff:"Sat 28 Mar 5:30 PM",kickoffAt:"2026-03-28T17:30:00+10:00"},
+    {id:"eels-panthers",title:"Eels vs Panthers",homeTeam:"Eels",awayTeam:"Panthers",venue:"CommBank Stadium",roundLabel:"Round 4",kickoff:"Sat 28 Mar 7:35 PM",kickoffAt:"2026-03-28T19:35:00+11:00"},
+    {id:"raiders-sharks",title:"Raiders vs Sharks",homeTeam:"Raiders",awayTeam:"Sharks",venue:"GIO Stadium",roundLabel:"Round 4",kickoff:"Sun 29 Mar 4:05 PM",kickoffAt:"2026-03-29T16:05:00+11:00"},
+    {id:"titans-dragons",title:"Titans vs Dragons",homeTeam:"Titans",awayTeam:"Dragons",venue:"Cbus Super Stadium",roundLabel:"Round 4",kickoff:"Sun 29 Mar 6:15 PM",kickoffAt:"2026-03-29T18:15:00+10:00"}
   ];
-  const matchOddsByGame={"raiders-bulldogs":{home:1.9,away:1.9},"roosters-panthers":{home:1.9,away:1.9},"storm-broncos":{home:1.9,away:1.9},"knights-warriors":{home:1.9,away:1.9},"sharks-dolphins":{home:1.9,away:1.9},"rabbitohs-wests-tigers":{home:1.9,away:1.9},"eels-dragons":{home:1.9,away:1.9},"cowboys-titans":{home:1.9,away:1.9}}; // Demo odds seed. Replace these with your actual match prices.
+  const matchOddsByGame={"raiders-bulldogs":{home:1.9,away:1.9},"roosters-panthers":{home:1.9,away:1.9},"storm-broncos":{home:1.9,away:1.9},"knights-warriors":{home:1.9,away:1.9},"sharks-dolphins":{home:1.9,away:1.9},"rabbitohs-wests-tigers":{home:1.9,away:1.9},"eels-dragons":{home:1.9,away:1.9},"cowboys-titans":{home:1.9,away:1.9},"sea-eagles-roosters":{home:1.9,away:1.9},"warriors-wests-tigers":{home:1.9,away:1.9},"broncos-dolphins":{home:1.9,away:1.9},"bulldogs-knights":{home:1.9,away:1.9},"cowboys-storm":{home:1.9,away:1.9},"eels-panthers":{home:1.9,away:1.9},"raiders-sharks":{home:1.9,away:1.9},"titans-dragons":{home:1.9,away:1.9}}; // Demo odds seed. Replace these with your actual match prices.
   const TEAM_COLORS={"Broncos":{primary:"#6A1F2B",secondary:"#FDB827"},"Raiders":{primary:"#00A651",secondary:"#FFFFFF"},"Bulldogs":{primary:"#003A8F",secondary:"#FFFFFF"},"Sharks":{primary:"#000000",secondary:"#0086C3"},"Dolphins":{primary:"#E31837",secondary:"#F2A900"},"Titans":{primary:"#00205B",secondary:"#F2A900"},"Sea Eagles":{primary:"#6A1F2B",secondary:"#FFFFFF"},"Storm":{primary:"#5C2D91",secondary:"#001A57"},"Knights":{primary:"#003A8F",secondary:"#E31837"},"Warriors":{primary:"#003A8F",secondary:"#00A651"},"Cowboys":{primary:"#002B5C",secondary:"#FFC72C"},"Eels":{primary:"#003A8F",secondary:"#FFC72C"},"Panthers":{primary:"#000000",secondary:"#00A3E0"},"Rabbitohs":{primary:"#8B1C2D",secondary:"#006341"},"Dragons":{primary:"#E31837",secondary:"#FFFFFF"},"Roosters":{primary:"#E31837",secondary:"#00205B"},"Wests Tigers":{primary:"#F36F21",secondary:"#000000"},"Tigers":{primary:"#F36F21",secondary:"#000000"}};
   const seededMarkets=[];
   const seededMarketOverrides=new Map(seededMarkets.map((market)=>[`${market.gameId}|${market.team}|${market.playerName}`,market]));
@@ -362,6 +370,20 @@
       ["Titans","Keano Kini","Fullback",1],["Titans","Sialetili Faeamani","Winger",2],["Titans","Jojo Fifita","Centre",3],["Titans","Max Feagai","Centre",4],["Titans","Phillip Sami","Winger",5],["Titans","AJ Brimson","Five-Eighth",6],["Titans","Lachlan Ilias","Halfback",7],["Titans","Moeaki Fotuaika","Prop",8],["Titans","Sam Verrills","Hooker",9],["Titans","Tino Fa'asuamaleaui","Prop",10],["Titans","Arama Hau","2nd Row",11],["Titans","Beau Fermor","2nd Row",12],["Titans","Chris Randall","Lock",13]
     ]
   };
+  const ROUND_2_SEA_EAGLES=[
+    ["Sea Eagles","Tom Trbojevic","Fullback",1],["Sea Eagles","Jason Saab","Winger",2],["Sea Eagles","Tolutau Koula","Centre",3],["Sea Eagles","Reuben Garrick","Centre",4],["Sea Eagles","Lehi Hopoate","Winger",5],["Sea Eagles","Luke Brooks","Five-Eighth",6],["Sea Eagles","Jamal Fogarty","Halfback",7],["Sea Eagles","Taniela Paseka","Prop",8],["Sea Eagles","Jake Simpkin","Hooker",9],["Sea Eagles","Kobe Hetherington","Prop",10],["Sea Eagles","Haumole Olakau'atu","2nd Row",11],["Sea Eagles","Ben Trbojevic","2nd Row",12],["Sea Eagles","Jake Trbojevic","Lock",13]
+  ];
+  function cloneTeamRows(gameId,team){
+    return (playerRowsByGame[gameId]||[]).filter((row)=>row[0]===team).map((row)=>[...row]);
+  }
+  playerRowsByGame["sea-eagles-roosters"]=[...ROUND_2_SEA_EAGLES,...cloneTeamRows("roosters-panthers","Roosters")];
+  playerRowsByGame["warriors-wests-tigers"]=[...cloneTeamRows("knights-warriors","Warriors"),...cloneTeamRows("rabbitohs-wests-tigers","Wests Tigers")];
+  playerRowsByGame["broncos-dolphins"]=[...cloneTeamRows("storm-broncos","Broncos"),...cloneTeamRows("sharks-dolphins","Dolphins")];
+  playerRowsByGame["bulldogs-knights"]=[...cloneTeamRows("raiders-bulldogs","Bulldogs"),...cloneTeamRows("knights-warriors","Knights")];
+  playerRowsByGame["cowboys-storm"]=[...cloneTeamRows("cowboys-titans","Cowboys"),...cloneTeamRows("storm-broncos","Storm")];
+  playerRowsByGame["eels-panthers"]=[...cloneTeamRows("eels-dragons","Eels"),...cloneTeamRows("roosters-panthers","Panthers")];
+  playerRowsByGame["raiders-sharks"]=[...cloneTeamRows("raiders-bulldogs","Raiders"),...cloneTeamRows("sharks-dolphins","Sharks")];
+  playerRowsByGame["titans-dragons"]=[...cloneTeamRows("cowboys-titans","Titans"),...cloneTeamRows("eels-dragons","Dragons")];
   function roundToHalf(value){return Math.round(value*2)/2;}
   function normalizePlayerKey(value){return String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
   function derivedPlayerStatsFor(playerName){return derivedData?.playerStatsByName?.[normalizePlayerKey(playerName)]||null;}

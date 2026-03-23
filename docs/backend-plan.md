@@ -2,9 +2,12 @@
 
 This document defines the first production backend for Mercatus.
 
+The backend must support the product principles in [docs/product-principles.md](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\docs\product-principles.md), especially crowd-led price discovery, low-friction trading, strong liquidity, and high participation.
+
 ## Product rules
 
 - Mercatus is a public play-money projection market for weekly NRL Fantasy player scores.
+- Accurate projections should emerge from trading activity rather than central determination.
 - Users sign in with a username-only demo account for MVP.
 - Users receive a bankroll top-up each round and keep a lifetime balance.
 - Markets expose one projection line per player.
@@ -36,6 +39,7 @@ This document defines the first production backend for Mercatus.
 - Validate market is `OPEN`.
 - Validate market is not past kickoff.
 - Validate the user has enough available balance.
+- Keep the path from discovery to execution as short as possible.
 - Calculate pre-trade line, post-trade line, and entry line.
 - Insert into `trades`.
 - Update `weekly_player_markets`.
@@ -60,9 +64,29 @@ This document defines the first production backend for Mercatus.
 
 ### 6. Discovery and leaderboard
 
+- Discovery should surface reasons to trade, not just reasons to browse.
+- Ranking systems should reinforce competition, repeat participation, and frequent trading.
+
 - `wallet_balances` view powers balance ranking.
 - `portfolio_stats` view powers open positions, realized P/L, and win rate.
 - “Largest position” should come from `holdings.total_stake`.
+
+## Product-principle checks for backend work
+
+Backend changes should be favoured when they improve one or more of the following:
+
+- lower latency for quoting, execution, sync, or settlement
+- higher matched volume or easier matching
+- clearer market activity signals for discovery surfaces
+- safer operation of active markets
+- fewer blockers between seeing value and placing a trade
+
+Backend changes should be questioned when they:
+
+- increase complexity without increasing participation or trading
+- make projections more centrally controlled
+- fragment liquidity across too many low-activity markets
+- add operational friction to high-activity flows
 
 ## Suggested service layout
 

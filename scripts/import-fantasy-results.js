@@ -31,6 +31,21 @@ function roundTo(value, decimals = 1) {
   return Math.round((Number(value) || 0) * factor) / factor;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function priceImpliedProjectionFor(player) {
+  const cost = Number(player?.cost);
+  if (!Number.isFinite(cost) || cost <= 0) return null;
+  const baseProjection = cost / 13750;
+  const averagePoints = Number(player?.stats?.avg_points);
+  const formAdjustment = Number.isFinite(averagePoints) && averagePoints > 0
+    ? clamp((averagePoints - baseProjection) * 0.12, -2.5, 2.5)
+    : 0;
+  return roundTo(baseProjection + formAdjustment);
+}
+
 function positionFromFantasyCode(player) {
   const primaryCode = Array.isArray(player.positions) ? player.positions[0] : null;
   const map = {
@@ -151,6 +166,8 @@ async function main() {
       key,
       primaryPosition: positionFromFantasyCode(player),
       gamesPlayed: scoreValues.length,
+      currentPrice: Number.isFinite(Number(player.cost)) ? Number(player.cost) : null,
+      priceImpliedProjection: priceImpliedProjectionFor(player),
       seasonAverage: roundTo(average(scoreValues)),
       last3Average: roundTo(average(scoreValues.slice(-3))),
       lastGameScore: roundTo(latestEntry.score),

@@ -16,6 +16,10 @@ const derivedData = window.MERCATUS_DERIVED || {};
 const roundGames = seed.roundGames;
 const TEAM_COLORS = seed.TEAM_COLORS;
 const CURRENT_ROUND_LABEL = roundGames[0]?.roundLabel || "Current round";
+const AVAILABLE_ROUND_NUMBERS = [...new Set([
+  ...roundGames.map((game) => parseRoundNumberFromLabel(game.roundLabel)).filter(Number.isFinite),
+  ...((derivedData.metadata?.roundsIncluded) || []).map((round) => Number(round)).filter(Number.isFinite)
+])].sort((left, right) => left - right);
 const BOT_BEHAVIOUR_PRESETS = {
   BALANCED: { crowdStyle: 50, liquidityStyle: 40, fadeStyle: 45, frequencyStyle: 50, edgeStyle: 50 },
   MOMENTUM: { crowdStyle: 84, liquidityStyle: 22, fadeStyle: 18, frequencyStyle: 70, edgeStyle: 38 },
@@ -24,7 +28,7 @@ const BOT_BEHAVIOUR_PRESETS = {
   PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
 };
 
-let state = { bankrolls: {}, markets: [] };
+let state = { bankrolls: {}, markets: [], walletTransactions: [] };
 let backendState = { mode: "local", user: null, dashboard: null };
 let prizePoolState = null;
 let toastTimer = null;
@@ -60,6 +64,8 @@ const uiState = {
   adminOpen: false,
   portfolioFilter: "ALL",
   portfolioSort: "MOST_RECENT",
+  walletFilter: "ALL",
+  walletAmountDraft: "25",
   pendingTradeMarketId: "",
   leaderboardSort: "BALANCE",
   quickPickShuffleSeed: String(Date.now()),
@@ -126,13 +132,23 @@ const elements = {
   accountViewSwitch: document.getElementById("account-view-switch"),
   accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
   accountPortfolioView: document.getElementById("account-portfolio-view"),
+  accountWalletView: document.getElementById("account-wallet-view"),
   accountLeaderboardView: document.getElementById("account-leaderboard-view"),
   prizePoolView: document.getElementById("prize-pool-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
+  portfolioPrizePoolCard: document.getElementById("portfolio-prize-pool-card"),
   portfolioFilters: document.getElementById("portfolio-filters"),
   portfolioSortButton: document.getElementById("portfolio-sort-button"),
   portfolioList: document.getElementById("portfolio-list"),
+  walletSummary: document.getElementById("wallet-summary"),
+  walletAmountInput: document.getElementById("wallet-amount-input"),
+  walletAmountPresets: document.getElementById("wallet-amount-presets"),
+  walletDepositButton: document.getElementById("wallet-deposit-button"),
+  walletWithdrawButton: document.getElementById("wallet-withdraw-button"),
+  walletFeedback: document.getElementById("wallet-feedback"),
+  walletFilters: document.getElementById("wallet-filters"),
+  walletTransactionList: document.getElementById("wallet-transaction-list"),
   quickPickDeck: document.getElementById("quick-take-deck"),
   prizePoolShell: document.getElementById("prize-pool-shell"),
   userName: document.getElementById("user-name"),
@@ -141,6 +157,10 @@ const elements = {
   openAdminButton: document.getElementById("open-admin-button"),
   adminShell: document.getElementById("admin-shell"),
   closeAdminButton: document.getElementById("close-admin-button"),
+  adminRoundForm: document.getElementById("admin-round-form"),
+  adminRoundSelect: document.getElementById("admin-round-select"),
+  adminRoundSummary: document.getElementById("admin-round-summary"),
+  adminRoundFeedback: document.getElementById("admin-round-feedback"),
   openingMarket: document.getElementById("opening-market"),
   openingLineInput: document.getElementById("opening-line-input"),
   currentLineInput: document.getElementById("current-line-input"),
@@ -275,8 +295,25 @@ function bindEvents() {
   });
   elements.headerBalance?.addEventListener("click", () => {
     uiState.activeScreen = "account";
-    uiState.activeAccountView = "portfolio";
+    uiState.activeAccountView = "wallet";
     renderAll();
+  });
+  elements.walletAmountInput?.addEventListener("input", () => {
+    uiState.walletAmountDraft = elements.walletAmountInput.value;
+  });
+  elements.walletAmountPresets?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-wallet-amount]");
+    if (!button) return;
+    uiState.walletAmountDraft = button.dataset.walletAmount || "";
+    if (elements.walletAmountInput) {
+      elements.walletAmountInput.value = uiState.walletAmountDraft;
+    }
+  });
+  elements.walletDepositButton?.addEventListener("click", async () => {
+    await submitWalletDeposit();
+  });
+  elements.walletWithdrawButton?.addEventListener("click", async () => {
+    await submitWalletWithdrawal();
   });
 
   elements.homeLeaderboardLink?.addEventListener("click", () => {
@@ -300,6 +337,10 @@ function bindEvents() {
     renderAdminShell();
   });
 
+  elements.adminRoundForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveActiveRound();
+  });
   elements.openingMarket.addEventListener("change", syncOpeningForm);
   elements.openingLineForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -638,6 +679,7 @@ function renderAll() {
   renderSelectedMarket();
   renderMarketsList();
   renderPortfolio();
+  renderWallet();
   renderQuickTake();
   renderPrizePool();
   renderPrizePoolShareOverlay();
@@ -669,6 +711,7 @@ function renderScreens() {
     button.classList.toggle("active", button.dataset.accountView === uiState.activeAccountView)
   );
   elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
+  elements.accountWalletView?.classList.toggle("active", uiState.activeAccountView === "wallet");
   elements.accountLeaderboardView?.classList.toggle("active", uiState.activeAccountView === "leaderboard");
   elements.toast?.classList.toggle("toast-low", ["quickpick", "prizepool"].includes(uiState.activeScreen));
 }
@@ -695,11 +738,12 @@ function renderTeamToggle() {
 }
 
 function renderSelectors() {
-  const options = state.markets
+  const adminMarkets = getAdminRoundMarkets();
+  const options = adminMarkets
     .map((market) => `<option value="${market.id}">${market.playerName} (${formatLine(market.currentLine)})</option>`)
     .join("");
   elements.openingMarket.innerHTML = options;
-  elements.settlementMarket.innerHTML = state.markets
+  elements.settlementMarket.innerHTML = adminMarkets
     .map((market) => `<option value="${market.id}">${market.playerName}${market.settlement ? " (resolved)" : ""}</option>`)
     .join("");
 }
@@ -975,6 +1019,63 @@ function executeTrade(marketId, stake, side) {
   });
 }
 
+async function submitWalletDeposit() {
+  const amount = Number(uiState.walletAmountDraft || elements.walletAmountInput?.value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = "Enter a valid deposit amount.";
+    }
+    return;
+  }
+  if (elements.walletFeedback) {
+    elements.walletFeedback.textContent = "Depositing...";
+  }
+  try {
+    const response = await api("/api/wallet/deposit", {
+      userName: currentUserName(),
+      amount
+    });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool || prizePoolState });
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = response.message || "Deposit completed.";
+    }
+    triggerBalanceFlash();
+    renderAll();
+  } catch (error) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = error.message;
+    }
+  }
+}
+
+async function submitWalletWithdrawal() {
+  const amount = Number(uiState.walletAmountDraft || elements.walletAmountInput?.value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = "Enter a valid withdrawal amount.";
+    }
+    return;
+  }
+  if (elements.walletFeedback) {
+    elements.walletFeedback.textContent = "Submitting withdrawal request...";
+  }
+  try {
+    const response = await api("/api/wallet/withdraw", {
+      userName: currentUserName(),
+      amount
+    });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool || prizePoolState });
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = response.message || "Withdrawal request recorded.";
+    }
+    renderAll();
+  } catch (error) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = error.message;
+    }
+  }
+}
+
 function applyIncrementalTradeResponse(response, marketId) {
   if (response.prizePool) {
     prizePoolState = response.prizePool;
@@ -1029,8 +1130,52 @@ function renderPortfolio() {
     matchedBalance,
     unmatchedBalance
   });
+  renderPortfolioPrizePoolCard();
   renderPortfolioFilters();
   renderPortfolioPositionCards(elements.portfolioList, positions, "No positions match that filter yet.");
+}
+
+function renderPortfolioPrizePoolCard() {
+  if (!elements.portfolioPrizePoolCard) return;
+  const view = prizePoolState;
+  if (!view) {
+    elements.portfolioPrizePoolCard.innerHTML = "";
+    return;
+  }
+  if (view.hasEntry && view.entry) {
+    const correctPct = Math.round((Number(view.entry.correctPct) || 0) * 100);
+    const progress = Math.max(0, Math.min(100, correctPct));
+    elements.portfolioPrizePoolCard.innerHTML = `
+      <button class="profile-prize-pool-card is-entered" type="button" data-open-prize-pool="lineup">
+        <div class="profile-prize-pool-topline">
+          <span class="profile-prize-pool-kicker">PRIZE POOL · ROUND ${view.roundNumber}</span>
+          <span class="profile-prize-pool-status">Entered</span>
+        </div>
+        <div class="profile-prize-pool-stats">
+          <span><em>Stake</em><strong>${formatStake(view.entryFee || 10)}</strong></span>
+          <span><em>Correct %</em><strong>${correctPct}%</strong></span>
+          <span><em>Rank</em><strong class="is-rank">${view.entry.rank ? `#${view.entry.rank}` : "—"}</strong></span>
+        </div>
+        <div class="portfolio-performance-progress profile-prize-pool-progress"><span style="width:${progress}%"></span></div>
+      </button>
+    `;
+    elements.portfolioPrizePoolCard.querySelector("[data-open-prize-pool]")?.addEventListener("click", () => {
+      uiState.activeScreen = "prizepool";
+      renderAll();
+    });
+    return;
+  }
+  elements.portfolioPrizePoolCard.innerHTML = `
+    <article class="profile-prize-pool-card is-empty">
+      <p class="profile-prize-pool-empty-copy">You haven't entered this week's Prize Pool</p>
+      <button class="profile-prize-pool-enter-button" type="button" data-enter-prize-pool>Enter for ${formatStake(view.entryFee || 10)}</button>
+    </article>
+  `;
+  elements.portfolioPrizePoolCard.querySelector("[data-enter-prize-pool]")?.addEventListener("click", async () => {
+    uiState.activeScreen = "prizepool";
+    renderAll();
+    await startPrizePoolDraft();
+  });
 }
 
 function renderPositionCards(container, trades, emptyMessage) {
@@ -1129,6 +1274,150 @@ function renderPortfolioFilters() {
     })
   );
   elements.portfolioSortButton.innerHTML = `<span>Sort</span><strong>${portfolioSortLabel(uiState.portfolioSort)}</strong>`;
+}
+
+function renderWallet() {
+  if (!elements.walletSummary || !elements.walletTransactionList) return;
+  const wallet = getWalletData();
+  const selectedAmount = uiState.walletAmountDraft || "25";
+  if (elements.walletAmountInput && elements.walletAmountInput.value !== selectedAmount) {
+    elements.walletAmountInput.value = selectedAmount;
+  }
+  elements.walletSummary.innerHTML = [
+    summaryStat("Available", formatStake(wallet.availableBalance)),
+    summaryStat("In Play", formatStake(wallet.inPlay)),
+    summaryStat("Deposits", formatStake(wallet.totalDeposits)),
+    summaryStat("Winnings", formatStake(wallet.totalWinnings), wallet.totalWinnings > 0 ? 1 : 0)
+  ].join("");
+  renderWalletFilters();
+  renderWalletTransactions(wallet.transactions);
+}
+
+function renderWalletFilters() {
+  if (!elements.walletFilters) return;
+  const filters = [
+    ["ALL", "All"],
+    ["FUNDS", "Funds"],
+    ["ENTRIES", "Entries"],
+    ["WINNINGS", "Winnings"],
+    ["PRIZEPOOL", "Prize Pool"],
+    ["WITHDRAWALS", "Withdrawals"]
+  ];
+  elements.walletFilters.innerHTML = filters
+    .map(([value, label]) => `<button class="portfolio-chip ${uiState.walletFilter === value ? "active" : ""}" type="button" data-wallet-filter="${value}">${label}</button>`)
+    .join("");
+  elements.walletFilters.querySelectorAll("[data-wallet-filter]").forEach((button) =>
+    button.addEventListener("click", () => {
+      uiState.walletFilter = button.dataset.walletFilter;
+      renderWallet();
+    })
+  );
+}
+
+function renderWalletTransactions(transactions) {
+  if (!elements.walletTransactionList) return;
+  if (!transactions.length) {
+    elements.walletTransactionList.innerHTML = `<div class="portfolio-empty-state"><strong>No wallet transactions yet</strong><span>Your deposits, entries, winnings, refunds, and withdrawal requests will appear here.</span></div>`;
+    return;
+  }
+  elements.walletTransactionList.innerHTML = transactions
+    .map((transaction) => {
+      const view = walletTransactionView(transaction);
+      return `
+        <article class="wallet-transaction-card">
+          <div class="wallet-transaction-main">
+            <div class="wallet-transaction-copy">
+              <div class="wallet-transaction-topline">
+                <span class="wallet-transaction-title">${view.title}</span>
+                <span class="wallet-transaction-pill ${view.pillClassName}">${view.pillLabel}</span>
+              </div>
+              <p class="wallet-transaction-subtitle">${view.subtitle}</p>
+              <div class="wallet-transaction-meta">
+                <span>${formatTimestamp(transaction.createdAt)}</span>
+                <span>Balance ${formatStake(transaction.balanceAfter)}</span>
+              </div>
+            </div>
+            <div class="wallet-transaction-amount ${view.amountClassName}">${view.amountLabel}</div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function getWalletData() {
+  const userName = currentUserName();
+  const transactions = filterWalletTransactions(getUserWalletTransactions(userName));
+  const allTransactions = getUserWalletTransactions(userName);
+  const openPositions = getPortfolioData().openPositions || [];
+  const inPlay = openPositions.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
+  const totalDeposits = allTransactions
+    .filter((transaction) => ["OPENING_BALANCE", "DEPOSIT"].includes(transaction.type))
+    .reduce((sum, transaction) => sum + Math.max(0, Number(transaction.amount) || 0), 0);
+  const totalWinnings = allTransactions
+    .filter((transaction) => ["TRADE_SETTLEMENT_WIN", "TRADE_REFUND", "PRIZE_POOL_PAYOUT"].includes(transaction.type))
+    .reduce((sum, transaction) => sum + Math.max(0, Number(transaction.amount) || 0), 0);
+  return {
+    availableBalance: getDisplayedCash(userName),
+    inPlay,
+    totalDeposits,
+    totalWinnings,
+    transactions
+  };
+}
+
+function getUserWalletTransactions(userName) {
+  if (!userName) return [];
+  return (state.walletTransactions || [])
+    .filter((transaction) => transaction.userName?.toLowerCase?.() === userName.toLowerCase())
+    .slice()
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+}
+
+function filterWalletTransactions(transactions) {
+  return transactions.filter((transaction) => {
+    if (uiState.walletFilter === "ALL") return true;
+    if (uiState.walletFilter === "FUNDS") return ["OPENING_BALANCE", "DEPOSIT"].includes(transaction.type);
+    if (uiState.walletFilter === "ENTRIES") return ["TRADE_MATCH", "TRADE_REFUND"].includes(transaction.type);
+    if (uiState.walletFilter === "WINNINGS") return ["TRADE_SETTLEMENT_WIN", "PRIZE_POOL_PAYOUT"].includes(transaction.type);
+    if (uiState.walletFilter === "PRIZEPOOL") return ["PRIZE_POOL_ENTRY", "PRIZE_POOL_PAYOUT"].includes(transaction.type);
+    if (uiState.walletFilter === "WITHDRAWALS") return transaction.type === "WITHDRAWAL_REQUEST";
+    return true;
+  });
+}
+
+function walletTransactionView(transaction) {
+  const requestedAmount = Number(transaction.requestedAmount) || 0;
+  const amount = Number(transaction.amount) || 0;
+  const baseView = {
+    title: transaction.title || "Wallet update",
+    subtitle: transaction.subtitle || "Account activity",
+    pillLabel: transaction.status === "REJECTED" ? "Demo only" : "Completed",
+    pillClassName: transaction.status === "REJECTED" ? "is-muted" : "is-completed",
+    amountClassName: amount > 0 ? "positive" : amount < 0 ? "negative" : "neutral",
+    amountLabel: amount === 0 && requestedAmount > 0 ? `${formatStake(requestedAmount)} requested` : formatSignedStake(amount)
+  };
+  if (transaction.type === "WITHDRAWAL_REQUEST") {
+    return {
+      ...baseView,
+      pillLabel: transaction.status === "REJECTED" ? "Rejected" : baseView.pillLabel,
+      pillClassName: transaction.status === "REJECTED" ? "is-rejected" : baseView.pillClassName,
+      amountClassName: "neutral"
+    };
+  }
+  if (transaction.type === "TRADE_MATCH" || transaction.type === "PRIZE_POOL_ENTRY") {
+    return { ...baseView, pillLabel: "Entry", pillClassName: "is-entry" };
+  }
+  if (transaction.type === "TRADE_SETTLEMENT_WIN" || transaction.type === "PRIZE_POOL_PAYOUT") {
+    return { ...baseView, pillLabel: "Win", pillClassName: "is-win" };
+  }
+  if (transaction.type === "TRADE_REFUND") {
+    return { ...baseView, pillLabel: "Refund", pillClassName: "is-refund" };
+  }
+  if (transaction.type === "DEPOSIT" || transaction.type === "OPENING_BALANCE") {
+    return { ...baseView, pillLabel: "Funds", pillClassName: "is-funds" };
+  }
+  return baseView;
 }
 
 function buildPortfolioItems(openTrades, settledTrades) {
@@ -1930,8 +2219,18 @@ function renderProfileSummary() {
 function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
+  if (elements.adminRoundSelect) {
+    elements.adminRoundSelect.innerHTML = getAvailableRoundOptions()
+      .map((roundNumber) => `<option value="${roundNumber}">${roundLabelForNumber(roundNumber)}</option>`)
+      .join("");
+    elements.adminRoundSelect.value = String(activeRoundNumber());
+  }
+  if (elements.adminRoundSummary) {
+    const marketCount = state.markets.filter((market) => marketRoundNumber(market) === activeRoundNumber()).length;
+    elements.adminRoundSummary.textContent = `${activeRoundLabel()} is active. ${marketCount} seeded markets belong to this round.`;
+  }
   if (elements.settleRoundButton) {
-    elements.settleRoundButton.textContent = `Settle ${CURRENT_ROUND_LABEL} from imported scores`;
+    elements.settleRoundButton.textContent = `Settle ${activeRoundLabel()} from imported scores`;
   }
   if (elements.undoSettlementButton) {
     elements.undoSettlementButton.disabled = !state.lastSettlementBatch;
@@ -1940,7 +2239,7 @@ function renderAdminShell() {
 
 function renderAdminMarkets() {
   const filteredMarkets = getAdminMarkets();
-  const totalMarkets = state.markets.length;
+  const totalMarkets = getAdminRoundMarkets().length;
   elements.adminMarketControls.innerHTML = `<div><p class="panel-label">Visible markets</p><p class="section-meta">Showing ${filteredMarkets.length} of ${totalMarkets} markets. Defaults focus on open or moved markets to keep admin fast.</p></div><div class="portfolio-chip-row">${[
     ["ACTIVE", "Open only"],
     ["MOVED", "Moved"],
@@ -2061,7 +2360,7 @@ function renderBotSimulation() {
 
 function renderAdminTable() {
   const trades = getAdminTrades();
-  const allTradesCount = state.markets.reduce((sum, market) => sum + market.trades.length, 0);
+  const allTradesCount = getAdminRoundMarkets().reduce((sum, market) => sum + market.trades.length, 0);
   elements.adminTradeControls.innerHTML = `<div><p class="panel-label">Visible trades</p><p class="section-meta">Showing ${trades.length} of ${allTradesCount} trades. Default view prioritizes open and recent activity.</p></div><div class="portfolio-chip-row">${[
     ["OPEN", "Open"],
     ["BOTS", "Bots"],
@@ -2094,7 +2393,7 @@ function renderAdminTable() {
 }
 
 function getAdminMarkets() {
-  const sortedMarkets = state.markets
+  const sortedMarkets = getAdminRoundMarkets()
     .slice()
     .sort((left, right) => adminMarketRank(right) - adminMarketRank(left));
   const filteredMarkets = sortedMarkets.filter((market) => {
@@ -2116,7 +2415,7 @@ function adminMarketRank(market) {
 }
 
 function getAdminTrades() {
-  const trades = state.markets.flatMap((market) =>
+  const trades = getAdminRoundMarkets().flatMap((market) =>
     market.trades.map((trade) => ({ trade, market }))
   );
   const filteredTrades = trades
@@ -2138,7 +2437,8 @@ function isBotTrade(trade) {
 }
 
 function getAdminDashboardSummary() {
-  const allTrades = state.markets.flatMap((market) => market.trades || []);
+  const adminRoundMarkets = getAdminRoundMarkets();
+  const allTrades = adminRoundMarkets.flatMap((market) => market.trades || []);
   const latestRoundMetrics = getLatestRoundMetrics();
   const totalTradedValue = allTrades.reduce((sum, trade) => sum + (Number(trade.stake) || 0), 0);
   const openTrades = allTrades.filter((trade) => !trade.result);
@@ -2146,13 +2446,13 @@ function getAdminDashboardSummary() {
   const availableLiquidity = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
   const matchedOpenTrades = openTrades.filter((trade) => (Number(trade.matchedStake) || 0) > 0).length;
   const pendingTrades = openTrades.filter((trade) => (Number(trade.unmatchedStake) || 0) > 0).length;
-  const overPressure = state.markets.reduce((sum, market) => sum + Math.max(0, Number(market.netPressure) || 0), 0);
-  const underPressure = state.markets.reduce((sum, market) => sum + Math.max(0, -(Number(market.netPressure) || 0)), 0);
+  const overPressure = adminRoundMarkets.reduce((sum, market) => sum + Math.max(0, Number(market.netPressure) || 0), 0);
+  const underPressure = adminRoundMarkets.reduce((sum, market) => sum + Math.max(0, -(Number(market.netPressure) || 0)), 0);
   const netPressure = overPressure - underPressure;
   const botTrades = allTrades.filter((trade) => isBotTrade(trade)).length;
-  const activeMarkets = state.markets.filter((market) => !market.settlement).length;
-  const resolvedMarkets = state.markets.length - activeMarkets;
-  const marketsNeedingAction = state.markets.filter((market) => adminMarketRank(market) >= 300).length;
+  const activeMarkets = adminRoundMarkets.filter((market) => !market.settlement).length;
+  const resolvedMarkets = adminRoundMarkets.length - activeMarkets;
+  const marketsNeedingAction = adminRoundMarkets.filter((market) => adminMarketRank(market) >= 300).length;
   const botShare = allTrades.length ? Math.round((botTrades / allTrades.length) * 100) : 0;
 
   return {
@@ -2324,6 +2624,23 @@ function adminDashboardCard(label, value, meta) {
   return `<article class="admin-dashboard-card"><p class="panel-label">${label}</p><strong>${value}</strong><p class="section-meta">${meta}</p></article>`;
 }
 
+async function saveActiveRound() {
+  try {
+    const roundNumber = Number(elements.adminRoundSelect?.value);
+    const response = await api("/api/admin/active-round", { roundNumber });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
+    renderAll();
+    if (elements.adminRoundFeedback) {
+      elements.adminRoundFeedback.textContent = `${activeRoundLabel()} is now active in admin tools.`;
+    }
+    refreshSharedState();
+  } catch (error) {
+    if (elements.adminRoundFeedback) {
+      elements.adminRoundFeedback.textContent = error.message;
+    }
+  }
+}
+
 async function saveLines() {
   try {
     const response = await api("/api/admin/lines", {
@@ -2367,8 +2684,8 @@ async function settleCurrentRoundFromImportedScores() {
     const voidCount = response.settlementBatch?.voidCount ?? 0;
     const roundMetrics = response.settlementBatch?.roundMetrics;
     const baseMessage = voidCount
-      ? `${CURRENT_ROUND_LABEL} settled for ${settledCount} markets. ${scoredCount} used official scores and ${voidCount} were voided with stake refunds.`
-      : `${CURRENT_ROUND_LABEL} settled for ${settledCount} markets.`;
+      ? `${activeRoundLabel()} settled for ${settledCount} markets. ${scoredCount} used official scores and ${voidCount} were voided with stake refunds.`
+      : `${activeRoundLabel()} settled for ${settledCount} markets.`;
     elements.settlementFeedback.textContent = roundMetrics
       ? `${baseMessage} Profit ${formatStake(roundMetrics.roundProfit)} | matched ${formatStake(roundMetrics.totalMatchedVolume)} | users ${roundMetrics.participatingUsers} | avg spend ${formatStake(roundMetrics.averageSpendPerUser)} | unmatched ${formatStake(roundMetrics.unmatchedVolume)}.`
       : baseMessage;
@@ -2499,8 +2816,12 @@ function renderBotBehaviourSummary() {
 }
 
 function syncOpeningForm() {
-  const market = findMarket(elements.openingMarket.value || uiState.selectedMarketId);
-  if (!market) return;
+  const market = findMarket(elements.openingMarket.value || uiState.selectedMarketId || getAdminRoundMarkets()[0]?.id);
+  if (!market) {
+    elements.openingLineInput.value = "";
+    elements.currentLineInput.value = "";
+    return;
+  }
   elements.openingMarket.value = market.id;
   elements.openingLineInput.value = market.initialLine.toFixed(1);
   elements.currentLineInput.value = market.currentLine.toFixed(1);
@@ -2539,7 +2860,7 @@ function syncSelectedMarket() {
 }
 
 function currentGame() {
-  return roundGames.find((game) => game.id === uiState.currentGameId) ?? roundGames[0];
+  return getActiveRoundGames().find((game) => game.id === uiState.currentGameId) ?? getActiveRoundGames()[0] ?? roundGames[0];
 }
 
 function findGame(gameId) {
@@ -2674,25 +2995,26 @@ function getLeaderboardRows() {
 }
 
 function renderHome() {
-  const topProjected = state.markets
+  const homeMarkets = getActiveRoundMarkets();
+  const topProjected = homeMarkets
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine)
     .slice(0, 20);
-  const biggestGainers = state.markets
+  const biggestGainers = homeMarkets
     .slice()
     .filter((market) => getMovementValue(market) > 0)
     .sort((left, right) => getMovementValue(right) - getMovementValue(left) || right.currentLine - left.currentLine)
     .slice(0, 20);
-  const biggestLosers = state.markets
+  const biggestLosers = homeMarkets
     .slice()
     .filter((market) => getMovementValue(market) < 0)
     .sort((left, right) => getMovementValue(left) - getMovementValue(right) || left.currentLine - right.currentLine)
     .slice(0, 20);
-  const fallbackMovers = state.markets
+  const fallbackMovers = homeMarkets
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine || right.seasonAverage - left.seasonAverage)
     .slice(0, 20);
-  const projectionComparisons = state.markets
+  const projectionComparisons = homeMarkets
     .map((market) => {
       const impliedScore = priceImpliedProjectionForMarket(market);
       return {
@@ -2704,9 +3026,9 @@ function renderHome() {
     .filter((entry) => Number.isFinite(entry.impliedScore))
     .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine)
     .slice(0, 20);
-  const mostTraded = state.markets
+  const mostConfident = homeMarkets
     .slice()
-    .sort((left, right) => tradeCountFor(right) - tradeCountFor(left) || tradeVolumeFor(right) - tradeVolumeFor(left))
+    .sort((left, right) => getMarketTradeMetrics(right).confidence - getMarketTradeMetrics(left).confidence || projectionValue(right) - projectionValue(left))
     .slice(0, 20);
   const roundStarted = isRoundStarted();
   const leaderboardRows = getLeaderboardRows();
@@ -2761,36 +3083,19 @@ function renderHome() {
     headingTitle: "Losers"
   });
 
-  renderHomeMarketLeaderboard(elements.homeMostTraded, mostTraded, ({ market }) => {
-    const movement = getMovementText(market);
+  renderHomeMarketLeaderboard(elements.homeMostTraded, mostConfident, ({ market }) => {
+    const metrics = getMarketTradeMetrics(market);
     return {
       title: market.playerName,
       badge: homeTeamAbbreviation(market.team),
       meta: market.team,
       detail: market.position,
-      statPrimary: formatHomeMovementValue(movement.value),
-      statSecondary: ""
+      statPrimary: `${market.currentLine.toFixed(1)} pts`,
+      confidence: metrics.confidence
     };
   }, {
     variant: "featured-market-confidence",
-    headingTitle: "Most Traded",
-    skipFirstListItem: Boolean(mostTraded[0]),
-    summaryItems: mostTraded[0]
-      ? [
-          {
-            label: "Most active",
-            value: mostTraded[0].playerName
-          },
-          ...(getMarketTradeMetrics(mostTraded[0]).volume > 0
-            ? [
-                {
-                  label: "Top volume",
-                  value: tradeVolumeFor(mostTraded[0])
-                }
-              ]
-            : [])
-        ]
-      : []
+    headingTitle: "Market Confidence"
   });
 
   renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
@@ -2871,7 +3176,7 @@ function renderHomePrizePoolBanner(view) {
 
 function renderHomeGamesStrip() {
   if (!elements.homeGamesStrip) return;
-  const games = roundGames
+  const games = getActiveRoundGames()
     .slice()
     .sort((left, right) => kickoffTimestampForGame(left) - kickoffTimestampForGame(right));
   if (!games.length) {
@@ -3087,7 +3392,7 @@ function renderHomeMetricMarkup(view = {}, fallbackTone = "") {
 }
 
 function isRoundStarted() {
-  return roundGames.some((game) => isGameLocked(game));
+  return getActiveRoundGames().some((game) => isGameLocked(game));
 }
 
 function renderHomeCarouselControls() {
@@ -3095,7 +3400,7 @@ function renderHomeCarouselControls() {
   const panels = [
     { key: "gainers", label: "Gainers", detail: "Biggest gainers" },
     { key: "losers", label: "Losers", detail: "Biggest losers" },
-    { key: "activity", label: "Most Traded", detail: "Crowd-backed activity" },
+    { key: "activity", label: "Market Confidence", detail: "Highest-confidence lines" },
     { key: "projected", label: "Projected", detail: "Top current lines" },
     { key: "value", label: "Value", detail: "Gaps vs NRL price" },
     { key: "leaderboard", label: "Leaderboard", detail: "Community standings" }
@@ -3227,9 +3532,10 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
-        const movement = getMovementText(market);
         const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
-        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy home-confidence-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail || matchupContext(market).label}</span></div>${note}</div><div class="home-projection-metric home-confidence-metric-block"><strong class="${movement.className}">${view.statPrimary}</strong></div></button>`;
+        const confidence = Number(view.confidence) || 0;
+        const confidenceClassName = confidence >= 71 ? "is-high" : confidence >= 41 ? "is-mid" : "is-low";
+        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-confidence-row"><div class="home-confidence-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail || matchupContext(market).label}</span></div>${note}</div><div class="home-confidence-metric-block"><strong class="home-confidence-projection">${view.statPrimary}</strong><div class="home-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent ${confidenceClassName}">${confidence}%</span></div></div></div></button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -3530,9 +3836,47 @@ function fantasyPlayerStatsFor(market) {
   return derivedData.playerStatsByName?.[normalizePlayerKey(market.playerName)] || null;
 }
 
-function currentRoundNumber() {
-  const match = String(CURRENT_ROUND_LABEL).match(/(\d+)/);
+function parseRoundNumberFromLabel(label) {
+  const match = String(label || "").match(/(\d+)/);
   return match ? Number(match[1]) : null;
+}
+
+function roundLabelForNumber(roundNumber) {
+  return roundGames.find((game) => parseRoundNumberFromLabel(game.roundLabel) === Number(roundNumber))?.roundLabel || `Round ${roundNumber}`;
+}
+
+function getAvailableRoundOptions() {
+  return AVAILABLE_ROUND_NUMBERS.length ? AVAILABLE_ROUND_NUMBERS : [3];
+}
+
+function activeRoundNumber() {
+  const roundNumber = Number(state.activeRoundNumber ?? prizePoolState?.roundNumber);
+  return Number.isFinite(roundNumber) ? roundNumber : (parseRoundNumberFromLabel(CURRENT_ROUND_LABEL) || 3);
+}
+
+function activeRoundLabel() {
+  const roundLabel = state.activeRoundLabel ?? prizePoolState?.roundLabel;
+  return roundLabel || roundLabelForNumber(activeRoundNumber());
+}
+
+function marketRoundNumber(market) {
+  return parseRoundNumberFromLabel(roundGames.find((game) => game.id === market?.gameId)?.roundLabel);
+}
+
+function getActiveRoundGames() {
+  return roundGames.filter((game) => parseRoundNumberFromLabel(game.roundLabel) === activeRoundNumber());
+}
+
+function getActiveRoundMarkets() {
+  return state.markets.filter((market) => marketRoundNumber(market) === activeRoundNumber());
+}
+
+function getAdminRoundMarkets() {
+  return getActiveRoundMarkets();
+}
+
+function currentRoundNumber() {
+  return activeRoundNumber();
 }
 
 function priceImpliedProjectionForMarket(market) {
@@ -3727,6 +4071,20 @@ function roundToHalf(value) {
   return Math.round(value * 2) / 2;
 }
 
+function createHomeConfidenceGauge(percentage) {
+  const radius = 16;
+  const circumference = Math.PI * radius;
+  const fillLength = (Math.max(0, Math.min(100, Number(percentage) || 0)) / 100) * circumference;
+  const gapLength = circumference - fillLength;
+  const colour = percentage >= 71 ? "#00C853" : percentage >= 41 ? "#F59E0B" : "#FF3D3D";
+  return `
+    <svg class="home-confidence-gauge" width="36" height="20" viewBox="0 0 36 20" aria-hidden="true">
+      <path d="M 2 18 A 16 16 0 0 1 34 18" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" stroke-linecap="round"></path>
+      <path d="M 2 18 A 16 16 0 0 1 34 18" fill="none" stroke="${colour}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${fillLength} ${gapLength}" class="gauge-fill"></path>
+    </svg>
+  `;
+}
+
 function isMarketOpen(market) {
   return !isMarketLocked(market);
 }
@@ -3749,14 +4107,15 @@ function scheduleKickoffRefresh() {
 }
 
 function nextScheduledKickoff() {
-  return roundGames.find((game) => {
+  return getActiveRoundGames().find((game) => {
     const kickoffAt = kickoffTimestampForGame(game);
     return Number.isFinite(kickoffAt) && kickoffAt > Date.now();
   }) || null;
 }
 
 function nextGameToLock() {
-  return roundGames.find((game) => !isGameLocked(game)) || roundGames[roundGames.length - 1] || null;
+  const activeRoundGames = getActiveRoundGames();
+  return activeRoundGames.find((game) => !isGameLocked(game)) || activeRoundGames[activeRoundGames.length - 1] || null;
 }
 
 function kickoffTimestampForGame(game) {
@@ -3781,8 +4140,15 @@ function parseKickoffLabel(label) {
 }
 
 function isGameLocked(game, now = Date.now()) {
+  if (isGameForceOpen(game)) return false;
   const kickoffAt = kickoffTimestampForGame(game);
   return Number.isFinite(kickoffAt) ? now >= kickoffAt : false;
+}
+
+function isGameForceOpen(game) {
+  if (!game) return false;
+  const forceOpenGameIds = Array.isArray(state.forceOpenGameIds) ? state.forceOpenGameIds : [];
+  return forceOpenGameIds.includes(game.id);
 }
 
 function isMarketLocked(market, now = Date.now()) {

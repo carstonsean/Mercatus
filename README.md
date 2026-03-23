@@ -2,6 +2,14 @@
 
 Mercatus is a play-money projection market for weekly NRL Fantasy player scores.
 
+## Product principles
+
+Mercatus is built around one core objective: generate accurate NRL Fantasy projections by aggregating crowd trading activity.
+
+The projection should emerge from the market, not be centrally determined. That means future product, UX, and backend decisions should prioritise participation, trading frequency, matched positions, liquidity, efficient price discovery, and low-friction execution.
+
+The full operating principles live in [docs/product-principles.md](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\docs\product-principles.md).
+
 This version now includes a lightweight shared backend so multiple people on the same Wi-Fi can access the same markets, place trades into the same lines, and see the same market state.
 
 ## What changed
@@ -121,6 +129,28 @@ What it does today:
 - newly placed trades are mirrored into Supabase `trades`, `holdings`, and `wallet_ledger`
 - local `.env` loading is built in, so Mercatus will read env vars from a project-level `.env` file without extra packages
 
+## Migrating existing state to Supabase
+
+The current app still defaults to local mode unless `USE_SUPABASE=true` is set in the environment.
+
+Before enabling Supabase mode, migrate the current `server-state.json` snapshot into the database:
+
+```bash
+npm run migrate:supabase
+```
+
+That importer will:
+
+- upsert users
+- seed wallet balances from the local bankroll snapshot
+- copy markets, trades, and matched pairs into Supabase
+- rebuild holdings from matched open positions
+
+Run these migrations in Supabase first:
+
+- [supabase/migrations/001_init_mercatus.sql](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\supabase\migrations\001_init_mercatus.sql)
+- [supabase/migrations/002_orderbook_state.sql](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\supabase\migrations\002_orderbook_state.sql)
+
 What still uses the local demo backend:
 
 - primary market state serving to the browser
@@ -139,3 +169,5 @@ The next implementation step is moving from `server.js` file-backed state to Sup
 - replace `server-state.json` reads/writes with database queries
 - move bankroll changes into `wallet_ledger`
 - add scraping for official scores and team lists
+
+All future features and logic updates should also be checked against [docs/product-principles.md](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\docs\product-principles.md). If a change does not increase participation, trading activity, liquidity, or market efficiency, it should be reconsidered.

@@ -1,0 +1,16 @@
+{
+  "name": "mercatus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mercatus staging server for the NRL Fantasy projection market MVP.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node -c server.js && node -c app.js",
+    "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

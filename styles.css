@@ -3061,6 +3061,179 @@ label {
   gap: 12px;
 }
 
+.wallet-strip {
+  display: grid;
+  gap: 14px;
+}
+
+.wallet-actions-block,
+.wallet-transactions-block {
+  padding-top: 4px;
+}
+
+.wallet-actions-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(180deg, rgba(15, 22, 32, 0.96), rgba(10, 14, 21, 0.92));
+  box-shadow: 0 10px 28px rgba(0,0,0,0.2);
+}
+
+.wallet-amount-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.wallet-amount-field input {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(7, 12, 18, 0.88);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.wallet-amount-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wallet-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wallet-feedback {
+  min-height: 20px;
+  margin: 0;
+}
+
+.wallet-helper-copy {
+  margin: 0;
+}
+
+.wallet-transaction-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.wallet-transaction-card {
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(14, 18, 26, 0.92);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.2);
+}
+
+.wallet-transaction-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.wallet-transaction-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wallet-transaction-topline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wallet-transaction-title {
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wallet-transaction-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.wallet-transaction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.wallet-transaction-amount {
+  flex: 0 0 auto;
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wallet-transaction-amount.positive {
+  color: #6ef0a6;
+}
+
+.wallet-transaction-amount.negative {
+  color: #ff8c8c;
+}
+
+.wallet-transaction-amount.neutral {
+  color: #f6d36d;
+}
+
+.wallet-transaction-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.wallet-transaction-pill.is-funds,
+.wallet-transaction-pill.is-completed {
+  background: rgba(104, 217, 255, 0.14);
+  color: #8fe8ff;
+}
+
+.wallet-transaction-pill.is-entry {
+  background: rgba(248, 192, 78, 0.16);
+  color: #ffd978;
+}
+
+.wallet-transaction-pill.is-win {
+  background: rgba(54, 223, 152, 0.16);
+  color: #82f1bb;
+}
+
+.wallet-transaction-pill.is-refund {
+  background: rgba(162, 131, 255, 0.16);
+  color: #c9b8ff;
+}
+
+.wallet-transaction-pill.is-rejected,
+.wallet-transaction-pill.is-muted {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+}
+
 .portfolio-performance-card {
   display: grid;
   gap: 14px;
@@ -3131,6 +3304,111 @@ label {
   height: 100%;
   border-radius: inherit;
   background: #00C853;
+}
+
+.profile-prize-pool-block {
+  padding-top: 4px;
+}
+
+.profile-prize-pool-card {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(16,23,34,0.96), rgba(10,14,21,0.94));
+  box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+  text-align: left;
+}
+
+.profile-prize-pool-card.is-entered {
+  border: 1px solid rgba(255,215,0,0.2);
+}
+
+.profile-prize-pool-card.is-empty {
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.profile-prize-pool-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.profile-prize-pool-kicker {
+  color: #f7c76d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.profile-prize-pool-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255,215,0,0.14);
+  color: #f7c76d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-prize-pool-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-prize-pool-stats span {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-prize-pool-stats em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-prize-pool-stats strong {
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.profile-prize-pool-stats .is-rank {
+  color: #00C853;
+}
+
+.profile-prize-pool-progress {
+  height: 8px;
+}
+
+.profile-prize-pool-empty-copy {
+  margin: 0;
+  color: rgba(191, 208, 224, 0.72);
+  font-size: 12px;
+}
+
+.profile-prize-pool-enter-button {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #36df98, #f8c04e);
+  border: none;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+  color: #1A1A1A;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .home-leaderboard-list {
@@ -3706,101 +3984,86 @@ label {
 }
 
 .home-confidence-subcard {
-  grid-template-columns: 22px minmax(0, 1fr) 96px;
-  align-items: center;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .home-confidence-subcard .home-projection-copy strong {
-  font-size: 13px;
+  font-size: 15px;
+}
+
+.home-confidence-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
 }
 
 .home-confidence-copy {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .home-confidence-copy span {
   margin-top: 0;
 }
 
-.home-confidence-meta {
-  color: rgba(191, 208, 224, 0.78);
-}
-
-.home-confidence-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-left: auto;
-  padding: 0;
-  font-size: 0.68rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.home-confidence-badge.move-up {
-  color: var(--green);
-}
-
-.home-confidence-badge.move-down {
-  color: #ff8aa0;
-}
-
-.home-confidence-badge.move-flat {
-  color: var(--blue);
-}
-
-.home-confidence-metric {
-  display: grid;
-  justify-items: end;
-  align-items: center;
-  width: 100%;
-}
-
 .home-confidence-metric-block {
   display: grid;
   justify-items: end;
   align-content: center;
-  min-width: 56px;
+  min-width: 88px;
   text-align: right;
-  gap: 4px;
+  gap: 8px;
+}
+
+.home-confidence-projection {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.04em;
 }
 
 .home-confidence-primary {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   color: var(--text);
 }
 
-.home-confidence-primary .market-confidence-row-icon {
-  width: 20px;
-  height: 14px;
+.home-confidence-gauge {
+  overflow: visible;
+}
+
+.home-confidence-gauge .gauge-fill {
+  transform-origin: center;
+  animation: homeGaugeFill 600ms ease-out both;
 }
 
 .home-confidence-percent {
   display: block;
-  font-size: 0.9rem;
+  font-size: 13px;
+  font-weight: 800;
   line-height: 1;
 }
 
-.home-confidence-primary .market-confidence-row-icon.high {
-  color: var(--green);
+.home-confidence-percent.is-high {
+  color: #00C853;
 }
 
-.home-confidence-primary .market-confidence-row-icon.mid {
-  color: var(--gold);
+.home-confidence-percent.is-mid {
+  color: #F59E0B;
 }
 
-.home-confidence-primary .market-confidence-row-icon.low {
-  color: #ff8aa0;
+.home-confidence-percent.is-low {
+  color: #FF3D3D;
 }
 
-.home-confidence-secondary {
-  display: block;
-  color: var(--muted);
-  font-size: 0.68rem;
-  text-align: right;
+@keyframes homeGaugeFill {
+  from {
+    stroke-dasharray: 0 100;
+  }
 }
 
 .home-card-copy {
