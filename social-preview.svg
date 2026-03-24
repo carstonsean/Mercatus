@@ -1,0 +1,70 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0A0A14"/>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1025" cy="130" r="220" fill="url(#goldGlow)" opacity="0.42"/>
+  <circle cx="140" cy="560" r="230" fill="url(#greenGlow)" opacity="0.38"/>
+  <circle cx="640" cy="320" r="300" fill="url(#blueGlow)" opacity="0.16"/>
+  <rect x="58" y="54" width="1084" height="522" rx="34" fill="url(#card)" stroke="rgba(255,255,255,0.10)"/>
+  <rect x="94" y="103" width="182" height="42" rx="21" fill="#0E1117" stroke="rgba(255,255,255,0.12)"/>
+  <text x="119" y="131" fill="#00D26A" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">crowd</text>
+  <text x="206" y="131" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">IQ</text>
+  <rect x="292" y="110" width="92" height="28" rx="14" fill="#0B2016" stroke="#0E7B43"/>
+  <text x="315" y="129" fill="#36DF98" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800">BETA 2.0</text>
+  <text x="96" y="234" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="74" font-weight="900" letter-spacing="-2">The crowd</text>
+  <text x="96" y="309" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="74" font-weight="900" letter-spacing="-2">sets the line.</text>
+  <text x="98" y="370" fill="#B6BECD" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="500">Trade NRL fantasy projection markets,</text>
+  <text x="98" y="410" fill="#B6BECD" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="500">track crowd confidence, and test your edge.</text>
+  <rect x="97" y="462" width="334" height="64" rx="18" fill="url(#cta)"/>
+  <text x="161" y="503" fill="#1A1A1A" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">Live weekly markets</text>
+  <g>
+    <rect x="696" y="113" width="386" height="404" rx="28" fill="#0E1117" stroke="rgba(255,255,255,0.08)"/>
+    <rect x="723" y="145" width="118" height="34" rx="17" fill="#7F2E39" stroke="rgba(255,255,255,0.20)"/>
+    <text x="757" y="167" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">Sea Eagles</text>
+    <text x="885" y="167" fill="#AAB3C3" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Roosters</text>
+    <text x="726" y="226" fill="#8B95A7" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="1.8">MATCH CENTRE</text>
+    <text x="726" y="276" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800">Tom Trbojevic</text>
+    <text x="726" y="311" fill="#C4CCDA" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">Sea Eagles | Fullback</text>
+    <text x="726" y="344" fill="#C4CCDA" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">vs Roosters (Home)</text>
+    <rect x="981" y="249" width="76" height="28" rx="14" fill="#142735" stroke="rgba(255,255,255,0.08)"/>
+    <text x="1002" y="268" fill="#68D9FF" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800">OPEN</text>
+    <text x="726" y="437" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="94" font-weight="900" letter-spacing="-3">54.0</text>
+    <text x="728" y="477" fill="#36DF98" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">↑ +1.0</text>
+    <text x="945" y="475" fill="#96A0B3" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Next mid 59.0</text>
+    <rect x="724" y="522" width="166" height="62" rx="18" fill="url(#tradeOver)" stroke="#0AE7B2"/>
+    <rect x="908" y="522" width="146" height="62" rx="18" fill="#171C27" stroke="rgba(255,255,255,0.08)"/>
+    <text x="790" y="548" text-anchor="middle" fill="#BFC7D6" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Over</text>
+    <text x="790" y="578" text-anchor="middle" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">54.5</text>
+    <text x="981" y="548" text-anchor="middle" fill="#BFC7D6" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Under</text>
+    <text x="981" y="578" text-anchor="middle" fill="#F5F7FB" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">53.5</text>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0E1020"/>
+      <stop offset="1" stop-color="#080A12"/>
+    </linearGradient>
+    <linearGradient id="card" x1="58" y1="54" x2="1142" y2="576" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(19,24,36,0.96)"/>
+      <stop offset="1" stop-color="rgba(10,14,20,0.98)"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="97" y1="462" x2="431" y2="526" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#36DF98"/>
+      <stop offset="1" stop-color="#F8C04E"/>
+    </linearGradient>
+    <linearGradient id="tradeOver" x1="724" y1="522" x2="890" y2="584" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(10,231,178,0.14)"/>
+      <stop offset="1" stop-color="rgba(20,24,32,0.92)"/>
+    </linearGradient>
+    <radialGradient id="goldGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1025 130) rotate(90) scale(220)">
+      <stop stop-color="#F8C04E"/>
+      <stop offset="1" stop-color="#F8C04E" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="greenGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(140 560) rotate(90) scale(230)">
+      <stop stop-color="#36DF98"/>
+      <stop offset="1" stop-color="#36DF98" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(640 320) rotate(90) scale(300)">
+      <stop stop-color="#68D9FF"/>
+      <stop offset="1" stop-color="#68D9FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>
