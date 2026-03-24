@@ -58,6 +58,11 @@ const AVAILABLE_ROUND_NUMBERS=[...new Set([
   ...((derivedData?.metadata?.roundsIncluded)||[]).map((round)=>Number(round)).filter(Number.isFinite)
 ])].sort((left,right)=>left-right);
 const SUPABASE_STATE_SYNC_TTL_MS=30000;
+const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
+
+let popularPlayersCache=null;
+let popularPlayersCacheTime=0;
+let popularPlayersFetchPromise=null;
 
 let state=loadState();
 let supabaseSeedReady=false;
@@ -88,6 +93,9 @@ const server=http.createServer(async (req,res)=>{
 
 server.listen(PORT,"0.0.0.0",()=>{
   console.log(`Mercatus server running on http://0.0.0.0:${PORT}`);
+  fetchPopularPlayers().catch((error)=>{
+    console.warn("Initial popular players fetch failed",error.message);
+  });
   if(USE_SUPABASE&&isSupabaseConfigured()){
     syncStateFromSupabase().catch((error)=>{
       console.warn("Initial Supabase state sync failed",error.message);
@@ -95,6 +103,11 @@ server.listen(PORT,"0.0.0.0",()=>{
   }
 });
 setInterval(runAutonomousBots,BOT_AUTOPLAY_INTERVAL_MS);
+setInterval(()=>{
+  fetchPopularPlayers(true).catch((error)=>{
+    console.warn("Scheduled popular players fetch failed",error.message);
+  });
+},POPULAR_PLAYERS_REFRESH_MS);
 
 function serveStatic(res,pathname){
   const requestedPath=pathname==="/"?"/index.html":pathname;
@@ -127,6 +140,14 @@ function serveStatic(res,pathname){
 
 async function handleApi(req,res,url){
   const useSupabase=shouldUseSupabaseForRequest(req);
+  if(req.method==="GET"&&url.pathname==="/api/popular-players"){
+    const now=Date.now();
+    const cacheAge=now-popularPlayersCacheTime;
+    const usingCached=Array.isArray(popularPlayersCache)&&cacheAge<POPULAR_PLAYERS_REFRESH_MS;
+    const scrapedPlayers=usingCached?popularPlayersCache:await fetchPopularPlayers();
+    const players=buildPopularFeaturedPayload(scrapedPlayers,state);
+    return json(res,200,{players,cached:usingCached});
+  }
   if(req.method==="GET"&&url.pathname==="/api/bootstrap"){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
     if(useSupabase){
@@ -1619,6 +1640,143 @@ function getActiveRoundNumber(targetState=state){
 
 function getActiveRoundLabel(targetState=state){
   return buildRoundLabel(getActiveRoundNumber(targetState));
+}
+
+function normalizePopularInlineJson(value){
+  return String(value||"")
+    .replace(/\\u0022/g,'"')
+    .replace(/\\u0027/g,"'")
+    .replace(/\\u003C/g,"<")
+    .replace(/\\u003E/g,">")
+    .replace(/\\u0026/g,"&")
+    .replace(/\\\//g,"/");
+}
+
+function normalizePopularPlayer(player){
+  const firstName=String(player?.first_name||"").trim();
+  const lastName=String(player?.last_name||"").trim();
+  return {
+    name:`${firstName} ${lastName}`.trim(),
+    team:String(player?.team_name||"").trim(),
+    position:String(player?.positions||"").trim(),
+    viewsCount:Number(player?.views_count)||0
+  };
+}
+
+async function fetchPopularPlayers(force=false){
+  const cacheAge=Date.now()-popularPlayersCacheTime;
+  if(!force&&Array.isArray(popularPlayersCache)&&popularPlayersCache.length&&cacheAge<POPULAR_PLAYERS_REFRESH_MS){
+    return popularPlayersCache;
+  }
+  if(popularPlayersFetchPromise){
+    return popularPlayersFetchPromise;
+  }
+  popularPlayersFetchPromise=(async()=>{
+    try{
+      const response=await fetch("https://footystatistics.com/",{
+        headers:{
+          "User-Agent":"Mozilla/5.0 (compatible; crowdIQ/1.0)"
+        }
+      });
+      if(!response.ok){
+        throw new Error(`FootyStatistics responded ${response.status}`);
+      }
+      const html=await response.text();
+      const match=html.match(/popularPlayers:\s*JSON\.parse\('([\s\S]*?)'\)/);
+      if(!match){
+        throw new Error("Popular This Week payload not found in source HTML");
+      }
+      const decodedJson=normalizePopularInlineJson(match[1]);
+      const parsedPlayers=JSON.parse(decodedJson);
+      const players=Array.isArray(parsedPlayers)?parsedPlayers.map(normalizePopularPlayer).filter((player)=>player.name).slice(0,8):[];
+      if(!players.length){
+        throw new Error("Popular This Week payload was empty");
+      }
+      popularPlayersCache=players;
+      popularPlayersCacheTime=Date.now();
+      return players;
+    }catch(error){
+      console.error("Failed to fetch popular players:",error.message);
+      return Array.isArray(popularPlayersCache)?popularPlayersCache:null;
+    }finally{
+      popularPlayersFetchPromise=null;
+    }
+  })();
+  return popularPlayersFetchPromise;
+}
+
+function normalizeLookupValue(value){
+  return String(value||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+}
+
+function normalizePopularTeamName(value){
+  return String(value||"")
+    .toLowerCase()
+    .replace(/^(parramatta|newcastle|canterburybankstown|cronullasutherland|gold coast|manlywarringah|melbourne|north queensland|penrith|south sydney|st george illawarra|sydney)\s+/,"")
+    .replace(/[^a-z0-9]/g,"");
+}
+
+function matchPopularPlayerToMarket(popularPlayer,marketPlayers,usedMarketIds=new Set()){
+  const exactName=normalizeLookupValue(popularPlayer?.name);
+  const exactTeam=normalizePopularTeamName(popularPlayer?.team);
+  let candidates=marketPlayers.filter((market)=>!usedMarketIds.has(market.id));
+  let match=candidates.find((market)=>normalizeLookupValue(market.playerName)===exactName);
+  if(match&&exactTeam){
+    const teamAligned=normalizePopularTeamName(match.team)===exactTeam;
+    if(!teamAligned){
+      match=null;
+    }
+  }
+  if(!match){
+    const surname=normalizeLookupValue(String(popularPlayer?.name||"").split(" ").slice(-1)[0]);
+    const surnameMatches=candidates.filter((market)=>normalizeLookupValue(market.playerName).includes(surname));
+    match=surnameMatches.find((market)=>!exactTeam||normalizePopularTeamName(market.team)===exactTeam)||surnameMatches[0]||null;
+  }
+  return match||null;
+}
+
+function fallbackFeaturedMarkets(targetState=state,excludedMarketIds=new Set()){
+  return targetState.markets
+    .filter((market)=>getRoundNumberForMarket(market)===getActiveRoundNumber(targetState))
+    .filter((market)=>!excludedMarketIds.has(market.id))
+    .slice()
+    .sort((left,right)=>Number(right.currentLine||0)-Number(left.currentLine||0)||Number(right.seasonAverage||0)-Number(left.seasonAverage||0))
+    .slice(0,8);
+}
+
+function buildPopularFeaturedPayload(scrapedPlayers,targetState=state){
+  const activeMarkets=targetState.markets.filter((market)=>getRoundNumberForMarket(market)===getActiveRoundNumber(targetState));
+  const usedMarketIds=new Set();
+  const matchedMarkets=[];
+  for(const popularPlayer of Array.isArray(scrapedPlayers)?scrapedPlayers.slice(0,8):[]){
+    const matchedMarket=matchPopularPlayerToMarket(popularPlayer,activeMarkets,usedMarketIds);
+    if(!matchedMarket){
+      console.warn(`Popular player unmatched: ${popularPlayer?.name||"Unknown"} (${popularPlayer?.team||"Unknown team"})`);
+      continue;
+    }
+    usedMarketIds.add(matchedMarket.id);
+    matchedMarkets.push({
+      marketId:matchedMarket.id,
+      playerName:matchedMarket.playerName,
+      team:matchedMarket.team,
+      position:matchedMarket.position
+    });
+  }
+  if(matchedMarkets.length<3){
+    return fallbackFeaturedMarkets(targetState).map((market)=>({
+      marketId:market.id,
+      playerName:market.playerName,
+      team:market.team,
+      position:market.position
+    }));
+  }
+  const fallbackMarkets=fallbackFeaturedMarkets(targetState,usedMarketIds);
+  return [...matchedMarkets,...fallbackMarkets.map((market)=>({
+    marketId:market.id,
+    playerName:market.playerName,
+    team:market.team,
+    position:market.position
+  }))].slice(0,8);
 }
 
 function formatCurrency(value){

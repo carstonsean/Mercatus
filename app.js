@@ -46,6 +46,9 @@ let prizePoolLastPolledAmount = null;
 let prizePoolJarSurging = false;
 let prizePoolJarSurgeTimer = null;
 let prizePoolShareFitFrame = null;
+let popularFeaturedMarketIds = [];
+let popularFeaturedRoundNumber = null;
+let popularFeaturedRequest = null;
 const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
 
 const uiState = {
@@ -70,6 +73,7 @@ const uiState = {
   walletAmountDraft: "25",
   pendingTradeMarketId: "",
   leaderboardSort: "BALANCE",
+  leaderboardTimeFilter: "ALL_TIME",
   quickPickShuffleSeed: String(Date.now()),
   quickPickMarketIds: [],
   quickPickSeenMarketIds: [],
@@ -126,16 +130,17 @@ const elements = {
   teamToggle: document.getElementById("team-toggle"),
   selectedMarketPanel: document.getElementById("selected-market-panel"),
   marketsList: document.getElementById("markets-list"),
+  leaderboardScreenScroll: document.getElementById("leaderboard-screen-scroll"),
   leaderboardSummary: document.getElementById("leaderboard-summary"),
-  leaderboardBalancePill: document.getElementById("leaderboard-balance-pill"),
   leaderboardSortChips: document.getElementById("leaderboard-sort-chips"),
+  leaderboardTimeChips: document.getElementById("leaderboard-time-chips"),
   leaderboardList: document.getElementById("leaderboard-list"),
+  leaderboardBackButton: document.getElementById("leaderboard-back-button"),
   portfolioPageSubtitle: document.getElementById("portfolio-page-subtitle"),
   accountViewSwitch: document.getElementById("account-view-switch"),
   accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
   accountPortfolioView: document.getElementById("account-portfolio-view"),
   accountWalletView: document.getElementById("account-wallet-view"),
-  accountLeaderboardView: document.getElementById("account-leaderboard-view"),
   prizePoolView: document.getElementById("prize-pool-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
@@ -221,6 +226,7 @@ async function init() {
   } catch (error) {
     console.warn("Initial session sync failed", error.message);
   }
+  syncPopularFeaturedPlayers();
   renderAuthPreview();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (!savedUserName) {
@@ -294,6 +300,12 @@ function bindEvents() {
     uiState.leaderboardSort = chip.dataset.leaderboardSort;
     renderLeaderboard();
   });
+  elements.leaderboardTimeChips?.addEventListener("click", (event) => {
+    const chip = event.target.closest("[data-leaderboard-time-filter]");
+    if (!chip) return;
+    uiState.leaderboardTimeFilter = chip.dataset.leaderboardTimeFilter;
+    renderLeaderboard();
+  });
   elements.accountViewSwitch?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-view]");
     if (!button) return;
@@ -325,6 +337,10 @@ function bindEvents() {
 
   elements.homeLeaderboardLink?.addEventListener("click", () => {
     openFullLeaderboard();
+  });
+  elements.leaderboardBackButton?.addEventListener("click", () => {
+    uiState.activeScreen = "home";
+    renderAll();
   });
   elements.homeCarousel?.addEventListener("scroll", handleHomeCarouselScroll, { passive: true });
   elements.homeCarouselNav?.addEventListener("click", (event) => {
@@ -513,6 +529,10 @@ function applySharedSnapshot(response) {
 async function syncSession() {
   const response = await api("/api/session", { userName: currentUserName() });
   applySharedSnapshot(response);
+  if (popularFeaturedRoundNumber !== activeRoundNumber()) {
+    popularFeaturedMarketIds = [];
+  }
+  syncPopularFeaturedPlayers();
 }
 
 async function completeLogin(userName) {
@@ -721,7 +741,6 @@ function renderScreens() {
   );
   elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
   elements.accountWalletView?.classList.toggle("active", uiState.activeAccountView === "wallet");
-  elements.accountLeaderboardView?.classList.toggle("active", uiState.activeAccountView === "leaderboard");
   elements.toast?.classList.toggle("toast-low", ["quickpick", "prizepool"].includes(uiState.activeScreen));
 }
 
@@ -807,11 +826,10 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
       uiState.activeScreen = "markets";
       renderAll();
     });
-    container.appendChild(row);
-
     if (isExpanded) {
       const panel = document.createElement("article");
-      panel.className = "inline-market-panel";
+      panel.className = "inline-market-panel is-expanded-card";
+      panel.dataset.marketId = market.id;
       panel.innerHTML = marketDetailMarkup(market);
       container.appendChild(panel);
       bindTradeSheetEvents(panel, market.id);
@@ -823,7 +841,9 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
           stakeInput?.select();
         });
       }
+      return;
     }
+    container.appendChild(row);
   });
 }
 
@@ -844,7 +864,7 @@ function renderSelectedMarket() {
 }
 
 function renderLeaderboard() {
-  const rows = getLeaderboardRows();
+  const rows = getLeaderboardRows({ sort: uiState.leaderboardSort, timeFilter: uiState.leaderboardTimeFilter });
   const leaders = rows.slice(0, 3);
   elements.leaderboardSummary.innerHTML = [
     leaderboardMetricCard("Leader", leaders[0] ? leaders[0].userName : "No users yet"),
@@ -857,24 +877,35 @@ function renderLeaderboard() {
     elements.leaderboardList.innerHTML = `<div class="portfolio-empty-state"><strong>No rankings yet</strong><span>No traders have placed a position yet.</span></div>`;
     return;
   }
+  const activeUser = currentUserName().toLowerCase();
   elements.leaderboardList.innerHTML = rows
     .map(
       (row, index) =>
-        `<article class="leaderboard-card ${index < 3 ? "is-top-rank" : ""}"><div class="leaderboard-rank">${index + 1}</div><div class="leaderboard-copy"><strong>${row.userName}</strong><span class="leaderboard-meta">${row.tradesCount} trades | ${row.winRate}% win rate</span><span class="leaderboard-position">${row.largestOpen ? `${row.largestOpen.playerName ?? findMarket(row.largestOpen.marketId)?.playerName ?? "Unknown"} ${row.largestOpen.side} ${row.largestOpen.entryLine.toFixed(1)} | ${formatStake(row.largestOpen.stake)}` : "No open position"}</span></div><div class="leaderboard-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : ""}">${formatSignedStake(row.realized)}</span></div></article>`
+        leaderboardRowMarkup(row, index, row.userName.toLowerCase() === activeUser)
     )
     .join("");
 }
 
 function renderLeaderboardControls() {
-  const options = [
+  const sortOptions = [
     ["BALANCE", "Top balance"],
     ["WIN_RATE", "Win rate"],
     ["TRADES", "Most trades"]
   ];
-  elements.leaderboardSortChips.innerHTML = options
+  const timeOptions = [
+    ["THIS_ROUND", "This Round"],
+    ["ALL_TIME", "All Time"]
+  ];
+  elements.leaderboardSortChips.innerHTML = sortOptions
     .map(
       ([value, label]) =>
         `<button class="portfolio-chip ${uiState.leaderboardSort === value ? "active" : ""}" type="button" data-leaderboard-sort="${value}">${label}</button>`
+    )
+    .join("");
+  elements.leaderboardTimeChips.innerHTML = timeOptions
+    .map(
+      ([value, label]) =>
+        `<button class="portfolio-chip ${uiState.leaderboardTimeFilter === value ? "active" : ""}" type="button" data-leaderboard-time-filter="${value}">${label}</button>`
     )
     .join("");
 }
@@ -904,13 +935,27 @@ function marketDetailMarkup(market) {
   const movement = getMovementText(market);
   const nextLine = calculateNextLine(market, side, 10);
   const metrics = getMarketTradeMetrics(market);
-  return `<div class="trade-ticket"><div class="hero-head trade-ticket-head"><div><div class="hero-player">${market.playerName}</div><div class="hero-meta">${market.team} | ${market.position}</div></div><div class="trade-ticket-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="hero-price trade-ticket-price"><div class="hero-price-value">${market.currentLine.toFixed(1)}</div><div class="hero-delta ${movement.className}">${movement.arrow} ${movement.label}</div></div><div class="hero-comparison trade-spread-inline"><div class="trade-spread-grid"><div class="trade-spread-row"><span class="trade-label">Next midpoint</span><strong>${nextLine.toFixed(1)}</strong></div></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${isLocked ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending || isLocked ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending || isLocked ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending || isLocked ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending || isLocked ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending || isLocked ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><span class="trade-note-copy">${isLocked ? "Trading closed at kickoff for this match." : "Fills against waiting orders first, then shifts the projection if needed"}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : ""}</p></form></div>`;
+  const performance = quickPickPerformanceSummary(market);
+  const matchup = matchupContext(market);
+  const teamColors = TEAM_COLORS[market.team] ?? TEAM_COLORS[normalizeTeamName(market.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
+  const executionCopy = isLocked
+    ? "Trading closed at kickoff for this match."
+    : "Fills against waiting orders first, then shifts the projection if needed.";
+  return `<div class="trade-ticket trade-ticket-compact trade-ticket-quick quick-take-card player-card-shell ${isPending || isLocked ? "is-locked" : ""}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(market)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Match Centre</span></div><div class="quick-take-header"><div><h3>${market.playerName}</h3><p>${market.team} | ${market.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence, true)}</div></div><div class="trade-ticket-metric-row"><div class="trade-ticket-projection-block"><div class="quick-take-line trade-ticket-projection">${market.currentLine.toFixed(1)}</div><span class="quick-take-move trade-ticket-projection-delta ${movement.className}">${movement.arrow} ${movement.label}</span></div><div class="trade-ticket-metric-meta"><span class="trade-ticket-next-mid">Next mid ${nextLine.toFixed(1)}</span></div></div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${isLocked ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending || isLocked ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending || isLocked ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending || isLocked ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending || isLocked ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending || isLocked ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><button type="button" class="trade-note-button" data-trade-note-toggle aria-label="Explain execution">ⓘ</button><span class="trade-note-popover" role="note">${executionCopy}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : ""}</p></form></div>`;
 }
 
 function bindTradeSheetEvents(panel, marketId) {
   const tradeForm = panel.querySelector("#trade-form");
   const stakeInput = panel.querySelector("#stake-input");
   const stakeReturn = panel.querySelector("#stake-return");
+  const tradeNoteToggle = panel.querySelector("[data-trade-note-toggle]");
+  const tradeNotePopover = panel.querySelector(".trade-note-popover");
+  if (tradeNoteToggle && tradeNotePopover) {
+    tradeNoteToggle.addEventListener("click", () => {
+      tradeNotePopover.classList.toggle("is-visible");
+    });
+  }
+
   const market = findMarket(marketId);
   if (isMarketLocked(market)) {
     return;
@@ -3007,11 +3052,13 @@ function getPortfolioData() {
   };
 }
 
-function getLeaderboardRows() {
-  if (backendState.mode === "supabase" && backendState.dashboard?.leaderboard?.length) {
-    return sortLeaderboardRows(backendState.dashboard.leaderboard);
+function getLeaderboardRows(options = {}) {
+  const timeFilter = options.timeFilter || uiState.leaderboardTimeFilter;
+  const sort = options.sort || uiState.leaderboardSort;
+  if (timeFilter === "ALL_TIME" && backendState.mode === "supabase" && backendState.dashboard?.leaderboard?.length) {
+    return sortLeaderboardRows(backendState.dashboard.leaderboard, sort);
   }
-  return sortLeaderboardRows(buildLeaderboardRows());
+  return sortLeaderboardRows(buildLeaderboardRows(timeFilter), sort);
 }
 
 function renderHome() {
@@ -3050,18 +3097,12 @@ function renderHome() {
     .slice()
     .sort((left, right) => getMarketTradeMetrics(right).confidence - getMarketTradeMetrics(left).confidence || projectionValue(right) - projectionValue(left))
     .slice(0, 20);
-  const roundStarted = isRoundStarted();
-  const leaderboardRows = getLeaderboardRows();
-  const topLeaderboardRows = (roundStarted
-    ? leaderboardRows
-    : leaderboardRows.slice().sort((a, b) => {
-        if (b.balance !== a.balance) return b.balance - a.balance;
-        if (b.realized !== a.realized) return b.realized - a.realized;
-        return b.tradesCount - a.tradesCount;
-      })).slice(0, 20);
+  const leaderboardRows = getLeaderboardRows({ sort: "BALANCE", timeFilter: "ALL_TIME" });
 
+  const fallbackFeaturedMarkets = (topProjected.length ? topProjected : fallbackMovers).slice(0, 8);
+  const popularFeaturedMarkets = resolvePopularFeaturedMarkets(homeMarkets);
   renderHomeCarouselControls();
-  renderHomeFeaturedSlate((topProjected.length ? topProjected : fallbackMovers).slice(0, 5));
+  renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets);
   renderHomePrizePoolBanner(prizePoolState);
   renderHomeGamesStrip();
 
@@ -3145,11 +3186,7 @@ function renderHome() {
     emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
   });
 
-  renderHomeUserLeaderboard(elements.homeUserLeaderboard, topLeaderboardRows, {
-    headingEyebrow: "Leaderboard",
-    headingTitle: "Community snapshot",
-    roundStarted
-  });
+  renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows);
 
   window.requestAnimationFrame(() => {
     syncHomeCarouselPosition();
@@ -3158,7 +3195,7 @@ function renderHome() {
 
 function renderHomeFeaturedSlate(featuredMarkets) {
   if (!elements.homeFeaturedSlate) return;
-  const items = Array.isArray(featuredMarkets) ? featuredMarkets.filter(Boolean).slice(0, 5) : [];
+  const items = Array.isArray(featuredMarkets) ? featuredMarkets.filter(Boolean).slice(0, 8) : [];
   if (!items.length) {
     elements.homeFeaturedSlate.innerHTML = "";
     return;
@@ -3346,6 +3383,47 @@ function bindHomeFeaturedSwipe(items) {
   }, { passive: true });
 }
 
+function resolvePopularFeaturedMarkets(homeMarkets) {
+  if (!Array.isArray(popularFeaturedMarketIds) || !popularFeaturedMarketIds.length) {
+    return [];
+  }
+  const marketsById = new Map((homeMarkets || []).map((market) => [market.id, market]));
+  return popularFeaturedMarketIds.map((marketId) => marketsById.get(marketId)).filter(Boolean);
+}
+
+async function syncPopularFeaturedPlayers(force = false) {
+  const roundNumber = activeRoundNumber();
+  if (!force && popularFeaturedRoundNumber === roundNumber && popularFeaturedMarketIds.length) {
+    return popularFeaturedMarketIds;
+  }
+  if (popularFeaturedRequest) {
+    return popularFeaturedRequest;
+  }
+  popularFeaturedRequest = (async () => {
+    try {
+      const response = await fetch("/api/popular-players", { method: "GET" });
+      if (!response.ok) {
+        throw new Error(`Popular players request failed with ${response.status}`);
+      }
+      const data = await response.json();
+      popularFeaturedMarketIds = Array.isArray(data.players)
+        ? data.players.map((player) => player.marketId).filter(Boolean)
+        : [];
+      popularFeaturedRoundNumber = roundNumber;
+      if (uiState.activeScreen === "home") {
+        renderHome();
+      }
+      return popularFeaturedMarketIds;
+    } catch (error) {
+      console.warn("Popular featured players unavailable", error.message);
+      return [];
+    } finally {
+      popularFeaturedRequest = null;
+    }
+  })();
+  return popularFeaturedRequest;
+}
+
 function homeTeamAbbreviation(team) {
   const map = {
     Broncos: "BRI",
@@ -3423,8 +3501,7 @@ function renderHomeCarouselControls() {
     { key: "losers", label: "Losers", detail: "Biggest losers" },
     { key: "activity", label: "Market Confidence", detail: "Highest-confidence lines" },
     { key: "projected", label: "Projected", detail: "Top current lines" },
-    { key: "value", label: "Value", detail: "Gaps vs NRL price" },
-    { key: "leaderboard", label: "Leaderboard", detail: "Community standings" }
+    { key: "value", label: "Value", detail: "Gaps vs NRL price" }
   ];
   if (!panels.some((panel) => panel.key === uiState.activeHomePanel)) {
     uiState.activeHomePanel = panels[0].key;
@@ -3452,14 +3529,14 @@ function syncHomeCarouselPosition() {
   }
 }
 
-function sortLeaderboardRows(rows) {
+function sortLeaderboardRows(rows, sort = uiState.leaderboardSort) {
   return rows.slice().sort((a, b) => {
-    if (uiState.leaderboardSort === "WIN_RATE") {
+    if (sort === "WIN_RATE") {
       if (b.winRate !== a.winRate) return b.winRate - a.winRate;
       if (b.balance !== a.balance) return b.balance - a.balance;
       return b.tradesCount - a.tradesCount;
     }
-    if (uiState.leaderboardSort === "TRADES") {
+    if (sort === "TRADES") {
       if (b.tradesCount !== a.tradesCount) return b.tradesCount - a.tradesCount;
       if (b.balance !== a.balance) return b.balance - a.balance;
       return b.winRate - a.winRate;
@@ -3474,17 +3551,18 @@ function leaderboardMetricCard(label, value) {
   return `<article class="leaderboard-metric-card"><span>${label}</span><strong>${value}</strong></article>`;
 }
 
-function buildLeaderboardRows() {
-  return [...new Set([...Object.keys(state.bankrolls), ...state.markets.flatMap((market) => market.trades.map((trade) => trade.userName))])]
+function buildLeaderboardRows(timeFilter = "ALL_TIME") {
+  const scopedMarkets = timeFilter === "THIS_ROUND" ? getActiveRoundMarkets() : state.markets;
+  return [...new Set([...Object.keys(state.bankrolls), ...scopedMarkets.flatMap((market) => market.trades.map((trade) => trade.userName))])]
     .map((userName) => {
-      const trades = getUserTrades(userName);
+      const trades = scopedMarkets.flatMap((market) => (market.trades || []).filter((trade) => trade.userName === userName));
       const settled = trades.filter((trade) => trade.result);
       const wins = settled.filter((trade) => trade.result?.outcome === "WIN").length;
       const realized = settled.reduce((sum, trade) => sum + trade.result.profit, 0);
       const largestOpen = aggregateOpenPositions(trades.filter((trade) => trade.status !== "SETTLED" && trade.status !== "CANCELLED")).sort((a, b) => (b.activeStake ?? b.stake) - (a.activeStake ?? a.stake))[0];
       return {
         userName,
-        balance: getUserCash(userName),
+        balance: timeFilter === "THIS_ROUND" ? trades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0) + realized : getUserCash(userName),
         tradesCount: trades.length,
         winRate: settled.length ? Math.round((wins / settled.length) * 100) : 0,
         realized,
@@ -3581,29 +3659,43 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
   );
 }
 
-function renderHomeUserLeaderboard(container, rows, options = {}) {
+function renderHomeUserLeaderboard(container, rows) {
   if (!container) return;
   if (!rows.length) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No leaderboard yet</strong><span>Community rankings will appear once users place trades.</span></div>`;
     return;
   }
-  const activeUser = currentUserName();
-  container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head has-action"><div><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3></div><button id="home-inline-leaderboard-link" class="secondary-button inline-section-button" type="button">View full board</button></div><div class="home-group-card-body" data-scroll-key="${container.id || "home-leaderboard"}">${rows
-    .map((row, index) => {
-      const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
-      const secondaryMetric = row.realized === 0 ? "—" : formatSignedStake(row.realized);
-      const accentClass = row.userName === activeUser ? "is-current-user" : homeRankTone(index);
-      return `<button class="home-projection-subcard home-list-subcard home-user-subcard ${accentClass}" type="button" data-open-leaderboard="true">${homeRankMarkup(index)}<div class="home-projection-copy"><strong>${row.userName}</strong><span>${metaLabel}</span></div><div class="home-projection-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : "is-muted"}">${options.roundStarted ? secondaryMetric : "Wallet balance"}</span></div></button>`;
-    })
-    .join("")}</div></article>`;
-  container.querySelector("#home-inline-leaderboard-link")?.addEventListener("click", () => {
-    openFullLeaderboard();
-  });
+  const activeUser = currentUserName().toLowerCase();
+  const topRows = rows.slice(0, 3);
+  const currentUserRow = rows.find((row) => row.userName.toLowerCase() === activeUser) || null;
+  const showCurrentUserRow = currentUserRow && !topRows.some((row) => row.userName.toLowerCase() === activeUser);
+  container.innerHTML = `<article class="home-leaderboard-snapshot-card"><div class="home-leaderboard-snapshot-head"><div><p class="eyebrow">Leaderboard</p></div><button class="home-leaderboard-snapshot-link" type="button" data-open-leaderboard="true">View full leaderboard →</button></div><div class="home-leaderboard-snapshot-body">${topRows
+    .map((row, index) => homeLeaderboardSnapshotRowMarkup(row, index, row.userName.toLowerCase() === activeUser))
+    .join("")}${showCurrentUserRow ? `<div class="home-leaderboard-current-divider">— #${rows.findIndex((row) => row.userName.toLowerCase() === activeUser) + 1} You —</div>${homeLeaderboardSnapshotRowMarkup(currentUserRow, rows.findIndex((row) => row.userName.toLowerCase() === activeUser), true)}` : ""}</div><button class="home-leaderboard-snapshot-footer" type="button" data-open-leaderboard="true">View full leaderboard →</button></article>`;
   container.querySelectorAll("[data-open-leaderboard]").forEach((button) =>
     button.addEventListener("click", () => {
       openFullLeaderboard();
     })
   );
+}
+
+function homeLeaderboardSnapshotRowMarkup(row, index, isCurrentUser = false) {
+  const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
+  return `<button class="home-leaderboard-snapshot-row ${isCurrentUser ? "is-current-user" : ""}" type="button" data-open-leaderboard="true"><div class="leaderboard-rank ${homeRankTone(index)}">${index + 1}</div><div class="home-leaderboard-snapshot-copy"><strong>${row.userName}</strong><span>${metaLabel}</span></div><div class="home-leaderboard-snapshot-balance">${formatStake(row.balance)}</div></button>`;
+}
+
+function leaderboardRowMarkup(row, index, isCurrentUser = false) {
+  const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
+  const openPositionLabel = row.largestOpen ? `${row.largestOpen.playerName ?? findMarket(row.largestOpen.marketId)?.playerName ?? "Unknown"} ${row.largestOpen.side} ${row.largestOpen.entryLine.toFixed(1)} | ${formatStake(row.largestOpen.stake)}` : "No open position";
+  return `<article class="leaderboard-card ${index < 3 ? "is-top-rank" : ""} ${isCurrentUser ? "is-current-user" : ""}"><div class="leaderboard-rank ${homeRankTone(index)}">${index + 1}</div><div class="leaderboard-copy"><strong>${row.userName}</strong><span class="leaderboard-meta">${metaLabel}</span><span class="leaderboard-position">${openPositionLabel}</span></div><div class="leaderboard-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : ""}">${formatSignedStake(row.realized)}</span></div></article>`;
+}
+
+function openFullLeaderboard() {
+  uiState.activeScreen = "leaderboard";
+  renderAll();
+  window.requestAnimationFrame(() => {
+    elements.leaderboardScreenScroll?.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
 function filterMarkets(term) {
@@ -3621,15 +3713,6 @@ function openMarketFromHome(marketId) {
   uiState.expandedMarketId = market.id;
   renderAll();
   scrollExpandedMarketIntoView(market.id);
-}
-
-function openFullLeaderboard() {
-  uiState.activeScreen = "account";
-  uiState.activeAccountView = "leaderboard";
-  renderAll();
-  window.requestAnimationFrame(() => {
-    elements.accountLeaderboardView?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
 }
 
 function renderHomeSplitMarketLeaderboard(container, options = {}) {
@@ -4445,8 +4528,8 @@ function adjacentGame(direction) {
 
 function scrollExpandedMarketIntoView(marketId) {
   window.requestAnimationFrame(() => {
-    const expandedCard = elements.marketsList.querySelector(".market-row.is-expanded");
-    if (!expandedCard || expandedCard.dataset.marketId !== marketId) {
+    const expandedCard = elements.marketsList.querySelector(`.inline-market-panel.is-expanded-card[data-market-id="${marketId}"], .market-row.is-expanded[data-market-id="${marketId}"]`);
+    if (!expandedCard) {
       return;
     }
     expandedCard.scrollIntoView({ behavior: "smooth", block: "center" });

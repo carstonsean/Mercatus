@@ -172,13 +172,12 @@
             <section class="section-block home-section-block home-carousel-section" data-home-panel="value">
               <div id="home-best-value" class="home-leaderboard-list"></div>
             </section>
-
-            <section class="section-block home-section-block home-carousel-section" data-home-panel="leaderboard">
-              <div id="home-user-leaderboard" class="home-leaderboard-list"></div>
-            </section>
               </div>
             </div>
             <div id="home-carousel-meta" class="home-carousel-meta"></div>
+          </section>
+          <section class="section-block home-section-block home-leaderboard-snapshot-block">
+            <div id="home-user-leaderboard" class="home-leaderboard-list"></div>
           </section>
         </div>
       </section>
@@ -235,7 +234,6 @@
             <div id="account-view-switch" class="account-view-switch">
               <button class="account-view-tab active" type="button" data-account-view="portfolio">Portfolio</button>
               <button class="account-view-tab" type="button" data-account-view="wallet">Wallet</button>
-              <button class="account-view-tab" type="button" data-account-view="leaderboard">Leaderboard</button>
             </div>
           </section>
 
@@ -339,38 +337,32 @@
               <div id="wallet-transaction-list" class="wallet-transaction-list"></div>
             </section>
           </div>
+        </div>
+      </section>
 
-          <div id="account-leaderboard-view" class="account-view-panel">
-            <section class="hero-strip portfolio-strip premium-leaderboard-strip">
-              <div class="leaderboard-title-row">
-                <div>
-                  <p class="eyebrow">crowdIQ</p>
-                  <h2>Leaderboard</h2>
-                </div>
+      <section class="screen" data-screen="leaderboard">
+        <div id="leaderboard-screen-scroll" class="screen-scroll">
+          <section class="hero-strip portfolio-strip premium-leaderboard-strip dedicated-leaderboard-strip">
+            <div class="leaderboard-page-head">
+              <button id="leaderboard-back-button" class="leaderboard-back-button" type="button" aria-label="Back to home">‹</button>
+              <div>
+                <h2>Leaderboard</h2>
+                <p class="section-meta">crowdIQ community rankings</p>
               </div>
-              <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
-            </section>
+            </div>
+            <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
+          </section>
 
-            <section class="section-block leaderboard-controls-block">
-              <div class="section-heading compact-heading leaderboard-controls-heading">
-                <div>
-                  <p class="eyebrow">View and sort</p>
-                  <h3>Community rankings</h3>
-                </div>
-              </div>
-              <div class="leaderboard-controls">
-                <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
-                <div class="leaderboard-scope-row">
-                  <button class="portfolio-chip active" type="button">All time</button>
-                  <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
-                </div>
-              </div>
-            </section>
+          <section class="section-block leaderboard-controls-block">
+            <div class="leaderboard-controls">
+              <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
+              <div id="leaderboard-time-chips" class="portfolio-chip-row"></div>
+            </div>
+          </section>
 
-            <section class="section-block leaderboard-list-block">
-              <div id="leaderboard-list" class="list-stack"></div>
-            </section>
-          </div>
+          <section class="section-block leaderboard-list-block dedicated-leaderboard-list-block">
+            <div id="leaderboard-list" class="list-stack"></div>
+          </section>
         </div>
       </section>
 
