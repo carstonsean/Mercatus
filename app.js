@@ -828,7 +828,7 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
     });
     if (isExpanded) {
       const panel = document.createElement("article");
-      panel.className = "inline-market-panel is-expanded-card";
+      panel.className = "inline-market-panel is-expanded-card match-expanded-card";
       panel.dataset.marketId = market.id;
       panel.innerHTML = marketDetailMarkup(market);
       container.appendChild(panel);
