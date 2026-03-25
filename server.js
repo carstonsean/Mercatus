@@ -681,7 +681,8 @@ function linePairFor(market){
   return {underLine:roundToHalf(market.currentLine-HALF_POINT),overLine:roundToHalf(market.currentLine+HALF_POINT)};
 }
 
-function normalizeState(rawState){
+function normalizeState(rawState,options={}){
+  const skipWalletBootstrap=Boolean(options.skipWalletBootstrap);
   const activeRoundNumber=normalizeRoundNumber(rawState.activeRoundNumber);
   const bankrolls=Object.fromEntries(Object.entries(rawState.bankrolls||{}).map(([userName,balance])=>[userName,Number(balance)||STARTING_BANKROLL]));
   const walletTransactions=Array.isArray(rawState.walletTransactions)
@@ -742,12 +743,14 @@ function normalizeState(rawState){
     prizePool:normalizePrizePoolState(rawState.prizePool),
     botSimulation:{config:botConfig,bots}
   });
-  Object.keys(normalizedState.bankrolls||{}).forEach((userName)=>{
-    ensureWalletAccount(userName,normalizedState,{
-      title:"Opening balance snapshot",
-      subtitle:"Wallet history started from the current demo balance"
+  if(!skipWalletBootstrap){
+    Object.keys(normalizedState.bankrolls||{}).forEach((userName)=>{
+      ensureWalletAccount(userName,normalizedState,{
+        title:"Opening balance snapshot",
+        subtitle:"Wallet history started from the current demo balance"
+      });
     });
-  });
+  }
   return normalizedState;
 }
 
@@ -1387,7 +1390,7 @@ async function syncStateFromSupabase({force=false}={}){
         state=normalizeState({
           ...buildFreshState(),
           ...runtimeState
-        });
+        },{skipWalletBootstrap:true});
       }
       lastSupabaseStateSyncAt=Date.now();
     }catch(error){
@@ -1433,7 +1436,7 @@ function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
     roundMetricsHistory:Array.isArray(overlay.roundMetricsHistory)?overlay.roundMetricsHistory:(currentState?.roundMetricsHistory||[]),
     prizePool:overlay.prizePool??currentState?.prizePool,
     botSimulation:overlay.botSimulation??currentState?.botSimulation
-  });
+  },{skipWalletBootstrap:true});
 }
 
 function ensureBankroll(userName,targetState=state){
