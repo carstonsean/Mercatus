@@ -1447,10 +1447,10 @@ function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
 }
 
 function computeHostedBankrolls(supabaseState,runtimeOverlay={},currentState=state){
+  void currentState;
   const userNames=new Set([
     ...Object.keys(supabaseState?.bankrolls||{}),
     ...((supabaseState?.userNames)||[]),
-    ...Object.keys(currentState?.bankrolls||{}),
     ...((runtimeOverlay?.botSimulation?.bots)||[]).map((bot)=>bot?.userName).filter(Boolean)
   ]);
   (supabaseState?.markets||[]).forEach((market)=>{
