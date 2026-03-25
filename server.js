@@ -442,7 +442,7 @@ async function handleApi(req,res,url){
     const result=runBotTicks(ticks);
     if(useSupabase){
       await persistSupabaseMarketsForEvents(result.events);
-      persistState();
+      await persistStateSnapshot(true);
     }else{
       await persistStateSnapshot(false);
     }
@@ -2053,7 +2053,7 @@ function runAutonomousBots(){
     if(result.events.length){
       if(SUPABASE_ENABLED){
         persistSupabaseMarketsForEvents(result.events)
-          .then(()=>{persistState();})
+          .then(()=>persistStateSnapshot(true))
           .catch((error)=>{
             console.warn("Hosted bot persistence failed",error.message);
           });
