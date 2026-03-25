@@ -440,7 +440,12 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const ticks=Math.max(1,Math.min(100,Number(body.ticks)||1));
     const result=runBotTicks(ticks);
-    await persistStateSnapshot(useSupabase);
+    if(useSupabase){
+      await persistSupabaseMarketsForEvents(result.events);
+      persistState();
+    }else{
+      await persistStateSnapshot(false);
+    }
     return json(res,200,{state,botSimulation:state.botSimulation,events:result.events});
   }
   json(res,404,{error:"Not found"});
@@ -2033,7 +2038,7 @@ function runBotTicks(ticks){
 
 function runAutonomousBots(){
   try{
-    if(SUPABASE_ENABLED){
+    if(!state?.botSimulation?.config?.enabled){
       return;
     }
     if(!state?.botSimulation?.bots?.length){
@@ -2045,10 +2050,29 @@ function runAutonomousBots(){
     }
     const result=runBotTicks(1);
     if(result.events.length){
-      persistStateSnapshotDeferred();
+      if(SUPABASE_ENABLED){
+        persistSupabaseMarketsForEvents(result.events)
+          .then(()=>{persistState();})
+          .catch((error)=>{
+            console.warn("Hosted bot persistence failed",error.message);
+          });
+      }else{
+        persistStateSnapshotDeferred();
+      }
     }
   }catch(error){
     console.warn("Bot autoplay failed",error);
+  }
+}
+
+async function persistSupabaseMarketsForEvents(events=[]){
+  const marketIds=[...new Set((events||[]).filter((event)=>event?.executed&&event?.marketId).map((event)=>event.marketId))];
+  for(const marketId of marketIds){
+    const market=findMarket(marketId);
+    if(!market){
+      continue;
+    }
+    await persistSupabaseMarketState(market,state);
   }
 }
 
