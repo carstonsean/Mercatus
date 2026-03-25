@@ -11,7 +11,7 @@ const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
 const {isSupabaseEnabled}=require("./lib/config");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
-const {ensureSupabaseSeedData,getSupabaseAvailableBalance}=require("./lib/supabase-market-sync");
+const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
 const {fetchSupabaseAppState}=require("./lib/supabase-state");
 const {fetchSupabaseRuntimeState,persistSupabaseRuntimeState}=require("./lib/supabase-runtime-state");
@@ -253,7 +253,12 @@ async function handleApi(req,res,url){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
-    await persistStateSnapshot(useSupabase);
+    if(useSupabase){
+      await persistSupabaseMarketState(market,state);
+      persistState();
+    }else{
+      await persistStateSnapshot(false);
+    }
     if(body.quickPick||body.quickTake){
       return json(res,200,{
         trade,
@@ -1365,15 +1370,20 @@ async function syncStateFromSupabase({force=false}={}){
   }
   supabaseStateSyncPromise=(async()=>{
     try{
-      const runtimeState=await fetchSupabaseRuntimeState();
-      if(runtimeState){
-        state=normalizeState(runtimeState);
-        lastSupabaseStateSyncAt=Date.now();
-        return state;
-      }
-      const supabaseState=await fetchSupabaseAppState();
+      const [supabaseState,runtimeState]=await Promise.all([
+        fetchSupabaseAppState(),
+        fetchSupabaseRuntimeState().catch((error)=>{
+          console.warn("Supabase runtime overlay fetch failed",error.message);
+          return null;
+        })
+      ]);
       if(supabaseState){
-        state=normalizeState(supabaseState);
+        state=mergeSupabaseState(supabaseState,runtimeState,state);
+      }else if(runtimeState){
+        state=normalizeState({
+          ...buildFreshState(),
+          ...runtimeState
+        });
       }
       lastSupabaseStateSyncAt=Date.now();
     }catch(error){
@@ -1403,6 +1413,23 @@ function buildBackendPayload(backendUser,dashboard=null,useSupabase=SUPABASE_ENA
     user: backendUser,
     dashboard
   };
+}
+
+function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
+  const overlay=runtimeState&&typeof runtimeState==="object"?runtimeState:{};
+  return normalizeState({
+    ...buildFreshState(),
+    bankrolls:supabaseState?.bankrolls||{},
+    markets:supabaseState?.markets||[],
+    activeRoundNumber:overlay.activeRoundNumber??currentState?.activeRoundNumber,
+    activeRoundLabel:overlay.activeRoundLabel??currentState?.activeRoundLabel,
+    forceOpenGameIds:Array.isArray(overlay.forceOpenGameIds)?overlay.forceOpenGameIds:(currentState?.forceOpenGameIds||[]),
+    walletTransactions:Array.isArray(overlay.walletTransactions)?overlay.walletTransactions:(currentState?.walletTransactions||[]),
+    lastSettlementBatch:overlay.lastSettlementBatch??currentState?.lastSettlementBatch??null,
+    roundMetricsHistory:Array.isArray(overlay.roundMetricsHistory)?overlay.roundMetricsHistory:(currentState?.roundMetricsHistory||[]),
+    prizePool:overlay.prizePool??currentState?.prizePool,
+    botSimulation:overlay.botSimulation??currentState?.botSimulation
+  });
 }
 
 function ensureBankroll(userName,targetState=state){
