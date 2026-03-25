@@ -1339,7 +1339,11 @@ async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
   }
   try{
     const backendUser=await ensureSupabaseDemoUser(userName);
-    if(backendUser&&Number.isFinite(backendUser.balance)){
+    const tableBackedBalance=typeof state.bankrolls?.[userName]==="number"?state.bankrolls[userName]:null;
+    if(backendUser&&Number.isFinite(tableBackedBalance)){
+      backendUser.balance=tableBackedBalance;
+      state.bankrolls[userName]=tableBackedBalance;
+    }else if(backendUser&&Number.isFinite(backendUser.balance)){
       state.bankrolls[userName]=Math.min(state.bankrolls[userName]??STARTING_BANKROLL,backendUser.balance);
     }
     return backendUser;
