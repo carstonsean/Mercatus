@@ -1476,6 +1476,14 @@ function executeProjectionTrade(market,{userName,side,stake}){
     status:"PENDING",
     engineVersion:ENGINE_VERSION
   };
+  applyWalletDelta(userName,-stake,{
+    type:"TRADE_STAKE",
+    title:"Trade placed",
+    subtitle:`${market.playerName} ${side.toLowerCase()} ${formatLine(trade.entryLine)}`,
+    marketId:market.id,
+    tradeId:trade.id,
+    createdAt:timestamp
+  });
   matchAgainstRestingOrders(market,trade);
   trade.status=activeOrderStatus(trade);
   market.trades.push(trade);
@@ -1491,6 +1499,17 @@ function cancelPendingOrders(userName,orderIds){
     market.trades.forEach((trade)=>{
       if(trade.userName!==userName||!orderIds.includes(trade.id)||!(trade.unmatchedStake>0)){
         return;
+      }
+      const refundedStake=Number(trade.unmatchedStake)||0;
+      if(refundedStake>0){
+        applyWalletDelta(userName,refundedStake,{
+          type:"TRADE_REFUND",
+          title:"Order cancelled",
+          subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
+          marketId:market.id,
+          tradeId:trade.id
+        });
+        trade.refundedStake=(Number(trade.refundedStake)||0)+refundedStake;
       }
       trade.unmatchedStake=0;
       trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
@@ -1508,6 +1527,16 @@ function settleProjectionMarket(market,finalScore,options={}){
   market.manuallyLocked=true;
   market.trades.forEach((trade)=>{
     if(trade.unmatchedStake>0){
+      const refundedStake=Number(trade.unmatchedStake)||0;
+      applyWalletDelta(trade.userName,refundedStake,{
+        type:"TRADE_REFUND",
+        title:"Open order released",
+        subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
+        marketId:market.id,
+        tradeId:trade.id,
+        createdAt:settledAt
+      });
+      trade.refundedStake=(Number(trade.refundedStake)||0)+refundedStake;
       trade.unmatchedStake=0;
     }
   });
@@ -2081,24 +2110,6 @@ function matchAgainstRestingOrders(market,incomingOrder){
       winnerUserName:null,
       platformRevenue:0
     };
-    applyWalletDelta(incomingOrder.userName,-affordableStake,{
-      type:"TRADE_MATCH",
-      title:"Position entered",
-      subtitle:`${market.playerName} ${incomingOrder.side.toLowerCase()} ${formatLine(incomingOrder.entryLine)}`,
-      marketId:market.id,
-      tradeId:incomingOrder.id,
-      pairId:pair.id,
-      createdAt:incomingOrder.timestamp
-    });
-    applyWalletDelta(restingOrder.userName,-affordableStake,{
-      type:"TRADE_MATCH",
-      title:"Position entered",
-      subtitle:`${market.playerName} ${restingOrder.side.toLowerCase()} ${formatLine(restingOrder.entryLine)}`,
-      marketId:market.id,
-      tradeId:restingOrder.id,
-      pairId:pair.id,
-      createdAt:incomingOrder.timestamp
-    });
     market.matchedPairs.push(pair);
     incomingOrder.unmatchedStake-=affordableStake;
     incomingOrder.matchedStake+=affordableStake;
