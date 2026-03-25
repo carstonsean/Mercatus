@@ -682,7 +682,7 @@ function normalizeState(rawState){
     : [];
   const botConfig=normalizeSimulationConfig(rawState.botSimulation?.config||DEFAULT_SIMULATION_CONFIG);
   const bots=(rawState.botSimulation?.bots||createBotRoster(botConfig))
-    .filter((bot)=>bot?.source==="custom")
+    .filter((bot)=>bot?.userName&&["custom","random-prob"].includes(bot?.source||"custom"))
     .map((bot)=>({
     ...bot,
     bankroll:Number.isFinite(Number(bot.bankroll))?Number(bot.bankroll):Number(bot.startingBankroll)||200,
