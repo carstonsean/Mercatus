@@ -766,6 +766,7 @@ function syncDerivedBalances(targetState=state){
     if(typeof bankrolls[bot.userName]!=="number"){
       bankrolls[bot.userName]=Number(bot.startingBankroll)||Number(bot.bankroll)||STARTING_BANKROLL;
     }
+    bot.bankroll=bankrolls[bot.userName];
   });
   targetState.markets.forEach((market)=>{
     market.trades.forEach((trade)=>{
