@@ -152,7 +152,9 @@ async function handleApi(req,res,url){
   if(req.method==="GET"&&url.pathname==="/api/bootstrap"){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
     if(useSupabase){
-      await syncStateFromSupabase({force:true});
+      syncStateFromSupabase({force:true}).catch((error)=>{
+        console.warn("Bootstrap Supabase sync failed",error.message);
+      });
     }
     const backendUser=await syncBackendUser(username,useSupabase);
     const dashboard=await getBackendDashboard(username,useSupabase);
@@ -166,7 +168,9 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
-      await syncStateFromSupabase();
+      syncStateFromSupabase().catch((error)=>{
+        console.warn("Session Supabase sync failed",error.message);
+      });
     }
     const backendUser=await syncBackendUser(username,useSupabase);
     const dashboard=await getBackendDashboard(username,useSupabase);
