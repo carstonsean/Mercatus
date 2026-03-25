@@ -1424,9 +1424,10 @@ function buildBackendPayload(backendUser,dashboard=null,useSupabase=SUPABASE_ENA
 
 function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
   const overlay=runtimeState&&typeof runtimeState==="object"?runtimeState:{};
+  const bankrolls=computeHostedBankrolls(supabaseState,overlay,currentState);
   return normalizeState({
     ...buildFreshState(),
-    bankrolls:supabaseState?.bankrolls||{},
+    bankrolls,
     markets:supabaseState?.markets||[],
     activeRoundNumber:overlay.activeRoundNumber??currentState?.activeRoundNumber,
     activeRoundLabel:overlay.activeRoundLabel??currentState?.activeRoundLabel,
@@ -1437,6 +1438,61 @@ function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
     prizePool:overlay.prizePool??currentState?.prizePool,
     botSimulation:overlay.botSimulation??currentState?.botSimulation
   },{skipWalletBootstrap:true});
+}
+
+function computeHostedBankrolls(supabaseState,runtimeOverlay={},currentState=state){
+  const userNames=new Set([
+    ...Object.keys(supabaseState?.bankrolls||{}),
+    ...((supabaseState?.userNames)||[]),
+    ...Object.keys(currentState?.bankrolls||{}),
+    ...((runtimeOverlay?.botSimulation?.bots)||[]).map((bot)=>bot?.userName).filter(Boolean)
+  ]);
+  (supabaseState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(trade?.userName){
+        userNames.add(trade.userName);
+      }
+    });
+  });
+  Object.values(runtimeOverlay?.prizePool?.rounds||{}).forEach((round)=>{
+    (round?.entries||[]).forEach((entry)=>{
+      if(entry?.userName){
+        userNames.add(entry.userName);
+      }
+    });
+  });
+
+  const bankrolls=Object.fromEntries([...userNames].filter(Boolean).map((userName)=>[userName,STARTING_BANKROLL]));
+
+  (supabaseState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(!trade?.userName){
+        return;
+      }
+      bankrolls[trade.userName]=(Number(bankrolls[trade.userName])||STARTING_BANKROLL)-(Number(trade.stake)||0);
+      bankrolls[trade.userName]+=Number(trade.refundedStake)||0;
+      bankrolls[trade.userName]+=Number(trade.result?.payout)||0;
+    });
+  });
+
+  const entryFee=Number(runtimeOverlay?.prizePool?.entryFee)||PRIZE_POOL_ENTRY_FEE;
+  Object.values(runtimeOverlay?.prizePool?.rounds||{}).forEach((round)=>{
+    (round?.entries||[]).forEach((entry)=>{
+      if(!entry?.userName){
+        return;
+      }
+      bankrolls[entry.userName]=(Number(bankrolls[entry.userName])||STARTING_BANKROLL)-entryFee;
+      if(entry?.payoutPostedAt&&Number(entry?.payout)>0){
+        bankrolls[entry.userName]+=Number(entry.payout)||0;
+      }
+    });
+  });
+
+  Object.keys(bankrolls).forEach((userName)=>{
+    bankrolls[userName]=Math.max(0,Math.round(((Number(bankrolls[userName])||0)+Number.EPSILON)*100)/100);
+  });
+
+  return bankrolls;
 }
 
 function ensureBankroll(userName,targetState=state){
