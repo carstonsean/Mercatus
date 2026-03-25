@@ -9,7 +9,7 @@ require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
 const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
-const {USE_SUPABASE,isSupabaseConfigured}=require("./lib/config");
+const {isSupabaseEnabled}=require("./lib/config");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
@@ -59,6 +59,7 @@ const AVAILABLE_ROUND_NUMBERS=[...new Set([
 ])].sort((left,right)=>left-right);
 const SUPABASE_STATE_SYNC_TTL_MS=30000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
+const SUPABASE_ENABLED=isSupabaseEnabled();
 
 let popularPlayersCache=null;
 let popularPlayersCacheTime=0;
@@ -96,7 +97,7 @@ server.listen(PORT,"0.0.0.0",()=>{
   fetchPopularPlayers().catch((error)=>{
     console.warn("Initial popular players fetch failed",error.message);
   });
-  if(USE_SUPABASE&&isSupabaseConfigured()){
+  if(SUPABASE_ENABLED){
     syncStateFromSupabase().catch((error)=>{
       console.warn("Initial Supabase state sync failed",error.message);
     });
@@ -393,7 +394,7 @@ async function handleApi(req,res,url){
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/reset"){
     state=buildFreshState();
-    if(!(USE_SUPABASE&&isSupabaseConfigured())){
+    if(!SUPABASE_ENABLED){
       syncDerivedBalances();
     }
     await persistStateSnapshot(useSupabase);
@@ -450,7 +451,7 @@ function loadState(){
 }
 
 function shouldUseSupabaseForRequest(req){
-  if(!(USE_SUPABASE&&isSupabaseConfigured())){
+  if(!SUPABASE_ENABLED){
     return false;
   }
   const host=String(req?.headers?.host||"").toLowerCase();
@@ -482,7 +483,7 @@ function persistState(){
   fs.writeFileSync(STATE_PATH,JSON.stringify(state,null,2),"utf8");
 }
 
-async function persistStateSnapshot(useSupabase=USE_SUPABASE&&isSupabaseConfigured()){
+async function persistStateSnapshot(useSupabase=SUPABASE_ENABLED){
   persistState();
   if(!useSupabase){
     return;
@@ -494,7 +495,7 @@ async function persistStateSnapshot(useSupabase=USE_SUPABASE&&isSupabaseConfigur
   }
 }
 
-function persistStateSnapshotDeferred(useSupabase=USE_SUPABASE&&isSupabaseConfigured()){
+function persistStateSnapshotDeferred(useSupabase=SUPABASE_ENABLED){
   persistState();
   if(!useSupabase){
     return;
@@ -1325,7 +1326,7 @@ function isBotTrade(trade){
   return trade?.userName?.startsWith("Bot ")||trade?.userName?.includes(" Bot ");
 }
 
-async function syncBackendUser(userName,useSupabase=USE_SUPABASE&&isSupabaseConfigured()){
+async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
   if(!useSupabase){
     return null;
   }
@@ -1342,7 +1343,7 @@ async function syncBackendUser(userName,useSupabase=USE_SUPABASE&&isSupabaseConf
 }
 
 async function ensureSupabaseReady(){
-  if(!(USE_SUPABASE&&isSupabaseConfigured())||supabaseSeedReady){
+  if(!SUPABASE_ENABLED||supabaseSeedReady){
     return;
   }
   await ensureSupabaseSeedData();
@@ -1350,7 +1351,7 @@ async function ensureSupabaseReady(){
 }
 
 async function syncStateFromSupabase({force=false}={}){
-  if(!(USE_SUPABASE&&isSupabaseConfigured())){
+  if(!SUPABASE_ENABLED){
     return state;
   }
   const now=Date.now();
@@ -1386,7 +1387,7 @@ async function syncStateFromSupabase({force=false}={}){
   }
 }
 
-async function getBackendDashboard(userName,useSupabase=USE_SUPABASE&&isSupabaseConfigured()){
+async function getBackendDashboard(userName,useSupabase=SUPABASE_ENABLED){
   if(!useSupabase){
     return null;
   }
@@ -1394,7 +1395,7 @@ async function getBackendDashboard(userName,useSupabase=USE_SUPABASE&&isSupabase
   return null;
 }
 
-function buildBackendPayload(backendUser,dashboard=null,useSupabase=USE_SUPABASE&&isSupabaseConfigured()){
+function buildBackendPayload(backendUser,dashboard=null,useSupabase=SUPABASE_ENABLED){
   return {
     mode: useSupabase?"supabase":"local",
     user: backendUser,
