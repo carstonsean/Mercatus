@@ -1914,6 +1914,9 @@ function runBotTicks(ticks){
 
 function runAutonomousBots(){
   try{
+    if(SUPABASE_ENABLED){
+      return;
+    }
     if(!state?.botSimulation?.bots?.length){
       return;
     }
