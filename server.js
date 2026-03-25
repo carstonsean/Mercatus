@@ -152,7 +152,6 @@ async function handleApi(req,res,url){
   if(req.method==="GET"&&url.pathname==="/api/bootstrap"){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
     if(useSupabase){
-      await ensureSupabaseReady();
       await syncStateFromSupabase({force:true});
     }
     const backendUser=await syncBackendUser(username,useSupabase);
@@ -167,7 +166,6 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
-      await ensureSupabaseReady();
       await syncStateFromSupabase();
     }
     const backendUser=await syncBackendUser(username,useSupabase);
