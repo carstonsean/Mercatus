@@ -412,9 +412,14 @@
   function normalizePlayerKey(value){return String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
   function derivedPlayerStatsFor(playerName){return derivedData?.playerStatsByName?.[normalizePlayerKey(playerName)]||null;}
   function derivedTeamStatsFor(teamName){return derivedData?.teamConcessionsByTeam?.[teamName]||null;}
+  function pricedAtProjectionFromPrice(price){
+    const normalizedPrice=Number(price);
+    if(!Number.isFinite(normalizedPrice)||normalizedPrice<=0)return null;
+    return Math.round((normalizedPrice/12800)*10)/10;
+  }
   function priceImpliedProjectionForPlayer(playerName){
     const playerStats=derivedPlayerStatsFor(playerName);
-    return Number.isFinite(Number(playerStats?.priceImpliedProjection))?Number(playerStats.priceImpliedProjection):null;
+    return pricedAtProjectionFromPrice(playerStats?.currentPrice)??(Number.isFinite(Number(playerStats?.priceImpliedProjection))?Number(playerStats.priceImpliedProjection):null);
   }
   function playerLineOverrideFor(playerName){
     const key=normalizePlayerKey(playerName);

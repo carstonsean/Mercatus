@@ -4010,8 +4010,16 @@ function currentRoundNumber() {
   return activeRoundNumber();
 }
 
+function pricedAtProjectionFromPrice(price) {
+  const normalizedPrice = Number(price);
+  if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) return null;
+  return Math.round((normalizedPrice / 12800) * 10) / 10;
+}
+
 function priceImpliedProjectionForMarket(market) {
   const stats = fantasyPlayerStatsFor(market);
+  const pricedAtProjection = pricedAtProjectionFromPrice(stats?.currentPrice ?? market?.fantasyPrice);
+  if (pricedAtProjection !== null) return pricedAtProjection;
   return Number(stats?.priceImpliedProjection ?? market.priceImpliedProjection ?? 0) || null;
 }
 

@@ -75,18 +75,10 @@ function roundTo(value, decimals = 1) {
   return Math.round((Number(value) || 0) * factor) / factor;
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function priceImpliedProjectionFor(price, averagePoints = null) {
+function priceImpliedProjectionFor(price) {
   const normalizedPrice = Number(price);
   if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) return null;
-  const baseProjection = normalizedPrice / 13750;
-  const formAdjustment = Number.isFinite(Number(averagePoints)) && Number(averagePoints) > 0
-    ? clamp((Number(averagePoints) - baseProjection) * 0.12, -2.5, 2.5)
-    : 0;
-  return roundTo(baseProjection + formAdjustment);
+  return roundTo(normalizedPrice / 12800);
 }
 
 function average(values) {
@@ -186,7 +178,7 @@ for (const entry of raw) {
     primaryPosition,
     gamesPlayed: playerRows.length,
     currentPrice: Number.isFinite(Number(existingPlayer?.currentPrice)) ? Number(existingPlayer.currentPrice) : null,
-    priceImpliedProjection: priceImpliedProjectionFor(existingPlayer?.currentPrice, averagePoints),
+    priceImpliedProjection: priceImpliedProjectionFor(existingPlayer?.currentPrice),
     seasonAverage: averagePoints,
     last3Average: roundTo(average(lastThreeRows.map((row) => row.fantasyPoints))),
     lastGameScore: roundTo(playerRows[playerRows.length - 1].fantasyPoints),
