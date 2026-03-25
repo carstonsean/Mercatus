@@ -53,7 +53,7 @@ const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.b
 
 const uiState = {
   activeScreen: "home",
-  activeHomePanel: "gainers",
+  activeHomePanel: "value",
   activeHomeFeaturedIndex: 0,
   activeHomeGameIndex: 0,
   activeHomeGameTouched: false,
@@ -115,6 +115,7 @@ const elements = {
   homeBiggestGainers: document.getElementById("home-biggest-gainers"),
   homeBiggestLosers: document.getElementById("home-biggest-losers"),
   homeBestValue: document.getElementById("home-best-value"),
+  homeMostOverpriced: document.getElementById("home-most-overpriced"),
   homeMostTraded: document.getElementById("home-most-traded"),
   homeUserLeaderboard: document.getElementById("home-user-leaderboard"),
   homeLeaderboardLink: document.getElementById("home-leaderboard-link"),
@@ -3091,7 +3092,14 @@ function renderHome() {
       };
     })
     .filter((entry) => Number.isFinite(entry.impliedScore))
-    .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine)
+    .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine);
+  const bestValue = projectionComparisons
+    .filter((entry) => entry.value > 0)
+    .sort((left, right) => right.value - left.value || right.market.currentLine - left.market.currentLine)
+    .slice(0, 20);
+  const mostOverpriced = projectionComparisons
+    .filter((entry) => entry.value < 0)
+    .sort((left, right) => left.value - right.value || left.market.currentLine - right.market.currentLine)
     .slice(0, 20);
   const mostConfident = homeMarkets
     .slice()
@@ -3172,18 +3180,36 @@ function renderHome() {
     headingTitle: "Projected"
   });
 
-  renderHomeMarketLeaderboard(elements.homeBestValue, projectionComparisons, ({ market, impliedScore, value }) => ({
+  renderHomeMarketLeaderboard(elements.homeBestValue, bestValue, ({ market, impliedScore, value }) => ({
     badge: homeTeamAbbreviation(market.team),
     badgeTone: value > 0 ? "move-up" : value < 0 ? "move-down" : "move-flat",
+    cardClassName: "home-comparison-subcard",
     title: market.playerName,
     meta: market.team,
     detail: market.position,
     statPrimary: formatSignedLine(value),
-    statSecondary: `${market.currentLine.toFixed(1)} pts`
+    statSecondary: `Price ${impliedScore.toFixed(1)} • Proj ${market.currentLine.toFixed(1)}`,
+    statSecondaryClass: "home-comparison-metric"
   }), {
     variant: "compact-list-group",
     headingTitle: "Value",
     emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
+  });
+
+  renderHomeMarketLeaderboard(elements.homeMostOverpriced, mostOverpriced, ({ market, impliedScore, value }) => ({
+    badge: homeTeamAbbreviation(market.team),
+    badgeTone: "move-down",
+    cardClassName: "home-comparison-subcard",
+    title: market.playerName,
+    meta: market.team,
+    detail: market.position,
+    statPrimary: formatSignedLine(value),
+    statSecondary: `Price ${impliedScore.toFixed(1)} • Proj ${market.currentLine.toFixed(1)}`,
+    statSecondaryClass: "home-comparison-metric"
+  }), {
+    variant: "compact-list-group",
+    headingTitle: "Overpriced",
+    emptyMessage: "Overpriced players will appear here once official Fantasy prices are available."
   });
 
   renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows);
@@ -3497,11 +3523,12 @@ function isRoundStarted() {
 function renderHomeCarouselControls() {
   if (!elements.homeCarouselNav || !elements.homeCarouselMeta) return;
   const panels = [
+    { key: "value", label: "Value", detail: "Best projection gaps vs price" },
+    { key: "overpriced", label: "Overpriced", detail: "Weakest projection gaps vs price" },
     { key: "gainers", label: "Gainers", detail: "Biggest gainers" },
     { key: "losers", label: "Losers", detail: "Biggest losers" },
     { key: "activity", label: "Market Confidence", detail: "Highest-confidence lines" },
-    { key: "projected", label: "Projected", detail: "Top current lines" },
-    { key: "value", label: "Value", detail: "Gaps vs NRL price" }
+    { key: "projected", label: "Projected", detail: "Top current lines" }
   ];
   if (!panels.some((panel) => panel.key === uiState.activeHomePanel)) {
     uiState.activeHomePanel = panels[0].key;
@@ -3616,7 +3643,7 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
         const view = presenter({ market, ...row }, index);
         const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
         const isHeroCard = index === 0 && (options.headingTitle === "Gainers" || options.headingTitle === "Losers");
-        return `<button class="home-projection-subcard home-list-subcard ${isHeroCard ? "is-rank-hero" : ""}" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}</div>${renderHomeMetricMarkup({ ...view, metricHero: isHeroCard }, view.badgeTone)}</button>`;
+        return `<button class="home-projection-subcard home-list-subcard ${view.cardClassName || ""} ${isHeroCard ? "is-rank-hero" : ""}" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}</div>${renderHomeMetricMarkup({ ...view, metricHero: isHeroCard }, view.badgeTone)}</button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
