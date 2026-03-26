@@ -648,6 +648,7 @@ function renderGuestHero() {
         </div>
       </section>
       <section class="auth-feature-list">
+        <p class="auth-feature-eyebrow">HOW IT WORKS</p>
         <div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div>
         <div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div>
         <div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div>
