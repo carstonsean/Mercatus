@@ -594,6 +594,15 @@ function hasAuthenticatedBefore() {
 }
 
 function openAuthPrompt(mode = "signup") {
+  // If home screen hero is visible, scroll to the inline form instead of opening overlay
+  if (uiState.activeScreen === "home" && elements.homeGuestHero && !elements.homeGuestHero.classList.contains("is-hidden")) {
+    const inlineInput = elements.homeGuestHero.querySelector("#inline-auth-username");
+    if (inlineInput) {
+      inlineInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => inlineInput.focus(), 120);
+      return;
+    }
+  }
   elements.authFeedback.textContent = "";
   renderAuthGate(true);
 }
@@ -623,51 +632,61 @@ function renderGuestHero() {
   hero.classList.remove("is-hidden");
   const roundLabel = activeRoundLabel();
   hero.innerHTML = `
-    <div class="guest-hero-content">
-      <section class="guest-hero-tagline">
-        <h2 class="guest-hero-headline">The crowd<br>sets the line.</h2>
-        <p class="guest-hero-subtitle">Trade over/under lines on NRL fantasy projections — crowd trading moves the number in real time.</p>
-        <div class="guest-hero-live-signal">
-          <span class="guest-hero-live-dot" aria-hidden="true"></span>
-          <span>Market live · ${roundLabel}</span>
+    <div class="auth-hero-inline">
+      <section class="auth-copy auth-hero">
+        <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
+        <p class="auth-hero-subtitle">Back your opinion on NRL fantasy projections</p>
+        <div class="auth-live-signal">
+          <span class="auth-live-dot" aria-hidden="true"></span>
+          <span>Market live &middot; ${roundLabel}</span>
         </div>
       </section>
-      <section class="guest-hero-how-it-works">
-        <p class="guest-hero-section-label">HOW IT WORKS</p>
-        <div class="guest-hero-feature-list">
-          <div class="guest-hero-feature-item">
-            <i class="ph-fill ph-arrows-down-up guest-hero-feature-icon" aria-hidden="true"></i>
-            <div>
-              <strong>Back over or under</strong>
-              <span>Pick whether a player will score above or below the current projection line.</span>
-            </div>
-          </div>
-          <div class="guest-hero-feature-item">
-            <i class="ph-fill ph-trophy guest-hero-feature-icon" aria-hidden="true"></i>
-            <div>
-              <strong>Compete in the Prize Pool</strong>
-              <span>Build a full-squad lineup and compete against the community for real prize splits.</span>
-            </div>
-          </div>
-          <div class="guest-hero-feature-item">
-            <i class="ph-fill ph-users guest-hero-feature-icon" aria-hidden="true"></i>
-            <div>
-              <strong>The crowd sets the price</strong>
-              <span>Every trade moves the line — follow the crowd or fade it when you see an edge.</span>
-            </div>
-          </div>
+      <section class="auth-hero-cta-wrap">
+        <div class="auth-hero-cta">
+          <strong>Start with $200 in crowdIQ cash</strong>
+          <button class="auth-hero-entry" type="button" id="inline-hero-entry">Enter the Market &rarr;</button>
         </div>
       </section>
-      <section class="guest-hero-cta-section">
-        <button class="guest-hero-cta-button" type="button" id="guest-hero-cta">Sign Up to Trade</button>
-        <p class="guest-hero-signin-link"><button class="guest-hero-signin-button" type="button" id="guest-hero-signin">Already have an account? Sign in</button></p>
+      <section class="auth-feature-list">
+        <div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div>
+        <div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div>
+        <div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div>
       </section>
-      <p class="guest-hero-scroll-hint"><span class="guest-hero-scroll-arrow">↓</span> Browse the live market below</p>
+      <form class="stack-form auth-form" id="inline-auth-form">
+        <label class="auth-field-label">
+          CHOOSE YOUR USERNAME
+          <input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required>
+        </label>
+        <button class="primary-button auth-submit-button" type="submit">Enter the Market</button>
+        <p id="inline-auth-feedback" class="feedback" aria-live="polite"></p>
+      </form>
+      <p class="guest-hero-scroll-hint"><span class="guest-hero-scroll-arrow">&darr;</span> Browse the live market below</p>
     </div>
     <div class="guest-hero-divider"></div>
   `;
-  hero.querySelector("#guest-hero-cta")?.addEventListener("click", () => openAuthPrompt("signup"));
-  hero.querySelector("#guest-hero-signin")?.addEventListener("click", () => openAuthPrompt("signin"));
+  const form = hero.querySelector("#inline-auth-form");
+  const input = hero.querySelector("#inline-auth-username");
+  const feedback = hero.querySelector("#inline-auth-feedback");
+  hero.querySelector("#inline-hero-entry")?.addEventListener("click", () => {
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => input?.focus(), 120);
+  });
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const userName = input?.value.trim();
+    if (!userName) {
+      if (feedback) feedback.textContent = "Enter a username to continue.";
+      return;
+    }
+    if (feedback) feedback.textContent = "Entering crowdIQ...";
+    if (input) input.disabled = true;
+    if (elements.authUsername) elements.authUsername.value = userName;
+    await completeLogin(userName);
+    if (!isAuthenticated() && feedback) {
+      feedback.textContent = elements.authFeedback?.textContent || "Something went wrong.";
+    }
+    if (input) input.disabled = false;
+  });
 }
 
 function dismissGuestHero() {
