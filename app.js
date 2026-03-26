@@ -6,6 +6,7 @@ const STARTING_BANKROLL = 200;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
 const USER_NAME_KEY = "mercatus-user-name";
+const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 2500;
@@ -46,6 +47,7 @@ let prizePoolLastPolledAmount = null;
 let prizePoolJarSurging = false;
 let prizePoolJarSurgeTimer = null;
 let prizePoolShareFitFrame = null;
+let authFocusTimer = null;
 let popularFeaturedMarketIds = [];
 let popularFeaturedRoundNumber = null;
 let popularFeaturedRequest = null;
@@ -104,6 +106,7 @@ const elements = {
   authLiveBadge: document.getElementById("auth-live-badge"),
   authHeroCtaCopy: document.getElementById("auth-hero-cta-copy"),
   authPhoneMockup: document.getElementById("auth-phone-mockup"),
+  authClose: document.getElementById("auth-close"),
   authHeaderSignup: document.getElementById("auth-header-signup"),
   authHeroEntry: document.getElementById("auth-hero-entry"),
   appFrame: document.querySelector(".mobile-frame"),
@@ -122,6 +125,7 @@ const elements = {
   homeCarousel: document.getElementById("home-carousel"),
   homeCarouselNav: document.getElementById("home-carousel-nav"),
   homeCarouselMeta: document.getElementById("home-carousel-meta"),
+  homeGuestHero: document.getElementById("home-guest-hero"),
   homeFeaturedSlate: document.getElementById("home-featured-slate"),
   homePrizePoolBanner: document.getElementById("home-prize-pool-banner"),
   homeGamesStrip: document.getElementById("home-games-strip"),
@@ -231,7 +235,8 @@ async function init() {
   renderAuthPreview();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (!savedUserName) {
-    renderAuthGate(false);
+    renderAll();
+    startLiveSync();
     return;
   }
   elements.userName.value = savedUserName;
@@ -246,6 +251,16 @@ function bindEvents() {
       window.setTimeout(() => elements.authUsername?.focus(), 120);
     })
   );
+
+  elements.authClose?.addEventListener("click", () => {
+    renderAuthGate(false);
+  });
+
+  elements.authGate?.addEventListener("click", (event) => {
+    if (event.target === elements.authGate) {
+      renderAuthGate(false);
+    }
+  });
 
   elements.navButtons.forEach((button) =>
     button.addEventListener("click", () => {
@@ -285,7 +300,10 @@ function bindEvents() {
     elements.authUsername.value = "";
     elements.authFeedback.textContent = "";
     elements.userName.value = "";
-    renderAuthGate(false);
+    uiState.activeScreen = "home";
+    uiState.activeAccountView = "portfolio";
+    renderAll();
+    startLiveSync();
   });
 
   elements.portfolioSortButton.addEventListener("click", () => {
@@ -314,6 +332,10 @@ function bindEvents() {
     renderScreens();
   });
   elements.headerBalance?.addEventListener("click", () => {
+    if (!isAuthenticated()) {
+      openAuthPrompt("signup");
+      return;
+    }
     uiState.activeScreen = "account";
     uiState.activeAccountView = "wallet";
     renderAll();
@@ -546,11 +568,13 @@ async function completeLogin(userName) {
   try {
     elements.userName.value = userName;
     localStorage.setItem(USER_NAME_KEY, userName);
+    localStorage.setItem(HAS_AUTHENTICATED_KEY, "true");
     randomizeQuickPickOrder();
     await syncSession();
     syncSelectedMarket();
     renderAll();
-    renderAuthGate(true);
+    renderAuthGate(false);
+    dismissGuestHero();
     startLiveSync();
     elements.authFeedback.textContent = "";
   } catch (error) {
@@ -561,9 +585,100 @@ async function completeLogin(userName) {
   }
 }
 
-function renderAuthGate(isAuthenticated) {
-  elements.authGate.classList.toggle("is-hidden", isAuthenticated);
-  elements.appFrame.classList.toggle("is-authenticated", isAuthenticated);
+function isAuthenticated() {
+  return Boolean(localStorage.getItem(USER_NAME_KEY)?.trim());
+}
+
+function hasAuthenticatedBefore() {
+  return localStorage.getItem(HAS_AUTHENTICATED_KEY) === "true";
+}
+
+function openAuthPrompt(mode = "signup") {
+  elements.authFeedback.textContent = "";
+  renderAuthGate(true);
+}
+
+function renderAuthGate(isOpen) {
+  window.clearTimeout(authFocusTimer);
+  elements.authGate.classList.toggle("is-hidden", !isOpen);
+  elements.authGate.setAttribute("aria-hidden", String(!isOpen));
+  document.body.classList.toggle("auth-prompt-open", Boolean(isOpen));
+  if (isOpen) {
+    authFocusTimer = window.setTimeout(() => {
+      elements.authUsername?.focus();
+      elements.authUsername?.select();
+    }, 140);
+  }
+}
+
+function renderGuestHero() {
+  const hero = elements.homeGuestHero;
+  if (!hero) return;
+  const shouldShow = !isAuthenticated() && !hasAuthenticatedBefore();
+  if (!shouldShow) {
+    hero.innerHTML = "";
+    hero.classList.add("is-hidden");
+    return;
+  }
+  hero.classList.remove("is-hidden");
+  const roundLabel = activeRoundLabel();
+  hero.innerHTML = `
+    <div class="guest-hero-content">
+      <section class="guest-hero-tagline">
+        <h2 class="guest-hero-headline">The crowd<br>sets the line.</h2>
+        <p class="guest-hero-subtitle">Trade over/under lines on NRL fantasy projections — crowd trading moves the number in real time.</p>
+        <div class="guest-hero-live-signal">
+          <span class="guest-hero-live-dot" aria-hidden="true"></span>
+          <span>Market live · ${roundLabel}</span>
+        </div>
+      </section>
+      <section class="guest-hero-how-it-works">
+        <p class="guest-hero-section-label">HOW IT WORKS</p>
+        <div class="guest-hero-feature-list">
+          <div class="guest-hero-feature-item">
+            <i class="ph-fill ph-arrows-down-up guest-hero-feature-icon" aria-hidden="true"></i>
+            <div>
+              <strong>Back over or under</strong>
+              <span>Pick whether a player will score above or below the current projection line.</span>
+            </div>
+          </div>
+          <div class="guest-hero-feature-item">
+            <i class="ph-fill ph-trophy guest-hero-feature-icon" aria-hidden="true"></i>
+            <div>
+              <strong>Compete in the Prize Pool</strong>
+              <span>Build a full-squad lineup and compete against the community for real prize splits.</span>
+            </div>
+          </div>
+          <div class="guest-hero-feature-item">
+            <i class="ph-fill ph-users guest-hero-feature-icon" aria-hidden="true"></i>
+            <div>
+              <strong>The crowd sets the price</strong>
+              <span>Every trade moves the line — follow the crowd or fade it when you see an edge.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="guest-hero-cta-section">
+        <button class="guest-hero-cta-button" type="button" id="guest-hero-cta">Sign Up to Trade</button>
+        <p class="guest-hero-signin-link"><button class="guest-hero-signin-button" type="button" id="guest-hero-signin">Already have an account? Sign in</button></p>
+      </section>
+      <p class="guest-hero-scroll-hint"><span class="guest-hero-scroll-arrow">↓</span> Browse the live market below</p>
+    </div>
+    <div class="guest-hero-divider"></div>
+  `;
+  hero.querySelector("#guest-hero-cta")?.addEventListener("click", () => openAuthPrompt("signup"));
+  hero.querySelector("#guest-hero-signin")?.addEventListener("click", () => openAuthPrompt("signin"));
+}
+
+function dismissGuestHero() {
+  const hero = elements.homeGuestHero;
+  if (!hero || hero.classList.contains("is-hidden")) return;
+  hero.classList.add("is-dismissing");
+  window.setTimeout(() => {
+    hero.innerHTML = "";
+    hero.classList.remove("is-dismissing");
+    hero.classList.add("is-hidden");
+  }, 300);
 }
 
 function renderAuthPreview() {
@@ -701,6 +816,7 @@ async function refreshSharedState() {
 
 function renderAll() {
   renderHeaderBalance();
+  renderGuestHero();
   renderScreens();
   renderTeamToggle();
   renderSelectors();
@@ -726,6 +842,11 @@ function renderAll() {
 }
 
 function renderHeaderBalance() {
+  if (!elements.headerBalance) return;
+  if (!isAuthenticated()) {
+    elements.headerBalance.innerHTML = `<button class="header-signup-button" type="button">Sign Up Now to Trade</button>`;
+    return;
+  }
   const bankroll = getDisplayedCash(currentUserName());
   elements.headerBalance.innerHTML = `<i class="ph-fill ph-wallet header-balance-icon" aria-hidden="true"></i><span class="header-balance-label">Wallet</span><strong>${formatStake(bankroll)}</strong>`;
 }
@@ -1024,6 +1145,11 @@ function applyLiveStateRender() {
 
 async function submitTrade(marketId, stake, panel) {
   const feedback = panel.querySelector("#trade-feedback");
+  if (!isAuthenticated()) {
+    if (feedback) feedback.textContent = "Sign in to place a position.";
+    openAuthPrompt("signup");
+    return;
+  }
   const tradeSide = getMarketTradeSide(marketId);
   const market = findMarket(marketId);
   if (isMarketLocked(market)) {
@@ -2238,6 +2364,10 @@ async function submitPrizePoolDraftPick(side, card) {
 }
 
 async function submitPrizePoolEntry() {
+  if (!isAuthenticated()) {
+    openAuthPrompt("signup");
+    return;
+  }
   if (!prizePoolState?.draft?.id) return;
   uiState.prizePoolPendingAction = "submit";
   renderPrizePool();
