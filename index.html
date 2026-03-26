@@ -27,7 +27,7 @@
 <body>
   <div class="app-shell">
     <div class="mobile-frame">
-      <section id="auth-gate" class="auth-gate">
+      <section id="auth-gate" class="auth-gate is-hidden" aria-hidden="true">
         <div class="auth-card">
           <div class="auth-ticker" aria-hidden="true">
             <div id="auth-ticker-marquee" class="auth-ticker-marquee"></div>
@@ -40,7 +40,10 @@
                 </div>
               </div>
             </div>
-            <button id="auth-header-signup" class="auth-header-signup" type="button">Sign Up</button>
+            <div class="auth-header-actions">
+              <button id="auth-header-signup" class="auth-header-signup" type="button">Sign Up</button>
+              <button id="auth-close" class="auth-close-button" type="button" aria-label="Close">✕</button>
+            </div>
           </header>
           <section class="auth-copy auth-hero">
             <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
@@ -153,6 +156,7 @@
 
       <section class="screen active" data-screen="home">
         <div class="screen-scroll">
+          <section id="home-guest-hero" class="home-guest-hero is-hidden"></section>
           <section class="home-hub">
             <div class="home-hub-head">
               <div>
