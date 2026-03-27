@@ -242,6 +242,15 @@ async function init() {
   } catch (error) {
     console.warn("Startup session sync failed", error.message);
   }
+  // If the current game isn't in the active round (e.g. it's a prior-round default),
+  // switch to the first active-round game so Match Centre isn't blank on first load.
+  if (!getActiveRoundGames().some((game) => game.id === uiState.currentGameId)) {
+    const firstActiveGame = getActiveRoundGames()[0];
+    if (firstActiveGame) {
+      uiState.currentGameId = firstActiveGame.id;
+      uiState.currentTeam = firstActiveGame.homeTeam;
+    }
+  }
   syncSelectedMarket();
   renderAll();
   if (savedUserName) {
