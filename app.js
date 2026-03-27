@@ -235,17 +235,20 @@ async function init() {
   renderAll();
   renderAuthPreview();
   syncPopularFeaturedPlayers();
-  if (!savedUserName) {
-    try {
-      await syncSession();
-      renderAll();
-    } catch (error) {
-      console.warn("Guest session sync failed", error.message);
-    }
-    startLiveSync();
-    return;
+  // Sync session without touching credentials on failure — completeLogin() would
+  // clear the saved username if syncSession() throws, which logs the user out silently.
+  try {
+    await syncSession();
+  } catch (error) {
+    console.warn("Startup session sync failed", error.message);
   }
-  await completeLogin(savedUserName);
+  syncSelectedMarket();
+  renderAll();
+  if (savedUserName) {
+    renderAuthGate(false);
+    dismissGuestHero();
+  }
+  startLiveSync();
 }
 
 function bindEvents() {
@@ -4852,7 +4855,7 @@ function showToast(title, meta) {
 
 async function api(url, payload) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(url, {
       method: "POST",
