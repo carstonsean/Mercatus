@@ -240,7 +240,6 @@ async function handleApi(req,res,url){
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
       await ensureSupabaseReady();
-      await syncStateFromSupabase();
     }
     if(!useSupabase){
       syncDerivedBalances();
@@ -261,7 +260,7 @@ async function handleApi(req,res,url){
     }
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
     if(useSupabase){
-      await persistSupabaseMarketState(market,state);
+      persistSupabaseMarketState(market,state).catch((error)=>console.warn("Supabase trade persist failed",error.message));
       persistState();
     }else{
       await persistStateSnapshot(false);
