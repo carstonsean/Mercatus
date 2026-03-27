@@ -226,21 +226,25 @@ init();
 
 async function init() {
   bindEvents();
-  try {
-    await syncSession();
-  } catch (error) {
-    console.warn("Initial session sync failed", error.message);
-  }
-  syncPopularFeaturedPlayers();
-  renderAuthPreview();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
+  if (savedUserName) {
+    elements.userName.value = savedUserName;
+    elements.authUsername.value = savedUserName;
+  }
+  // Render immediately so the app is never a blank screen while waiting for the server
+  renderAll();
+  renderAuthPreview();
+  syncPopularFeaturedPlayers();
   if (!savedUserName) {
-    renderAll();
+    try {
+      await syncSession();
+      renderAll();
+    } catch (error) {
+      console.warn("Guest session sync failed", error.message);
+    }
     startLiveSync();
     return;
   }
-  elements.userName.value = savedUserName;
-  elements.authUsername.value = savedUserName;
   await completeLogin(savedUserName);
 }
 
@@ -4847,16 +4851,25 @@ function showToast(title, meta) {
 }
 
 async function api(url, payload) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || "Request failed");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Request failed");
+    }
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-  return data;
 }
 
 
