@@ -253,8 +253,7 @@ async function handleApi(req,res,url){
     if(isMarketLocked(market)){
       return json(res,400,{error:"That market is locked."});
     }
-    const supabaseBalance=useSupabase?await getSupabaseAvailableBalance(username):null;
-    const bankroll=supabaseBalance??getUserBankroll(username);
+    const bankroll=getUserBankroll(username);
     if(stake>bankroll){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
