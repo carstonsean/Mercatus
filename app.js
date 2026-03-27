@@ -4864,7 +4864,7 @@ function showToast(title, meta) {
 
 async function api(url, payload) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -4880,6 +4880,9 @@ async function api(url, payload) {
     return data;
   } catch (error) {
     clearTimeout(timeoutId);
+    if (error.name === "AbortError" || String(error.message).toLowerCase().includes("aborted")) {
+      throw new Error("Request timed out — please try again");
+    }
     throw error;
   }
 }
