@@ -79,6 +79,13 @@ const MIME_TYPES={
 };
 
 const server=http.createServer(async (req,res)=>{
+  // Railway terminates SSL and sets x-forwarded-proto. Redirect plain HTTP to HTTPS.
+  if(req.headers["x-forwarded-proto"]==="http"){
+    const host=req.headers.host||"crowdiq.live";
+    res.writeHead(301,{Location:`https://${host}${req.url}`});
+    res.end();
+    return;
+  }
   try{
     const url=new URL(req.url,`http://${req.headers.host}`);
     if(url.pathname.startsWith("/api/")){
