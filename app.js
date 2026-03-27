@@ -639,7 +639,7 @@ function renderAuthGate(isOpen) {
 function renderGuestHero() {
   const hero = elements.homeGuestHero;
   if (!hero) return;
-  const shouldShow = !isAuthenticated() && !hasAuthenticatedBefore();
+  const shouldShow = !isAuthenticated();
   if (!shouldShow) {
     hero.innerHTML = "";
     hero.classList.add("is-hidden");
@@ -4441,7 +4441,13 @@ function parseKickoffLabel(label) {
   let hour = Number(hourLabel);
   if (period.toUpperCase() === "PM" && hour !== 12) hour += 12;
   if (period.toUpperCase() === "AM" && hour === 12) hour = 0;
-  return new Date(new Date().getFullYear(), month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+  const now = Date.now();
+  let year = new Date().getFullYear();
+  let ts = new Date(year, month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+  if (ts < now - 180 * 24 * 60 * 60 * 1000) {
+    ts = new Date(year + 1, month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+  }
+  return ts;
 }
 
 function isGameLocked(game, now = Date.now()) {

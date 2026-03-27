@@ -193,7 +193,7 @@ async function handleApi(req,res,url){
     }
     state.activeRoundNumber=roundNumber;
     state.activeRoundLabel=buildRoundLabel(roundNumber);
-    state.forceOpenGameIds=buildForceOpenGameIdsForRound(roundNumber);
+    state.forceOpenGameIds=[];
     syncPrizePoolState(state);
     await persistStateSnapshot(useSupabase);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
@@ -1356,7 +1356,7 @@ async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
       backendUser.balance=tableBackedBalance;
       state.bankrolls[userName]=tableBackedBalance;
     }else if(backendUser&&Number.isFinite(backendUser.balance)){
-      state.bankrolls[userName]=Math.min(state.bankrolls[userName]??STARTING_BANKROLL,backendUser.balance);
+      state.bankrolls[userName]=backendUser.balance;
     }
     return backendUser;
   }catch(error){
@@ -1936,7 +1936,13 @@ function parseKickoffLabel(label){
   if(period.toUpperCase()==="AM"&&hour===12){
     hour=0;
   }
-  return new Date(new Date().getFullYear(),month,Number(day),hour,Number(minuteLabel),0,0).getTime();
+  const now=Date.now();
+  let year=new Date().getFullYear();
+  let ts=new Date(year,month,Number(day),hour,Number(minuteLabel),0,0).getTime();
+  if(ts<now-180*24*60*60*1000){
+    ts=new Date(year+1,month,Number(day),hour,Number(minuteLabel),0,0).getTime();
+  }
+  return ts;
 }
 
 function getRoundNumberForMarket(market){
