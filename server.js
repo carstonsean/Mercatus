@@ -175,9 +175,7 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
-      syncStateFromSupabase().catch((error)=>{
-        console.warn("Session Supabase sync failed",error.message);
-      });
+      await syncStateFromSupabase();
     }
     const backendUser=await syncBackendUser(username,useSupabase);
     const dashboard=await getBackendDashboard(username,useSupabase);
