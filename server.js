@@ -175,11 +175,9 @@ async function handleApi(req,res,url){
       }catch(error){
         console.warn("Session Supabase sync failed",error.message);
       }
-      try{
-        await syncBackendUser(username,useSupabase);
-      }catch(error){
+      syncBackendUser(username,useSupabase).catch((error)=>{
         console.warn("Session user sync failed",error.message);
-      }
+      });
     }else{
       syncDerivedBalances();
     }

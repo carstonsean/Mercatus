@@ -31,7 +31,15 @@ const BOT_BEHAVIOUR_PRESETS = {
   PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
 };
 
-let state = { bankrolls: {}, markets: [], walletTransactions: [] };
+const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
+
+let state = {
+  bankrolls: {},
+  markets: authPreviewMarkets,
+  walletTransactions: [],
+  activeRoundNumber: CURRENT_ROUND_NUMBER,
+  activeRoundLabel: CURRENT_ROUND_LABEL
+};
 let backendState = { mode: "local", user: null, dashboard: null };
 let prizePoolState = null;
 let toastTimer = null;
@@ -51,7 +59,6 @@ let authFocusTimer = null;
 let popularFeaturedMarketIds = [];
 let popularFeaturedRoundNumber = null;
 let popularFeaturedRequest = null;
-const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
 
 const uiState = {
   activeScreen: "home",
@@ -4900,7 +4907,7 @@ function showToast(title, meta) {
 
 async function api(url, payload) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
     const response = await fetch(url, {
       method: "POST",
