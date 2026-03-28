@@ -250,15 +250,7 @@ async function init() {
   } catch (error) {
     console.warn("Startup session sync failed", error.message);
   }
-  // If the current game isn't in the active round (e.g. it's a prior-round default),
-  // switch to the first active-round game so Match Centre isn't blank on first load.
-  if (!getActiveRoundGames().some((game) => game.id === uiState.currentGameId)) {
-    const firstActiveGame = getActiveRoundGames()[0];
-    if (firstActiveGame) {
-      uiState.currentGameId = firstActiveGame.id;
-      uiState.currentTeam = firstActiveGame.homeTeam;
-    }
-  }
+  normalizeNavigationState();
   syncSelectedMarket();
   renderAll();
   if (savedUserName) {
@@ -336,10 +328,12 @@ function bindEvents() {
       activeRoundLabel: CURRENT_ROUND_LABEL
     };
     prizePoolState = null;
+    normalizeNavigationState();
     syncSelectedMarket();
     renderAll();
     try {
       await syncSession();
+      normalizeNavigationState();
       syncSelectedMarket();
       renderAll();
     } catch (error) {
@@ -869,6 +863,7 @@ async function refreshSharedState() {
 }
 
 function renderAll() {
+  normalizeNavigationState();
   renderHeaderBalance();
   renderGuestHero();
   renderScreens();
@@ -3107,6 +3102,7 @@ function focusPreferredMatchCentreGame(force = false) {
 }
 
 function syncSelectedMarket() {
+  normalizeNavigationState();
   const visibleMarkets = getVisibleMarkets();
   if (!visibleMarkets.some((market) => market.id === uiState.selectedMarketId)) {
     uiState.selectedMarketId = visibleMarkets[0]?.id ?? getGameMarkets(uiState.currentGameId)[0]?.id ?? "";
@@ -3115,6 +3111,23 @@ function syncSelectedMarket() {
     uiState.expandedMarketId = "";
   }
   syncQuickTakeQueue();
+}
+
+function normalizeNavigationState() {
+  const activeGames = getActiveRoundGames();
+  const fallbackGame = activeGames[0] || roundGames[0] || null;
+  if (!fallbackGame) return;
+  if (!activeGames.some((game) => game.id === uiState.currentGameId)) {
+    uiState.currentGameId = fallbackGame.id;
+  }
+  const resolvedGame = activeGames.find((game) => game.id === uiState.currentGameId) || fallbackGame;
+  if (![resolvedGame.homeTeam, resolvedGame.awayTeam].includes(uiState.currentTeam)) {
+    uiState.currentTeam = resolvedGame.homeTeam;
+  }
+  if (!isAuthenticated() && uiState.activeScreen === "account") {
+    uiState.activeScreen = "home";
+    uiState.activeAccountView = "portfolio";
+  }
 }
 
 function currentGame() {
