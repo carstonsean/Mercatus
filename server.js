@@ -81,7 +81,7 @@ const MIME_TYPES={
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url,`http://${req.headers.host}`);
-    if(url.pathname.startsWith("/api/")){
+    if(url.pathname==="/api"||url.pathname.startsWith("/api/")){
       await handleApi(req,res,url);
       return;
     }
