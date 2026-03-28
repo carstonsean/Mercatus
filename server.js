@@ -442,11 +442,16 @@ async function handleApi(req,res,url){
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/create"){
     const body=await parseJson(req);
     state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+    state.botSimulation.config=normalizeSimulationConfig({
+      ...state.botSimulation.config,
+      enabled:true
+    });
     const mode=body.mode==="random-prob"?"random-prob":"default";
     const bot=mode==="random-prob"?createRandomProbBot(state.botSimulation.bots):createRandomBot(state.botSimulation.bots);
     state.botSimulation.bots=[...state.botSimulation.bots,bot];
     state.bankrolls[bot.userName]=bot.startingBankroll;
     syncDerivedBalances();
+    syncPrizePoolState(state);
     await persistStateSnapshot(useSupabase);
     return json(res,200,{state,bot});
   }
@@ -1151,6 +1156,72 @@ function submitPrizePoolEntry(userName,draftId,now=Date.now()){
   return entry;
 }
 
+function buildPrizePoolBotEntry(userName,targetState=state,now=Date.now()){
+  const assignmentIds=buildPrizePoolDraftAssignments([],now,targetState);
+  if(assignmentIds.some((marketId)=>!marketId)){
+    return null;
+  }
+  const picks=PRIZE_POOL_POSITION_SLOTS.map((slot,index)=>{
+    const market=findMarket(assignmentIds[index]);
+    if(!market){
+      return null;
+    }
+    const side=Math.random()<0.5?"OVER":"UNDER";
+    return normalizePrizePoolPick({
+      slotId:slot.slotId,
+      position:slot.position,
+      positionLabel:slot.label,
+      marketId:market.id,
+      playerName:market.playerName,
+      team:market.team,
+      gameId:market.gameId,
+      side,
+      line:Number(market.currentLine)||0,
+      actualScore:null,
+      resultStatus:"PENDING",
+      settledAt:null
+    });
+  }).filter(Boolean);
+  if(picks.length!==PRIZE_POOL_POSITION_SLOTS.length){
+    return null;
+  }
+  return normalizePrizePoolEntry({
+    id:randomUUID(),
+    userName,
+    submittedAt:new Date(now).toISOString(),
+    picks
+  });
+}
+
+function ensurePrizePoolBotEntries(targetState=state,now=Date.now()){
+  if(!prizePoolEntryWindowOpen(now,targetState)){
+    return;
+  }
+  const round=currentPrizePoolRound(targetState);
+  const bots=(targetState.botSimulation?.bots||[]).filter((bot)=>bot?.source==="random-prob");
+  bots.forEach((bot)=>{
+    const userName=bot.userName;
+    if(!userName||prizePoolFindEntry(userName,targetState)){
+      return;
+    }
+    ensureBankroll(userName,targetState);
+    if(getUserBankroll(userName,targetState)<PRIZE_POOL_ENTRY_FEE){
+      return;
+    }
+    const entry=buildPrizePoolBotEntry(userName,targetState,now);
+    if(!entry){
+      return;
+    }
+    applyWalletDelta(userName,-PRIZE_POOL_ENTRY_FEE,{
+      type:"PRIZE_POOL_ENTRY",
+      title:"Prize Pool entry",
+      subtitle:`${getActiveRoundLabel(targetState)} entry fee`,
+      createdAt:entry.submittedAt
+    },targetState);
+    round.entries.push(entry);
+  });
+}
+
 function prizePoolPickStatus(pick){
   const score=getImportedRoundScoreForMarket({playerName:pick.playerName,team:pick.team},getActiveRoundNumber(state));
   if(!Number.isFinite(score)){
@@ -1167,31 +1238,7 @@ function prizePoolPickStatus(pick){
 function syncPrizePoolState(targetState=state,now=Date.now()){
   targetState.prizePool=normalizePrizePoolState(targetState.prizePool);
   const round=currentPrizePoolRound(targetState);
-  const randomProbBotUsers=new Set(
-    (targetState.botSimulation?.bots||[])
-      .filter((bot)=>bot?.source==="random-prob"&&bot?.userName)
-      .map((bot)=>prizePoolUserKey(bot.userName))
-  );
-  if(randomProbBotUsers.size){
-    const removedEntries=round.entries.filter((entry)=>randomProbBotUsers.has(prizePoolUserKey(entry.userName)));
-    if(removedEntries.length){
-      const entryFee=Number(targetState.prizePool?.entryFee)||PRIZE_POOL_ENTRY_FEE;
-      removedEntries.forEach((entry)=>{
-        applyWalletDelta(entry.userName,entryFee,{
-          type:"PRIZE_POOL_REFUND",
-          title:"Prize Pool refund",
-          subtitle:`${getActiveRoundLabel(targetState)} bot entry removed`,
-          createdAt:new Date(now).toISOString()
-        },targetState);
-      });
-      round.entries=round.entries.filter((entry)=>!randomProbBotUsers.has(prizePoolUserKey(entry.userName)));
-    }
-    Object.keys(targetState.prizePool?.drafts||{}).forEach((userName)=>{
-      if(randomProbBotUsers.has(prizePoolUserKey(userName))){
-        delete targetState.prizePool.drafts[userName];
-      }
-    });
-  }
+  ensurePrizePoolBotEntries(targetState,now);
   const finalizeAt=prizePoolSettlementDeadline(now,targetState);
   round.entries.forEach((entry)=>{
     entry.picks=entry.picks.map((pick)=>{
