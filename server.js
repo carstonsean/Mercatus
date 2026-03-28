@@ -58,6 +58,7 @@ const AVAILABLE_ROUND_NUMBERS=[...new Set([
   ...((derivedData?.metadata?.roundsIncluded)||[]).map((round)=>Number(round)).filter(Number.isFinite)
 ])].sort((left,right)=>left-right);
 const SUPABASE_STATE_SYNC_TTL_MS=30000;
+const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const SUPABASE_ENABLED=isSupabaseEnabled();
 
@@ -68,6 +69,7 @@ let popularPlayersFetchPromise=null;
 let state=loadState();
 let supabaseSeedReady=false;
 let lastSupabaseStateSyncAt=0;
+let lastSupabaseUnavailableAt=0;
 let supabaseStateSyncPromise=null;
 persistState();
 
@@ -248,11 +250,14 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     let canPersistToSupabase=useSupabase;
-    if(useSupabase){
+    if(useSupabase&&lastSupabaseUnavailableAt&&(Date.now()-lastSupabaseUnavailableAt)<SUPABASE_UNAVAILABLE_BACKOFF_MS){
+      canPersistToSupabase=false;
+    }else if(useSupabase){
       try{
         await ensureSupabaseReady();
       }catch(error){
         canPersistToSupabase=false;
+        lastSupabaseUnavailableAt=Date.now();
         console.warn("Supabase unavailable for trade request; using local runtime state",error.message);
       }
     }
@@ -775,6 +780,7 @@ function normalizeState(rawState,options={}){
       unmatchedStake: Number.isFinite(Number(trade.unmatchedStake))?Number(trade.unmatchedStake):0,
       matchedStake: Number.isFinite(Number(trade.matchedStake))?Number(trade.matchedStake):Number(trade.stake)||0,
       refundedStake: Number.isFinite(Number(trade.refundedStake))?Number(trade.refundedStake):0,
+      chargedStake: currentChargedStake(trade),
       pairIds: Array.isArray(trade.pairIds)?trade.pairIds:[],
       status: trade.status||(trade.result?"SETTLED":"MATCHED")
     }))
@@ -1459,6 +1465,7 @@ async function syncStateFromSupabase({force=false}={}){
       lastSupabaseStateSyncAt=Date.now();
     }catch(error){
       console.warn("Supabase state sync failed",error.message);
+      lastSupabaseUnavailableAt=Date.now();
       lastSupabaseStateSyncAt=Date.now();
     }
     return state;
@@ -1533,8 +1540,7 @@ function computeHostedBankrolls(supabaseState,runtimeOverlay={},currentState=sta
       if(!trade?.userName){
         return;
       }
-      bankrolls[trade.userName]=(Number(bankrolls[trade.userName])||STARTING_BANKROLL)-(Number(trade.stake)||0);
-      bankrolls[trade.userName]+=Number(trade.refundedStake)||0;
+      bankrolls[trade.userName]=(Number(bankrolls[trade.userName])||STARTING_BANKROLL)-currentChargedStake(trade);
       bankrolls[trade.userName]+=Number(trade.result?.payout)||0;
     });
   });
@@ -1572,6 +1578,63 @@ function updateMarketTotals(market){
   market.netPressure=calculateNetPressure(market);
 }
 
+function currentChargedStake(trade){
+  const explicitStake=Number(trade?.chargedStake);
+  if(Number.isFinite(explicitStake)){
+    return Math.max(0,explicitStake);
+  }
+  const matchedStake=Number(trade?.matchedStake)||0;
+  const rawStake=Number(trade?.stake)||0;
+  const refundedStake=Number(trade?.refundedStake)||0;
+  if(trade?.result){
+    return Math.max(0,matchedStake);
+  }
+  return Math.max(matchedStake,rawStake-refundedStake,0);
+}
+
+function availableChargedReserve(trade){
+  return Math.max(0,currentChargedStake(trade)-(Number(trade?.matchedStake)||0));
+}
+
+function ensureTradeStakeCharged(trade,targetStake,market,createdAt){
+  const requiredStake=Math.max(0,Number(targetStake)||0);
+  const chargedStake=currentChargedStake(trade);
+  const additionalStake=Math.max(0,requiredStake-chargedStake);
+  if(additionalStake<=0){
+    trade.chargedStake=chargedStake;
+    return 0;
+  }
+  applyWalletDelta(trade.userName,-additionalStake,{
+    type:"TRADE_STAKE",
+    title:"Trade matched",
+    subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)}`,
+    marketId:market.id,
+    tradeId:trade.id,
+    createdAt:createdAt||trade.timestamp||new Date().toISOString()
+  });
+  trade.chargedStake=chargedStake+additionalStake;
+  return additionalStake;
+}
+
+function refundReservedStake(trade,amount,market,details={}){
+  const refundableStake=Math.min(Math.max(0,Number(amount)||0),availableChargedReserve(trade));
+  trade.chargedStake=currentChargedStake(trade);
+  if(refundableStake<=0){
+    return 0;
+  }
+  applyWalletDelta(trade.userName,refundableStake,{
+    type:details.type||"TRADE_REFUND",
+    title:details.title||"Order cancelled",
+    subtitle:details.subtitle||`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
+    marketId:market.id,
+    tradeId:trade.id,
+    createdAt:details.createdAt||new Date().toISOString()
+  });
+  trade.chargedStake=Math.max(0,currentChargedStake(trade)-refundableStake);
+  trade.refundedStake=(Number(trade.refundedStake)||0)+refundableStake;
+  return refundableStake;
+}
+
 function activeOrderStatus(order){
   if(order.unmatchedStake>0&&order.matchedStake>0) return "PARTIALLY_MATCHED";
   if(order.unmatchedStake>0) return "PENDING";
@@ -1601,19 +1664,12 @@ function executeProjectionTrade(market,{userName,side,stake,botId=null,botSource
     timestamp,
     result:null,
     status:"PENDING",
+    chargedStake:0,
     engineVersion:ENGINE_VERSION,
     botId:botId||undefined,
     botSource:botSource||undefined,
     archetype:archetype||undefined
   };
-  applyWalletDelta(userName,-stake,{
-    type:"TRADE_STAKE",
-    title:"Trade placed",
-    subtitle:`${market.playerName} ${side.toLowerCase()} ${formatLine(trade.entryLine)}`,
-    marketId:market.id,
-    tradeId:trade.id,
-    createdAt:timestamp
-  });
   matchAgainstRestingOrders(market,trade);
   trade.status=activeOrderStatus(trade);
   market.trades.push(trade);
@@ -1630,17 +1686,7 @@ function cancelPendingOrders(userName,orderIds){
       if(trade.userName!==userName||!orderIds.includes(trade.id)||!(trade.unmatchedStake>0)){
         return;
       }
-      const refundedStake=Number(trade.unmatchedStake)||0;
-      if(refundedStake>0){
-        applyWalletDelta(userName,refundedStake,{
-          type:"TRADE_REFUND",
-          title:"Order cancelled",
-          subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
-          marketId:market.id,
-          tradeId:trade.id
-        });
-        trade.refundedStake=(Number(trade.refundedStake)||0)+refundedStake;
-      }
+      refundReservedStake(trade,trade.unmatchedStake,market);
       trade.unmatchedStake=0;
       trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
     });
@@ -1657,8 +1703,7 @@ function settleProjectionMarket(market,finalScore,options={}){
   market.manuallyLocked=true;
   market.trades.forEach((trade)=>{
     if(trade.unmatchedStake>0){
-      const refundedStake=Number(trade.unmatchedStake)||0;
-      applyWalletDelta(trade.userName,refundedStake,{
+      refundReservedStake(trade,trade.unmatchedStake,market,{
         type:"TRADE_REFUND",
         title:"Open order released",
         subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
@@ -1666,7 +1711,6 @@ function settleProjectionMarket(market,finalScore,options={}){
         tradeId:trade.id,
         createdAt:settledAt
       });
-      trade.refundedStake=(Number(trade.refundedStake)||0)+refundedStake;
       trade.unmatchedStake=0;
     }
   });
@@ -2275,8 +2319,8 @@ function matchAgainstRestingOrders(market,incomingOrder){
     const affordableStake=Math.min(
       incomingOrder.unmatchedStake,
       restingOrder.unmatchedStake,
-      Math.max(getUserBankroll(incomingOrder.userName),0),
-      Math.max(getUserBankroll(restingOrder.userName),0)
+      Math.max(getUserBankroll(incomingOrder.userName)+availableChargedReserve(incomingOrder),0),
+      Math.max(getUserBankroll(restingOrder.userName)+availableChargedReserve(restingOrder),0)
     );
     if(affordableStake<=0){
       return;
@@ -2305,6 +2349,8 @@ function matchAgainstRestingOrders(market,incomingOrder){
     restingOrder.unmatchedStake-=affordableStake;
     restingOrder.matchedStake+=affordableStake;
     restingOrder.pairIds=(restingOrder.pairIds||[]).concat(pair.id);
+    ensureTradeStakeCharged(incomingOrder,incomingOrder.matchedStake,market,incomingOrder.timestamp);
+    ensureTradeStakeCharged(restingOrder,restingOrder.matchedStake,market,incomingOrder.timestamp);
     restingOrder.status=activeOrderStatus(restingOrder);
   });
 }
