@@ -687,63 +687,17 @@ function renderGuestUnauthBottom() {
     container.innerHTML = "";
     return;
   }
-  const roundLabel = activeRoundLabel();
-  const poolAmount = prizePoolDisplayAmount(prizePoolState);
-  const roundContext = `Round ${activeRoundNumber()} prize pool \u00b7 closes at kickoff`;
-
-  const softCtaHTML = `<div class="home-unauth-soft-cta"><button class="home-soft-cta-button" type="button" id="home-soft-cta-btn">Trade these lines &mdash; sign up free &rarr;</button></div>`;
-
-  const games = getActiveRoundGames().slice().sort((l, r) => kickoffTimestampForGame(l) - kickoffTimestampForGame(r));
-  const openPositions = getPortfolioData().openPositions || [];
-  const positionCountsByGameId = openPositions.reduce((counts, position) => {
-    const market = findMarket(position.marketId);
-    if (!market?.gameId) return counts;
-    counts.set(market.gameId, (counts.get(market.gameId) || 0) + 1);
-    return counts;
-  }, new Map());
-  const upcomingGamesHTML = games.length ? `<section class="home-unauth-section"><p class="home-unauth-eyebrow">UPCOMING &middot; ${roundLabel}</p><div class="home-unauth-games-row">${games.map((game) => homeGameCardMarkup(game, positionCountsByGameId.get(game.id) || 0)).join("")}</div></section>` : "";
-
-  const prizePoolHTML = `<div class="home-unauth-prize-pool-wrap"><button class="home-prize-pool-banner" type="button" id="home-unauth-prize-pool-btn"><span class="home-prize-pool-label"><span class="home-prize-pool-icon" aria-hidden="true">\u{1F4B0}</span><span>Prize Pool</span></span><span class="home-prize-pool-divider" aria-hidden="true"></span><span class="home-prize-pool-amount-block"><span class="home-prize-pool-amount" data-home-prize-pool-amount="${poolAmount}">${formatStake(0)}</span><span class="home-prize-pool-context">${roundContext}</span></span><span class="home-prize-pool-chevron" aria-hidden="true">\u203a</span></button></div>`;
+  const softCtaHTML = `<div class="home-unauth-soft-cta"><button class="home-soft-cta-button" type="button" id="home-soft-cta-btn">Browse every player line now. Sign up to trade &rarr;</button></div>`;
 
   const howItWorksHTML = `<section class="home-unauth-section auth-feature-list"><p class="auth-feature-eyebrow">HOW IT WORKS</p><div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div><div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div><div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div></section>`;
 
   const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
 
-  container.innerHTML = softCtaHTML + upcomingGamesHTML + prizePoolHTML + howItWorksHTML + conversionCtaHTML;
+  container.innerHTML = softCtaHTML + howItWorksHTML + conversionCtaHTML;
 
   container.querySelector("#home-soft-cta-btn")?.addEventListener("click", () => {
     openAuthPrompt("signup");
   });
-
-  container.querySelectorAll("[data-home-game-id]").forEach((card) =>
-    card.addEventListener("click", () => {
-      openMatchCentreGame(card.dataset.homeGameId);
-    })
-  );
-
-  const prizePoolBtn = container.querySelector("#home-unauth-prize-pool-btn");
-  prizePoolBtn?.addEventListener("click", () => {
-    uiState.activeScreen = "prizepool";
-    renderAll();
-  });
-
-  const amountNode = prizePoolBtn?.querySelector("[data-home-prize-pool-amount]");
-  if (amountNode && poolAmount > 0) {
-    const startTime = performance.now();
-    const duration = 800;
-    const step = (now) => {
-      const progress = Math.min(1, (now - startTime) / duration);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const nextValue = Math.round(poolAmount * eased);
-      amountNode.textContent = formatStake(nextValue);
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      } else {
-        amountNode.textContent = formatStake(poolAmount);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }
 
   const form = container.querySelector("#inline-auth-form");
   const input = container.querySelector("#inline-auth-username");
@@ -1147,6 +1101,7 @@ function marketDetailMarkup(market) {
   const stakeDraft = uiState.stakeDrafts[market.id] ?? 10;
   const isPending = uiState.pendingTradeMarketId === market.id;
   const isLocked = isMarketLocked(market);
+  const isGuest = !isAuthenticated();
   const currentPair = linePairForMarket(market);
   const side = getMarketTradeSide(market.id);
   const status = getMarketStatus(market);
@@ -1156,10 +1111,13 @@ function marketDetailMarkup(market) {
   const performance = quickPickPerformanceSummary(market);
   const matchup = matchupContext(market);
   const teamColors = TEAM_COLORS[market.team] ?? TEAM_COLORS[normalizeTeamName(market.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
-  const executionCopy = isLocked
-    ? "Trading closed at kickoff for this match."
-    : "Fills against waiting orders first, then shifts the projection if needed.";
-  return `<div class="trade-ticket trade-ticket-compact trade-ticket-quick quick-take-card player-card-shell ${isPending || isLocked ? "is-locked" : ""}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(market)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Match Centre</span></div><div class="quick-take-header"><div><h3>${market.playerName}</h3><p>${market.team} | ${market.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence, true)}</div></div><div class="trade-ticket-metric-row"><div class="trade-ticket-projection-block"><div class="quick-take-line trade-ticket-projection">${market.currentLine.toFixed(1)}</div><span class="quick-take-move trade-ticket-projection-delta ${movement.className}">${movement.arrow} ${movement.label}</span></div><div class="trade-ticket-metric-meta"><span class="trade-ticket-next-mid">Next mid ${nextLine.toFixed(1)}</span></div></div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${isLocked ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending || isLocked ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending || isLocked ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending || isLocked ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending || isLocked ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending || isLocked ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><button type="button" class="trade-note-button" data-trade-note-toggle aria-label="Explain execution">ⓘ</button><span class="trade-note-popover" role="note">${executionCopy}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : ""}</p></form></div>`;
+  const controlsDisabled = isPending || isLocked || isGuest;
+  const executionCopy = isGuest
+    ? "Browse the live projection and sign up when you're ready to place a position."
+    : isLocked
+      ? "Trading closed at kickoff for this match."
+      : "Fills against waiting orders first, then shifts the projection if needed.";
+  return `<div class="trade-ticket trade-ticket-compact trade-ticket-quick quick-take-card player-card-shell ${controlsDisabled ? "is-locked" : ""}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(market)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Match Centre</span></div><div class="quick-take-header"><div><h3>${market.playerName}</h3><p>${market.team} | ${market.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence, true)}</div></div><div class="trade-ticket-metric-row"><div class="trade-ticket-projection-block"><div class="quick-take-line trade-ticket-projection">${market.currentLine.toFixed(1)}</div><span class="quick-take-move trade-ticket-projection-delta ${movement.className}">${movement.arrow} ${movement.label}</span></div><div class="trade-ticket-metric-meta"><span class="trade-ticket-next-mid">Next mid ${nextLine.toFixed(1)}</span></div></div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : isGuest ? `<span>Read-only until you sign up</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${controlsDisabled ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${controlsDisabled ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${controlsDisabled ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${controlsDisabled ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${controlsDisabled ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${controlsDisabled ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><button type="button" class="trade-note-button" data-trade-note-toggle aria-label="Explain execution">ⓘ</button><span class="trade-note-popover" role="note">${executionCopy}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : isGuest ? "Sign up to trade" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : isGuest ? "Browse every player market now. Sign up to place a position." : ""}</p></form></div>`;
 }
 
 function bindTradeSheetEvents(panel, marketId) {
@@ -1175,7 +1133,16 @@ function bindTradeSheetEvents(panel, marketId) {
   }
 
   const market = findMarket(marketId);
+  tradeForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitTrade(marketId, Number(stakeInput?.value) || 0, panel);
+  });
+
   if (isMarketLocked(market)) {
+    return;
+  }
+
+  if (!isAuthenticated()) {
     return;
   }
 
@@ -1202,11 +1169,6 @@ function bindTradeSheetEvents(panel, marketId) {
   stakeInput.addEventListener("input", () => {
     uiState.stakeDrafts[marketId] = Number(stakeInput.value) || 0;
     stakeReturn.textContent = formatStake((Number(stakeInput.value) || 0) * 2);
-  });
-
-  tradeForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await submitTrade(marketId, Number(stakeInput.value) || 0, panel);
   });
 
   if (isMarketLocked(market)) {
@@ -3336,16 +3298,10 @@ function renderHome() {
   const fallbackFeaturedMarkets = (topProjected.length ? topProjected : fallbackMovers).slice(0, 8);
   const popularFeaturedMarkets = resolvePopularFeaturedMarkets(homeMarkets);
   renderHomeCarouselControls();
-  if (isAuthenticated()) {
-    renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets);
-    renderHomePrizePoolBanner(prizePoolState);
-    renderHomeGamesStrip();
-  } else {
-    if (elements.homeFeaturedSlate) elements.homeFeaturedSlate.innerHTML = "";
-    if (elements.homePrizePoolBanner) elements.homePrizePoolBanner.innerHTML = "";
-    if (elements.homeGamesStrip) elements.homeGamesStrip.innerHTML = "";
-    renderGuestUnauthBottom();
-  }
+  renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets);
+  renderHomePrizePoolBanner(prizePoolState);
+  renderHomeGamesStrip();
+  renderGuestUnauthBottom();
 
   renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
