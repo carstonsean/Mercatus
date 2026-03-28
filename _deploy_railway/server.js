@@ -1010,7 +1010,11 @@ async function syncStateFromSupabase(){
   try{
     const supabaseState=await fetchSupabaseAppState();
     if(supabaseState){
-      state=supabaseState;
+      state=normalizeState({
+        ...buildFreshState(),
+        bankrolls:supabaseState.bankrolls||{},
+        markets:supabaseState.markets||[]
+      });
     }
   }catch(error){
     console.warn("Supabase state sync failed",error.message);
