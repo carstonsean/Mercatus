@@ -682,8 +682,26 @@ function renderAuthGate(isOpen) {
 function renderGuestHero() {
   const hero = elements.homeGuestHero;
   if (!hero) return;
-  hero.innerHTML = "";
-  hero.classList.add("is-hidden");
+  if (isAuthenticated()) {
+    hero.innerHTML = "";
+    hero.classList.add("is-hidden");
+    return;
+  }
+  hero.classList.remove("is-hidden");
+  hero.innerHTML = `
+    <div class="auth-hero-inline">
+      <section class="auth-copy auth-hero">
+        <p class="eyebrow">crowdIQ Live</p>
+        <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
+        <p class="auth-hero-subtitle">Browse live NRL fantasy player projections before you sign up to trade.</p>
+        <div class="auth-live-signal">
+          <span class="auth-live-dot" aria-hidden="true"></span>
+          <span>Market live &middot; ${activeRoundLabel()}</span>
+        </div>
+      </section>
+    </div>
+    <div class="guest-hero-divider"></div>
+  `;
 }
 
 function renderGuestUnauthBottom() {
