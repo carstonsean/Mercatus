@@ -568,7 +568,22 @@ function requestAdminAccess() {
 }
 
 function applySharedSnapshot(response) {
-  state = response.state;
+  const nextState = response.state && typeof response.state === "object" ? response.state : {};
+  const hasMarketPayload = Array.isArray(nextState.markets) && nextState.markets.length > 0;
+  const preservedMarkets = hasMarketPayload
+    ? nextState.markets
+    : (Array.isArray(state.markets) && state.markets.length ? state.markets : authPreviewMarkets);
+  const nextActiveRoundNumber = Number.isFinite(Number(nextState.activeRoundNumber))
+    ? Number(nextState.activeRoundNumber)
+    : activeRoundNumber();
+  state = {
+    ...state,
+    ...nextState,
+    markets: preservedMarkets,
+    walletTransactions: Array.isArray(nextState.walletTransactions) ? nextState.walletTransactions : (state.walletTransactions || []),
+    activeRoundNumber: nextActiveRoundNumber,
+    activeRoundLabel: nextState.activeRoundLabel || roundLabelForNumber(nextActiveRoundNumber)
+  };
   backendState = response.backend || { mode: "local", user: null, dashboard: null };
   prizePoolState = response.prizePool || null;
 }
