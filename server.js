@@ -705,17 +705,38 @@ function normalizeState(rawState,options={}){
   const legacyMarkets=persistedMarkets.filter((market)=>market?.id&&!SEEDED_MARKETS_BY_ID.has(market.id));
   const markets=[...mergedSeededMarkets,...legacyMarkets].map((market)=>{
     const seededMarket=SEEDED_MARKETS_BY_ID.get(market.id)||{};
+    const resolvedMarket={
+      ...seededMarket,
+      ...market,
+      opponent: preferSeededText(market.opponent,seededMarket.opponent),
+      position: preferSeededText(market.position,seededMarket.position),
+      fantasyPrice: preferSeededNumber(market.fantasyPrice,seededMarket.fantasyPrice,{min:1}),
+      priceImpliedProjection: preferSeededNumber(market.priceImpliedProjection,seededMarket.priceImpliedProjection),
+      seasonAverage: preferSeededNumber(market.seasonAverage,seededMarket.seasonAverage),
+      lastSeasonAverage: preferSeededNumber(market.lastSeasonAverage,seededMarket.lastSeasonAverage),
+      lastGameScore: preferSeededNumber(market.lastGameScore,seededMarket.lastGameScore),
+      last3Average: preferSeededNumber(market.last3Average,seededMarket.last3Average),
+      homeAverage: preferSeededNumber(market.homeAverage,seededMarket.homeAverage),
+      awayAverage: preferSeededNumber(market.awayAverage,seededMarket.awayAverage),
+      teamOdds: preferSeededNumber(market.teamOdds,seededMarket.teamOdds,{min:0}),
+      opponentOdds: preferSeededNumber(market.opponentOdds,seededMarket.opponentOdds,{min:0}),
+      impliedTeamWinProb: preferSeededNumber(market.impliedTeamWinProb,seededMarket.impliedTeamWinProb,{min:0}),
+      opponentPositionAverage: preferSeededNumber(market.opponentPositionAverage,seededMarket.opponentPositionAverage),
+      leaguePositionAverage: preferSeededNumber(market.leaguePositionAverage,seededMarket.leaguePositionAverage),
+      popularity: preferSeededNumber(market.popularity,seededMarket.popularity,{min:0}),
+      scoreVolatility: preferSeededNumber(market.scoreVolatility,seededMarket.scoreVolatility,{min:0}),
+      botInputs: market.botInputs&&typeof market.botInputs==="object"?market.botInputs:(seededMarket.botInputs||null)
+    };
     return {
-    ...seededMarket,
-    ...market,
-    initialLine: normalizeMidpoint(Number(market.initialLine)||0),
-    currentLine: normalizeMidpoint(Number(market.currentLine)||Number(market.initialLine)||0),
-    spreadWidth: Number(market.spreadWidth)||LINE_STEP,
-    netPressure: Number(market.netPressure)||0,
-    pressureBalance: Number(market.pressureBalance)||0,
-    engineVersion: market.engineVersion||null,
-    matchedPairs: (market.matchedPairs||[]).map((pair)=>({...pair})),
-    trades: (market.trades||[]).map((trade)=>({
+    ...resolvedMarket,
+    initialLine: normalizeMidpoint(Number(resolvedMarket.initialLine)||0),
+    currentLine: normalizeMidpoint(Number(resolvedMarket.currentLine)||Number(resolvedMarket.initialLine)||0),
+    spreadWidth: Number(resolvedMarket.spreadWidth)||LINE_STEP,
+    netPressure: Number(resolvedMarket.netPressure)||0,
+    pressureBalance: Number(resolvedMarket.pressureBalance)||0,
+    engineVersion: resolvedMarket.engineVersion||null,
+    matchedPairs: (resolvedMarket.matchedPairs||[]).map((pair)=>({...pair})),
+    trades: (resolvedMarket.trades||[]).map((trade)=>({
       ...trade,
       entryLine: Number.isFinite(Number(trade.entryLine))?Number(trade.entryLine):HALF_POINT,
       entryUnderLine: Number.isFinite(Number(trade.entryUnderLine))?Number(trade.entryUnderLine):Number.isFinite(Number(trade.entryLine))?Number(trade.entryLine):HALF_POINT,
@@ -1981,6 +2002,29 @@ function normalizePlayerKey(value){
 
 function normalizeTeamName(team){
   return team==="Tigers"?"Wests Tigers":String(team||"");
+}
+
+function preferSeededNumber(value,fallback,options={}){
+  const min=options.min??null;
+  const normalizedValue=Number(value);
+  if(Number.isFinite(normalizedValue)&&(min===null||normalizedValue>=min)){
+    return normalizedValue;
+  }
+  const normalizedFallback=Number(fallback);
+  if(Number.isFinite(normalizedFallback)&&(min===null||normalizedFallback>=min)){
+    return normalizedFallback;
+  }
+  return null;
+}
+
+function preferSeededText(value,fallback){
+  if(typeof value==="string"&&value.trim()){
+    return value;
+  }
+  if(typeof fallback==="string"&&fallback.trim()){
+    return fallback;
+  }
+  return "";
 }
 
 function cloneValue(value){
