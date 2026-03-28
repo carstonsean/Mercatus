@@ -169,14 +169,12 @@ async function handleApi(req,res,url){
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
       syncStateFromSupabase().catch((error)=>{console.warn("Session bg sync failed",error.message);});
-    }
-    const backendUser=await syncBackendUser(username,useSupabase);
-    const dashboard=await getBackendDashboard(username,useSupabase);
-    if(!useSupabase){
+      syncBackendUser(username,useSupabase).catch((error)=>{console.warn("Session bg user sync failed",error.message);});
+    }else{
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
-    return json(res,200,{state,userName:username,backend:buildBackendPayload(backendUser,dashboard,useSupabase),prizePool:buildPrizePoolClientPayload(username)});
+    return json(res,200,{state,userName:username,backend:buildBackendPayload(null,null,useSupabase),prizePool:buildPrizePoolClientPayload(username)});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/active-round"){
     const body=await parseJson(req);
