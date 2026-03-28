@@ -261,6 +261,14 @@ async function init() {
 }
 
 function bindEvents() {
+  window.addEventListener("pageshow", () => {
+    handlePageResume();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      handlePageResume();
+    }
+  });
   [elements.authHeaderSignup, elements.authHeroEntry].forEach((button) =>
     button?.addEventListener("click", () => {
       elements.authUsername?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -860,6 +868,18 @@ async function refreshSharedState() {
   } finally {
     syncInFlight = false;
   }
+}
+
+async function handlePageResume() {
+  if (!isAuthenticated() || syncInFlight) {
+    return;
+  }
+  try {
+    await syncSession();
+  } catch (error) {
+    console.warn("Resume session sync failed", error.message);
+  }
+  applyLiveStateRender();
 }
 
 function renderAll() {
