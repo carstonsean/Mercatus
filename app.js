@@ -311,7 +311,7 @@ function bindEvents() {
     await completeLogin(userName);
   });
 
-  elements.logoutButton.addEventListener("click", () => {
+  elements.logoutButton.addEventListener("click", async () => {
     stopLiveSync();
     stopPrizePoolPolling();
     stopKickoffTimer();
@@ -326,7 +326,25 @@ function bindEvents() {
     elements.userName.value = "";
     uiState.activeScreen = "home";
     uiState.activeAccountView = "portfolio";
+    renderAuthGate(false);
+    state = {
+      ...state,
+      bankrolls: {},
+      markets: authPreviewMarkets,
+      walletTransactions: [],
+      activeRoundNumber: CURRENT_ROUND_NUMBER,
+      activeRoundLabel: CURRENT_ROUND_LABEL
+    };
+    prizePoolState = null;
+    syncSelectedMarket();
     renderAll();
+    try {
+      await syncSession();
+      syncSelectedMarket();
+      renderAll();
+    } catch (error) {
+      console.warn("Logout guest sync failed", error.message);
+    }
     startLiveSync();
   });
 
@@ -662,44 +680,8 @@ function renderAuthGate(isOpen) {
 function renderGuestHero() {
   const hero = elements.homeGuestHero;
   if (!hero) return;
-  const shouldShow = !isAuthenticated();
-  if (!shouldShow) {
-    hero.innerHTML = "";
-    hero.classList.add("is-hidden");
-    return;
-  }
-  hero.classList.remove("is-hidden");
-  const roundLabel = activeRoundLabel();
-  const homeMarkets = getActiveRoundMarkets();
-  const topProjected = homeMarkets.slice().sort((l, r) => r.currentLine - l.currentLine).slice(0, 8);
-  const popularFeatured = resolvePopularFeaturedMarkets(homeMarkets);
-  const featuredItems = popularFeatured.length ? popularFeatured : topProjected;
-  const featuredMarket = featuredItems[0];
-  let featuredCardHTML = "";
-  if (featuredMarket) {
-    const movement = getMovementText(featuredMarket);
-    const matchup = matchupContext(featuredMarket);
-    featuredCardHTML = `<div class="home-featured-carousel home-hero-featured-card" aria-label="Featured player"><div class="home-featured-stage"><button class="home-featured-slate" type="button" data-market-id="${featuredMarket.id}" style="${teamSurfaceTone(featuredMarket.team)}"><div class="home-featured-copy"><span class="home-featured-label">Featured This Week</span><strong class="home-featured-name">${featuredMarket.playerName}</strong><div class="home-featured-meta"><span class="home-team-badge" style="${homeTeamPillStyle(featuredMarket.team)}">${homeTeamAbbreviation(featuredMarket.team)}</span><span>${featuredMarket.team}</span><span>${matchup.label}</span></div></div><div class="home-featured-metric"><span class="home-featured-metric-label">CROWD PROJECTION</span><strong>${featuredMarket.currentLine.toFixed(1)}<small>pts</small></strong><span class="home-featured-support">Season avg ${Number(featuredMarket.seasonAverage || 0).toFixed(1)}</span><span class="home-featured-trend ${movement.className}">${homeMovementLabel(movement)}</span></div></button></div></div>`;
-  }
-  hero.innerHTML = `
-    <div class="auth-hero-inline">
-      <section class="auth-copy auth-hero">
-        <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
-        <p class="auth-hero-subtitle">Back your opinion on NRL fantasy projections</p>
-        <div class="auth-live-signal">
-          <span class="auth-live-dot" aria-hidden="true"></span>
-          <span>Market live &middot; ${roundLabel}</span>
-        </div>
-      </section>
-      ${featuredCardHTML}
-    </div>
-    <div class="guest-hero-divider"></div>
-  `;
-  if (featuredMarket) {
-    hero.querySelector("[data-market-id]")?.addEventListener("click", () => {
-      openMarketFromHome(featuredMarket.id);
-    });
-  }
+  hero.innerHTML = "";
+  hero.classList.add("is-hidden");
 }
 
 function renderGuestUnauthBottom() {
