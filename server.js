@@ -247,10 +247,16 @@ async function handleApi(req,res,url){
   if(req.method==="POST"&&url.pathname==="/api/trades"){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
+    let canPersistToSupabase=useSupabase;
     if(useSupabase){
-      await ensureSupabaseReady();
+      try{
+        await ensureSupabaseReady();
+      }catch(error){
+        canPersistToSupabase=false;
+        console.warn("Supabase unavailable for trade request; using local runtime state",error.message);
+      }
     }
-    if(!useSupabase){
+    if(!canPersistToSupabase){
       syncDerivedBalances();
     }
     const market=findMarket(body.marketId);
@@ -267,7 +273,7 @@ async function handleApi(req,res,url){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
-    if(useSupabase){
+    if(canPersistToSupabase){
       persistSupabaseMarketState(market,state).catch((error)=>console.warn("Supabase trade persist failed",error.message));
       persistState();
     }else{
@@ -283,7 +289,7 @@ async function handleApi(req,res,url){
       });
     }
     syncPrizePoolState(state);
-    if(!useSupabase){
+    if(!canPersistToSupabase){
       return json(res,200,{
         trade,
         balance:getUserBankroll(username),
