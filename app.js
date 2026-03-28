@@ -864,30 +864,30 @@ async function refreshSharedState() {
 
 function renderAll() {
   normalizeNavigationState();
-  renderHeaderBalance();
-  renderGuestHero();
-  renderScreens();
-  renderTeamToggle();
-  renderSelectors();
-  renderHome();
-  renderSearchResults();
-  renderSelectedMarket();
-  renderMarketsList();
-  renderPortfolio();
-  renderWallet();
-  renderQuickTake();
-  renderPrizePool();
-  renderPrizePoolShareOverlay();
-  renderLeaderboard();
-  renderProfileSummary();
-  renderAdminShell();
-  renderAdminDashboard();
-  renderAdminMarkets();
-  renderBotSimulation();
-  renderAdminTable();
-  syncOpeningForm();
-  scheduleKickoffRefresh();
-  syncPrizePoolPolling();
+  safelyRender("header balance", renderHeaderBalance);
+  safelyRender("guest hero", renderGuestHero);
+  safelyRender("screens", renderScreens);
+  safelyRender("team toggle", renderTeamToggle);
+  safelyRender("selectors", renderSelectors);
+  safelyRender("home", renderHome);
+  safelyRender("search results", renderSearchResults);
+  safelyRender("selected market", renderSelectedMarket);
+  safelyRender("markets list", renderMarketsList);
+  safelyRender("portfolio", renderPortfolio);
+  safelyRender("wallet", renderWallet);
+  safelyRender("quick take", renderQuickTake);
+  safelyRender("prize pool", renderPrizePool);
+  safelyRender("prize pool share overlay", renderPrizePoolShareOverlay);
+  safelyRender("leaderboard", renderLeaderboard);
+  safelyRender("profile summary", renderProfileSummary);
+  safelyRender("admin shell", renderAdminShell);
+  safelyRender("admin dashboard", renderAdminDashboard);
+  safelyRender("admin markets", renderAdminMarkets);
+  safelyRender("bot simulation", renderBotSimulation);
+  safelyRender("admin table", renderAdminTable);
+  safelyRender("opening form", syncOpeningForm);
+  safelyRender("kickoff refresh", scheduleKickoffRefresh);
+  safelyRender("prize pool polling", syncPrizePoolPolling);
 }
 
 function renderHeaderBalance() {
@@ -3113,6 +3113,24 @@ function syncSelectedMarket() {
   syncQuickTakeQueue();
 }
 
+function safelyRender(label, callback) {
+  try {
+    return callback();
+  } catch (error) {
+    console.error(`Render failed: ${label}`, error);
+    return null;
+  }
+}
+
+function safelyCompute(label, callback, fallbackValue) {
+  try {
+    return callback();
+  } catch (error) {
+    console.error(`Compute failed: ${label}`, error);
+    return fallbackValue;
+  }
+}
+
 function normalizeNavigationState() {
   const activeGames = getActiveRoundGames();
   const fallbackGame = activeGames[0] || roundGames[0] || null;
@@ -3287,17 +3305,19 @@ function renderHome() {
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine || right.seasonAverage - left.seasonAverage)
     .slice(0, 20);
-  const projectionComparisons = homeMarkets
-    .map((market) => {
-      const impliedScore = priceImpliedProjectionForMarket(market);
-      return {
-        market,
-        impliedScore,
-        value: roundToHalf(market.currentLine - impliedScore)
-      };
-    })
-    .filter((entry) => Number.isFinite(entry.impliedScore))
-    .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine);
+  const projectionComparisons = safelyCompute("home projection comparisons", () =>
+    homeMarkets
+      .map((market) => {
+        const impliedScore = priceImpliedProjectionForMarket(market);
+        return {
+          market,
+          impliedScore,
+          value: roundToHalf(market.currentLine - impliedScore)
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.impliedScore))
+      .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine),
+  []);
   const bestValue = projectionComparisons
     .filter((entry) => entry.value > 0)
     .sort((left, right) => right.value - left.value || right.market.currentLine - left.market.currentLine)
@@ -3310,17 +3330,17 @@ function renderHome() {
     .slice()
     .sort((left, right) => getMarketTradeMetrics(right).confidence - getMarketTradeMetrics(left).confidence || projectionValue(right) - projectionValue(left))
     .slice(0, 20);
-  const leaderboardRows = getLeaderboardRows({ sort: "BALANCE", timeFilter: "ALL_TIME" });
+  const leaderboardRows = safelyCompute("home leaderboard rows", () => getLeaderboardRows({ sort: "BALANCE", timeFilter: "ALL_TIME" }), []);
 
   const fallbackFeaturedMarkets = (topProjected.length ? topProjected : fallbackMovers).slice(0, 8);
   const popularFeaturedMarkets = resolvePopularFeaturedMarkets(homeMarkets);
-  renderHomeCarouselControls();
-  renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets);
-  renderHomePrizePoolBanner(prizePoolState);
-  renderHomeGamesStrip();
-  renderGuestUnauthBottom();
+  safelyRender("home carousel controls", renderHomeCarouselControls);
+  safelyRender("home featured slate", () => renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets));
+  safelyRender("home prize pool banner", () => renderHomePrizePoolBanner(prizePoolState));
+  safelyRender("home games strip", renderHomeGamesStrip);
+  safelyRender("home unauth bottom", renderGuestUnauthBottom);
 
-  renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
+  safelyRender("home gainers", () => renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
     return {
       badge: homeTeamAbbreviation(market.team),
@@ -3337,9 +3357,9 @@ function renderHome() {
   }, {
     variant: "compact-list-group",
     headingTitle: "Gainers"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeBiggestLosers, biggestLosers.length ? biggestLosers : fallbackMovers.slice().reverse().slice(0, 20), ({ market }) => {
+  safelyRender("home losers", () => renderHomeMarketLeaderboard(elements.homeBiggestLosers, biggestLosers.length ? biggestLosers : fallbackMovers.slice().reverse().slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
     return {
       badge: homeTeamAbbreviation(market.team),
@@ -3356,9 +3376,9 @@ function renderHome() {
   }, {
     variant: "compact-list-group",
     headingTitle: "Losers"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeMostTraded, mostConfident, ({ market }) => {
+  safelyRender("home market confidence", () => renderHomeMarketLeaderboard(elements.homeMostTraded, mostConfident, ({ market }) => {
     const metrics = getMarketTradeMetrics(market);
     return {
       title: market.playerName,
@@ -3372,9 +3392,9 @@ function renderHome() {
   }, {
     variant: "featured-market-confidence",
     headingTitle: "Market Confidence"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
+  safelyRender("home projected", () => renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
     badge: homeTeamAbbreviation(market.team),
     badgeTone: "",
     title: market.playerName,
@@ -3384,9 +3404,9 @@ function renderHome() {
   }), {
     variant: "compact-projection-group",
     headingTitle: "Projected"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeBestValue, bestValue, ({ market, impliedScore, value }) => ({
+  safelyRender("home value", () => renderHomeMarketLeaderboard(elements.homeBestValue, bestValue, ({ market, impliedScore, value }) => ({
     badge: homeTeamAbbreviation(market.team),
     badgeTone: value > 0 ? "move-up" : value < 0 ? "move-down" : "move-flat",
     cardClassName: "home-comparison-subcard",
@@ -3400,9 +3420,9 @@ function renderHome() {
     variant: "compact-list-group",
     headingTitle: "Value",
     emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeMostOverpriced, mostOverpriced, ({ market, impliedScore, value }) => ({
+  safelyRender("home overpriced", () => renderHomeMarketLeaderboard(elements.homeMostOverpriced, mostOverpriced, ({ market, impliedScore, value }) => ({
     badge: homeTeamAbbreviation(market.team),
     badgeTone: "move-down",
     cardClassName: "home-comparison-subcard",
@@ -3416,9 +3436,9 @@ function renderHome() {
     variant: "compact-list-group",
     headingTitle: "Overpriced",
     emptyMessage: "Overpriced players will appear here once official Fantasy prices are available."
-  });
+  }));
 
-  renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows);
+  safelyRender("home user leaderboard", () => renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows));
 
   window.requestAnimationFrame(() => {
     syncHomeCarouselPosition();
