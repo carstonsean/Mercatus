@@ -149,7 +149,7 @@ async function handleApi(req,res,url){
     const players=buildPopularFeaturedPayload(scrapedPlayers,state);
     return json(res,200,{players,cached:usingCached});
   }
-  if(req.method==="GET"&&url.pathname==="/api/bootstrap"){
+  if(req.method==="GET"&&(url.pathname==="/api/bootstrap"||url.pathname==="/api")){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
     if(useSupabase){
       syncStateFromSupabase({force:true}).catch((error)=>{
@@ -164,7 +164,7 @@ async function handleApi(req,res,url){
     syncPrizePoolState(state);
     return json(res,200,{state,roundGames,teamColors:TEAM_COLORS,userName:username,backend:buildBackendPayload(backendUser,dashboard,useSupabase),prizePool:buildPrizePoolClientPayload(username)});
   }
-  if(req.method==="POST"&&url.pathname==="/api/session"){
+  if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
