@@ -753,6 +753,18 @@ function dismissGuestHero() {
   }, 300);
 }
 
+function ensureSeededMarketState() {
+  if (Array.isArray(state.markets) && state.markets.length) {
+    return;
+  }
+  state = {
+    ...state,
+    markets: authPreviewMarkets,
+    activeRoundNumber: state.activeRoundNumber || CURRENT_ROUND_NUMBER,
+    activeRoundLabel: state.activeRoundLabel || CURRENT_ROUND_LABEL
+  };
+}
+
 function renderAuthPreview() {
   const markets = state.markets?.length
     ? getActiveRoundMarkets()
@@ -887,14 +899,17 @@ async function refreshSharedState() {
 }
 
 async function handlePageResume() {
-  if (!isAuthenticated() || syncInFlight) {
+  if (syncInFlight) {
     return;
   }
+  ensureSeededMarketState();
   try {
     await syncSession();
   } catch (error) {
     console.warn("Resume session sync failed", error.message);
+    ensureSeededMarketState();
   }
+  startLiveSync();
   applyLiveStateRender();
 }
 
