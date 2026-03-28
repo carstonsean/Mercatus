@@ -711,13 +711,11 @@ function renderGuestUnauthBottom() {
     container.innerHTML = "";
     return;
   }
-  const softCtaHTML = `<div class="home-unauth-soft-cta"><button class="home-soft-cta-button" type="button" id="home-soft-cta-btn">Browse every player line now. Sign up to trade &rarr;</button></div>`;
-
   const howItWorksHTML = `<section class="home-unauth-section auth-feature-list"><p class="auth-feature-eyebrow">HOW IT WORKS</p><div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div><div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div><div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div></section>`;
 
   const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
 
-  container.innerHTML = softCtaHTML + howItWorksHTML + conversionCtaHTML;
+  container.innerHTML = howItWorksHTML + conversionCtaHTML;
 
   container.querySelector("#home-soft-cta-btn")?.addEventListener("click", () => {
     openAuthPrompt("signup");

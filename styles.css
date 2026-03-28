@@ -750,6 +750,10 @@ button {
   color: #888888;
 }
 
+.auth-form .feedback:empty {
+  display: none;
+}
+
 @keyframes authPulse {
   0% { box-shadow: 0 0 4px #00C853; }
   50% { box-shadow: 0 0 10px #00C853; }
@@ -1053,7 +1057,7 @@ button {
 #home-unauth-bottom {
   display: grid;
   gap: 24px;
-  padding-bottom: 32px;
+  padding-bottom: 8px;
 }
 
 #home-unauth-bottom:empty {
@@ -1134,7 +1138,11 @@ button {
 }
 
 .home-unauth-conversion-cta {
-  padding-bottom: 16px;
+  padding-bottom: 0;
+}
+
+.home-unauth-conversion-cta .auth-form {
+  padding-bottom: 0;
 }
 
 .home-hub {
