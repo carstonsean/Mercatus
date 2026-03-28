@@ -1037,6 +1037,106 @@ button {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Featured card in hero (unauthenticated) */
+.home-hero-featured-card {
+  padding: 0 16px;
+}
+
+/* Suppress empty hub containers from adding grid gap */
+#home-featured-slate:empty,
+#home-prize-pool-banner:empty,
+#home-games-strip:empty {
+  display: none;
+}
+
+/* Unauthenticated bottom sections */
+#home-unauth-bottom {
+  display: grid;
+  gap: 24px;
+  padding-bottom: 32px;
+}
+
+#home-unauth-bottom:empty {
+  display: none;
+}
+
+.home-unauth-soft-cta {
+  padding: 0 16px;
+}
+
+.home-soft-cta-button {
+  display: block;
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 24px;
+  border: 1px solid #00C853;
+  color: #00C853;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.home-unauth-section {
+  padding: 0 16px;
+  min-width: 0; /* prevent grid item from expanding with content */
+}
+
+.home-unauth-eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.home-unauth-games-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  width: 100%; /* stay at parent width so overflow-x: auto scrolls internally */
+  box-sizing: border-box;
+}
+
+.home-unauth-games-row::-webkit-scrollbar {
+  display: none;
+}
+
+.home-unauth-games-row .game-card {
+  flex: 0 0 auto;
+  width: 240px;
+}
+
+.home-unauth-prize-pool-wrap {
+  padding: 0 16px;
+}
+
+.home-unauth-prize-pool-wrap .home-prize-pool-banner {
+  margin-bottom: 0;
+  grid-template-columns: auto 1px minmax(0, 1fr) auto;
+}
+
+.home-prize-pool-amount-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.home-prize-pool-context {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(26, 26, 26, 0.65);
+}
+
+.home-unauth-conversion-cta {
+  padding-bottom: 16px;
+}
+
 .home-hub {
   display: grid;
   gap: 12px;
@@ -1228,6 +1328,62 @@ button {
   height: 6px;
   border-radius: 999px;
   background: #00C853;
+}
+
+/* Game card projection rows */
+.game-card.has-projections {
+  align-items: flex-start;
+}
+
+.game-card-proj-list {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-card-proj-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.game-card-proj-rank {
+  flex-shrink: 0;
+  width: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.38);
+  text-align: right;
+}
+
+.game-card-proj-badge {
+  min-width: 30px !important;
+  height: 16px !important;
+  font-size: 0.6rem !important;
+  border-radius: 4px !important;
+}
+
+.game-card-proj-name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+}
+
+.game-card-proj-pts {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.88);
+  letter-spacing: -0.02em;
 }
 
 .home-prize-pool-label {

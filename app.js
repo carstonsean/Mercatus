@@ -129,6 +129,7 @@ const elements = {
   homeFeaturedSlate: document.getElementById("home-featured-slate"),
   homePrizePoolBanner: document.getElementById("home-prize-pool-banner"),
   homeGamesStrip: document.getElementById("home-games-strip"),
+  homeUnauthBottom: document.getElementById("home-unauth-bottom"),
   searchInput: document.getElementById("search-input"),
   searchResults: document.getElementById("search-results"),
   marketsScreenScroll: document.getElementById("markets-screen-scroll"),
@@ -610,9 +611,9 @@ function hasAuthenticatedBefore() {
 }
 
 function openAuthPrompt(mode = "signup") {
-  // If home screen hero is visible, scroll to the inline form instead of opening overlay
-  if (uiState.activeScreen === "home" && elements.homeGuestHero && !elements.homeGuestHero.classList.contains("is-hidden")) {
-    const inlineInput = elements.homeGuestHero.querySelector("#inline-auth-username");
+  // If home screen is active, scroll to the inline form instead of opening overlay
+  if (uiState.activeScreen === "home") {
+    const inlineInput = document.getElementById("inline-auth-username");
     if (inlineInput) {
       inlineInput.scrollIntoView({ behavior: "smooth", block: "center" });
       window.setTimeout(() => inlineInput.focus(), 120);
@@ -647,6 +648,17 @@ function renderGuestHero() {
   }
   hero.classList.remove("is-hidden");
   const roundLabel = activeRoundLabel();
+  const homeMarkets = getActiveRoundMarkets();
+  const topProjected = homeMarkets.slice().sort((l, r) => r.currentLine - l.currentLine).slice(0, 8);
+  const popularFeatured = resolvePopularFeaturedMarkets(homeMarkets);
+  const featuredItems = popularFeatured.length ? popularFeatured : topProjected;
+  const featuredMarket = featuredItems[0];
+  let featuredCardHTML = "";
+  if (featuredMarket) {
+    const movement = getMovementText(featuredMarket);
+    const matchup = matchupContext(featuredMarket);
+    featuredCardHTML = `<div class="home-featured-carousel home-hero-featured-card" aria-label="Featured player"><div class="home-featured-stage"><button class="home-featured-slate" type="button" data-market-id="${featuredMarket.id}" style="${teamSurfaceTone(featuredMarket.team)}"><div class="home-featured-copy"><span class="home-featured-label">Featured This Week</span><strong class="home-featured-name">${featuredMarket.playerName}</strong><div class="home-featured-meta"><span class="home-team-badge" style="${homeTeamPillStyle(featuredMarket.team)}">${homeTeamAbbreviation(featuredMarket.team)}</span><span>${featuredMarket.team}</span><span>${matchup.label}</span></div></div><div class="home-featured-metric"><span class="home-featured-metric-label">CROWD PROJECTION</span><strong>${featuredMarket.currentLine.toFixed(1)}<small>pts</small></strong><span class="home-featured-support">Season avg ${Number(featuredMarket.seasonAverage || 0).toFixed(1)}</span><span class="home-featured-trend ${movement.className}">${homeMovementLabel(movement)}</span></div></button></div></div>`;
+  }
   hero.innerHTML = `
     <div class="auth-hero-inline">
       <section class="auth-copy auth-hero">
@@ -657,37 +669,85 @@ function renderGuestHero() {
           <span>Market live &middot; ${roundLabel}</span>
         </div>
       </section>
-      <section class="auth-hero-cta-wrap">
-        <div class="auth-hero-cta">
-          <strong>Start with $200 in crowdIQ cash</strong>
-          <button class="auth-hero-entry" type="button" id="inline-hero-entry">Enter the Market &rarr;</button>
-        </div>
-      </section>
-      <section class="auth-feature-list">
-        <p class="auth-feature-eyebrow">HOW IT WORKS</p>
-        <div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div>
-        <div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div>
-        <div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div>
-      </section>
-      <form class="stack-form auth-form" id="inline-auth-form">
-        <label class="auth-field-label">
-          CHOOSE YOUR USERNAME
-          <input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required>
-        </label>
-        <button class="primary-button auth-submit-button" type="submit">Enter the Market</button>
-        <p id="inline-auth-feedback" class="feedback" aria-live="polite"></p>
-      </form>
-      <p class="guest-hero-scroll-hint"><span class="guest-hero-scroll-arrow">&darr;</span> Browse the live market below</p>
+      ${featuredCardHTML}
     </div>
     <div class="guest-hero-divider"></div>
   `;
-  const form = hero.querySelector("#inline-auth-form");
-  const input = hero.querySelector("#inline-auth-username");
-  const feedback = hero.querySelector("#inline-auth-feedback");
-  hero.querySelector("#inline-hero-entry")?.addEventListener("click", () => {
-    input?.scrollIntoView({ behavior: "smooth", block: "center" });
-    window.setTimeout(() => input?.focus(), 120);
+  if (featuredMarket) {
+    hero.querySelector("[data-market-id]")?.addEventListener("click", () => {
+      openMarketFromHome(featuredMarket.id);
+    });
+  }
+}
+
+function renderGuestUnauthBottom() {
+  const container = elements.homeUnauthBottom;
+  if (!container) return;
+  if (isAuthenticated()) {
+    container.innerHTML = "";
+    return;
+  }
+  const roundLabel = activeRoundLabel();
+  const poolAmount = prizePoolDisplayAmount(prizePoolState);
+  const roundContext = `Round ${activeRoundNumber()} prize pool \u00b7 closes at kickoff`;
+
+  const softCtaHTML = `<div class="home-unauth-soft-cta"><button class="home-soft-cta-button" type="button" id="home-soft-cta-btn">Trade these lines &mdash; sign up free &rarr;</button></div>`;
+
+  const games = getActiveRoundGames().slice().sort((l, r) => kickoffTimestampForGame(l) - kickoffTimestampForGame(r));
+  const openPositions = getPortfolioData().openPositions || [];
+  const positionCountsByGameId = openPositions.reduce((counts, position) => {
+    const market = findMarket(position.marketId);
+    if (!market?.gameId) return counts;
+    counts.set(market.gameId, (counts.get(market.gameId) || 0) + 1);
+    return counts;
+  }, new Map());
+  const upcomingGamesHTML = games.length ? `<section class="home-unauth-section"><p class="home-unauth-eyebrow">UPCOMING &middot; ${roundLabel}</p><div class="home-unauth-games-row">${games.map((game) => homeGameCardMarkup(game, positionCountsByGameId.get(game.id) || 0)).join("")}</div></section>` : "";
+
+  const prizePoolHTML = `<div class="home-unauth-prize-pool-wrap"><button class="home-prize-pool-banner" type="button" id="home-unauth-prize-pool-btn"><span class="home-prize-pool-label"><span class="home-prize-pool-icon" aria-hidden="true">\u{1F4B0}</span><span>Prize Pool</span></span><span class="home-prize-pool-divider" aria-hidden="true"></span><span class="home-prize-pool-amount-block"><span class="home-prize-pool-amount" data-home-prize-pool-amount="${poolAmount}">${formatStake(0)}</span><span class="home-prize-pool-context">${roundContext}</span></span><span class="home-prize-pool-chevron" aria-hidden="true">\u203a</span></button></div>`;
+
+  const howItWorksHTML = `<section class="home-unauth-section auth-feature-list"><p class="auth-feature-eyebrow">HOW IT WORKS</p><div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div><div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div><div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div></section>`;
+
+  const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
+
+  container.innerHTML = softCtaHTML + upcomingGamesHTML + prizePoolHTML + howItWorksHTML + conversionCtaHTML;
+
+  container.querySelector("#home-soft-cta-btn")?.addEventListener("click", () => {
+    openAuthPrompt("signup");
   });
+
+  container.querySelectorAll("[data-home-game-id]").forEach((card) =>
+    card.addEventListener("click", () => {
+      openMatchCentreGame(card.dataset.homeGameId);
+    })
+  );
+
+  const prizePoolBtn = container.querySelector("#home-unauth-prize-pool-btn");
+  prizePoolBtn?.addEventListener("click", () => {
+    uiState.activeScreen = "prizepool";
+    renderAll();
+  });
+
+  const amountNode = prizePoolBtn?.querySelector("[data-home-prize-pool-amount]");
+  if (amountNode && poolAmount > 0) {
+    const startTime = performance.now();
+    const duration = 800;
+    const step = (now) => {
+      const progress = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const nextValue = Math.round(poolAmount * eased);
+      amountNode.textContent = formatStake(nextValue);
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        amountNode.textContent = formatStake(poolAmount);
+      }
+    };
+    window.requestAnimationFrame(step);
+  }
+
+  const form = container.querySelector("#inline-auth-form");
+  const input = container.querySelector("#inline-auth-username");
+  const feedback = container.querySelector("#inline-auth-feedback");
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const userName = input?.value.trim();
@@ -3276,9 +3336,16 @@ function renderHome() {
   const fallbackFeaturedMarkets = (topProjected.length ? topProjected : fallbackMovers).slice(0, 8);
   const popularFeaturedMarkets = resolvePopularFeaturedMarkets(homeMarkets);
   renderHomeCarouselControls();
-  renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets);
-  renderHomePrizePoolBanner(prizePoolState);
-  renderHomeGamesStrip();
+  if (isAuthenticated()) {
+    renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets);
+    renderHomePrizePoolBanner(prizePoolState);
+    renderHomeGamesStrip();
+  } else {
+    if (elements.homeFeaturedSlate) elements.homeFeaturedSlate.innerHTML = "";
+    if (elements.homePrizePoolBanner) elements.homePrizePoolBanner.innerHTML = "";
+    if (elements.homeGamesStrip) elements.homeGamesStrip.innerHTML = "";
+    renderGuestUnauthBottom();
+  }
 
   renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
@@ -3473,7 +3540,14 @@ function renderHomeGamesStrip() {
 
 function homeGameCardMarkup(game, openPositionCount = 0) {
   const status = homeGameStatus(game);
-  return `<button class="game-card ${openPositionCount > 0 ? "has-positions" : ""}" type="button" data-home-game-id="${game.id}" style="--match-primary:${teamPrimary(game.homeTeam)}CC;--match-secondary:${teamPrimary(game.awayTeam)}CC;"><div class="game-card-copy"><div class="game-card-topline"><span class="game-card-status ${status.className}">${status.label}</span><span class="game-card-kickoff">${formatHomeGameKickoffTime(game)}</span></div><div class="game-card-teams">${game.title || `${homeTeamAbbreviation(game.homeTeam)} vs ${homeTeamAbbreviation(game.awayTeam)}`}</div><div class="game-card-meta">${game.venue || ""}</div></div><div class="game-card-positions">${openPositionCount > 0 ? `<span class="game-card-positions-copy"><span class="game-card-positions-dot" aria-hidden="true"></span><span>${openPositionCount} position${openPositionCount === 1 ? "" : "s"}</span></span>` : ""}</div></button>`;
+  const topMarkets = getActiveRoundMarkets()
+    .filter((m) => m.gameId === game.id)
+    .sort((a, b) => b.currentLine - a.currentLine)
+    .slice(0, 3);
+  const projHTML = topMarkets.length
+    ? `<div class="game-card-proj-list">${topMarkets.map((m, i) => `<div class="game-card-proj-row"><span class="game-card-proj-rank">${i + 1}</span><span class="home-team-badge game-card-proj-badge" style="${homeTeamPillStyle(m.team)}">${homeTeamAbbreviation(m.team)}</span><span class="game-card-proj-name">${m.playerName}</span><span class="game-card-proj-pts">${m.currentLine.toFixed(1)}</span></div>`).join("")}</div>`
+    : "";
+  return `<button class="game-card${openPositionCount > 0 ? " has-positions" : ""}${topMarkets.length > 0 ? " has-projections" : ""}" type="button" data-home-game-id="${game.id}" style="--match-primary:${teamPrimary(game.homeTeam)}CC;--match-secondary:${teamPrimary(game.awayTeam)}CC;"><div class="game-card-copy"><div class="game-card-topline"><span class="game-card-status ${status.className}">${status.label}</span><span class="game-card-kickoff">${formatHomeGameKickoffTime(game)}</span></div><div class="game-card-teams">${game.title || `${homeTeamAbbreviation(game.homeTeam)} vs ${homeTeamAbbreviation(game.awayTeam)}`}</div><div class="game-card-meta">${game.venue || ""}</div>${projHTML}</div><div class="game-card-positions">${openPositionCount > 0 ? `<span class="game-card-positions-copy"><span class="game-card-positions-dot" aria-hidden="true"></span><span>${openPositionCount} position${openPositionCount === 1 ? "" : "s"}</span></span>` : ""}</div></button>`;
 }
 
 function homeGameStatus(game) {
