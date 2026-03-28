@@ -2737,7 +2737,9 @@ function getAdminTrades() {
 }
 
 function isBotTrade(trade) {
-  return trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
+  if (!trade) return false;
+  if (trade.botId || trade.botSource || trade.archetype) return true;
+  return getBotRosterMap().has(trade.userName) || trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
 }
 
 function getAdminDashboardSummary() {

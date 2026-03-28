@@ -1151,72 +1151,6 @@ function submitPrizePoolEntry(userName,draftId,now=Date.now()){
   return entry;
 }
 
-function buildPrizePoolBotEntry(userName,targetState=state,now=Date.now()){
-  const assignmentIds=buildPrizePoolDraftAssignments([],now,targetState);
-  if(assignmentIds.some((marketId)=>!marketId)){
-    return null;
-  }
-  const picks=PRIZE_POOL_POSITION_SLOTS.map((slot,index)=>{
-    const market=findMarket(assignmentIds[index]);
-    if(!market){
-      return null;
-    }
-    const side=Math.random()<0.5?"OVER":"UNDER";
-    return normalizePrizePoolPick({
-      slotId:slot.slotId,
-      position:slot.position,
-      positionLabel:slot.label,
-      marketId:market.id,
-      playerName:market.playerName,
-      team:market.team,
-      gameId:market.gameId,
-      side,
-      line:Number(market.currentLine)||0,
-      actualScore:null,
-      resultStatus:"PENDING",
-      settledAt:null
-    });
-  }).filter(Boolean);
-  if(picks.length!==PRIZE_POOL_POSITION_SLOTS.length){
-    return null;
-  }
-  return normalizePrizePoolEntry({
-    id:randomUUID(),
-    userName,
-    submittedAt:new Date(now).toISOString(),
-    picks
-  });
-}
-
-function ensurePrizePoolBotEntries(targetState=state,now=Date.now()){
-  if(!prizePoolEntryWindowOpen(now,targetState)){
-    return;
-  }
-  const round=currentPrizePoolRound(targetState);
-  const bots=(targetState.botSimulation?.bots||[]).filter((bot)=>bot?.source==="random-prob");
-  bots.forEach((bot)=>{
-    const userName=bot.userName;
-    if(!userName||prizePoolFindEntry(userName,targetState)){
-      return;
-    }
-    ensureBankroll(userName,targetState);
-    if(getUserBankroll(userName,targetState)<PRIZE_POOL_ENTRY_FEE){
-      return;
-    }
-    const entry=buildPrizePoolBotEntry(userName,targetState,now);
-    if(!entry){
-      return;
-    }
-    applyWalletDelta(userName,-PRIZE_POOL_ENTRY_FEE,{
-      type:"PRIZE_POOL_ENTRY",
-      title:"Prize Pool entry",
-      subtitle:`${getActiveRoundLabel(targetState)} entry fee`,
-      createdAt:entry.submittedAt
-    },targetState);
-    round.entries.push(entry);
-  });
-}
-
 function prizePoolPickStatus(pick){
   const score=getImportedRoundScoreForMarket({playerName:pick.playerName,team:pick.team},getActiveRoundNumber(state));
   if(!Number.isFinite(score)){
@@ -1233,7 +1167,31 @@ function prizePoolPickStatus(pick){
 function syncPrizePoolState(targetState=state,now=Date.now()){
   targetState.prizePool=normalizePrizePoolState(targetState.prizePool);
   const round=currentPrizePoolRound(targetState);
-  ensurePrizePoolBotEntries(targetState,now);
+  const randomProbBotUsers=new Set(
+    (targetState.botSimulation?.bots||[])
+      .filter((bot)=>bot?.source==="random-prob"&&bot?.userName)
+      .map((bot)=>prizePoolUserKey(bot.userName))
+  );
+  if(randomProbBotUsers.size){
+    const removedEntries=round.entries.filter((entry)=>randomProbBotUsers.has(prizePoolUserKey(entry.userName)));
+    if(removedEntries.length){
+      const entryFee=Number(targetState.prizePool?.entryFee)||PRIZE_POOL_ENTRY_FEE;
+      removedEntries.forEach((entry)=>{
+        applyWalletDelta(entry.userName,entryFee,{
+          type:"PRIZE_POOL_REFUND",
+          title:"Prize Pool refund",
+          subtitle:`${getActiveRoundLabel(targetState)} bot entry removed`,
+          createdAt:new Date(now).toISOString()
+        },targetState);
+      });
+      round.entries=round.entries.filter((entry)=>!randomProbBotUsers.has(prizePoolUserKey(entry.userName)));
+    }
+    Object.keys(targetState.prizePool?.drafts||{}).forEach((userName)=>{
+      if(randomProbBotUsers.has(prizePoolUserKey(userName))){
+        delete targetState.prizePool.drafts[userName];
+      }
+    });
+  }
   const finalizeAt=prizePoolSettlementDeadline(now,targetState);
   round.entries.forEach((entry)=>{
     entry.picks=entry.picks.map((pick)=>{
@@ -1373,8 +1331,20 @@ function buildPrizePoolClientPayload(userName="",targetState=state,now=Date.now(
   };
 }
 
+function isKnownBotUser(userName,targetState=state){
+  if(!userName){
+    return false;
+  }
+  return (targetState?.botSimulation?.bots||[]).some((bot)=>bot?.userName===userName);
+}
+
 function isBotTrade(trade){
-  return trade?.userName?.startsWith("Bot ")||trade?.userName?.includes(" Bot ");
+  return Boolean(
+    trade?.botId||
+    trade?.botSource||
+    trade?.archetype||
+    isKnownBotUser(trade?.userName)
+  );
 }
 
 async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
@@ -1556,7 +1526,7 @@ function activeOrderStatus(order){
   return order.result?"SETTLED":"CANCELLED";
 }
 
-function executeProjectionTrade(market,{userName,side,stake}){
+function executeProjectionTrade(market,{userName,side,stake,botId=null,botSource="",archetype=""}){
   ensureBankroll(userName);
   const previousNetPressure=Number(market.netPressure)||0;
   const {underLine,overLine}=linePairFor(market);
@@ -1578,7 +1548,10 @@ function executeProjectionTrade(market,{userName,side,stake}){
     timestamp,
     result:null,
     status:"PENDING",
-    engineVersion:ENGINE_VERSION
+    engineVersion:ENGINE_VERSION,
+    botId:botId||undefined,
+    botSource:botSource||undefined,
+    archetype:archetype||undefined
   };
   applyWalletDelta(userName,-stake,{
     type:"TRADE_STAKE",
@@ -2054,9 +2027,12 @@ function cloneValue(value){
 function runBotTicks(ticks){
   state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:createBotRoster(normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG))};
   let aggregatedEvents=[];
+  const eligibleMarkets=state.markets.filter((market)=>
+    getRoundNumberForMarket(market)===getActiveRoundNumber(state)&&!isMarketLocked(market)
+  );
   for(let tickIndex=0;tickIndex<ticks;tickIndex+=1){
     const tickResult=runSimulationTick({
-      state,
+      state:{...state,markets:eligibleMarkets},
       bots:state.botSimulation.bots,
       config:state.botSimulation.config,
       tick:state.botSimulation.config.tick||0
@@ -2073,8 +2049,15 @@ function runBotTicks(ticks){
       if(bankroll<1){
         return {...event,executed:false,reason:`${event.reason} Bot bankroll too low.`};
       }
-      const trade=executeProjectionTrade(market,{userName:event.botName,side:event.side,stake:1});
-      trade.archetype=event.archetype||"custom";
+      const bot=state.botSimulation.bots.find((entry)=>entry.id===event.botId)||state.botSimulation.bots.find((entry)=>entry.userName===event.botName)||null;
+      const trade=executeProjectionTrade(market,{
+        userName:event.botName,
+        side:event.side,
+        stake:1,
+        botId:event.botId||bot?.id||null,
+        botSource:bot?.source||"",
+        archetype:event.archetype||bot?.archetype||"custom"
+      });
       return {
         ...event,
         executed:true,
