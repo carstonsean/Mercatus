@@ -152,9 +152,11 @@ async function handleApi(req,res,url){
   if(req.method==="GET"&&(url.pathname==="/api/bootstrap"||url.pathname==="/api")){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
     if(useSupabase){
-      syncStateFromSupabase({force:true}).catch((error)=>{
+      try{
+        await syncStateFromSupabase({force:true});
+      }catch(error){
         console.warn("Bootstrap Supabase sync failed",error.message);
-      });
+      }
     }
     const backendUser=await syncBackendUser(username,useSupabase);
     const dashboard=await getBackendDashboard(username,useSupabase);
@@ -168,8 +170,16 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
-      syncStateFromSupabase().catch((error)=>{console.warn("Session bg sync failed",error.message);});
-      syncBackendUser(username,useSupabase).catch((error)=>{console.warn("Session bg user sync failed",error.message);});
+      try{
+        await syncStateFromSupabase({force:true});
+      }catch(error){
+        console.warn("Session Supabase sync failed",error.message);
+      }
+      try{
+        await syncBackendUser(username,useSupabase);
+      }catch(error){
+        console.warn("Session user sync failed",error.message);
+      }
     }else{
       syncDerivedBalances();
     }
