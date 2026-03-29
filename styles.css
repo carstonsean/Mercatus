@@ -52,16 +52,16 @@ body.onboarding-open {
 
 .onboarding-sheet {
   width: min(100%, 402px);
-  min-height: min(66dvh, 620px);
-  max-height: min(66dvh, 620px);
-  padding: 14px 24px 32px;
+  min-height: min(58dvh, 540px);
+  max-height: min(58dvh, 540px);
+  padding: 14px 24px 26px;
   border-radius: 24px;
   background: #1A1A2E;
   transform: translateY(28px) scale(0.97);
   transition: transform 350ms ease-out;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
 }
 
@@ -85,8 +85,16 @@ body.onboarding-open {
 .onboarding-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   min-height: 24px;
+}
+
+.onboarding-kicker {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .onboarding-skip {
@@ -125,8 +133,8 @@ body.onboarding-open {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 14px;
-  padding-top: 18px;
+  gap: 12px;
+  padding-top: 8px;
   text-align: center;
 }
 
@@ -154,12 +162,12 @@ body.onboarding-open {
 .onboarding-copy {
   max-width: 322px;
   width: 100%;
-  margin: 2px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .onboarding-copy li {
@@ -186,7 +194,7 @@ body.onboarding-open {
 .onboarding-footer {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .onboarding-dots {
@@ -226,7 +234,7 @@ body.onboarding-open {
 }
 
 .onboarding-button.is-primary {
-  background: linear-gradient(90deg, #00C853 0%, #C8F400 100%);
+  background: linear-gradient(135deg, #36df98, #f8c04e);
   color: #1A1A1A;
 }
 

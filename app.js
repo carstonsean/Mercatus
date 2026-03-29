@@ -1003,7 +1003,8 @@ function renderOnboardingOverlay() {
     <div class="onboarding-sheet" role="dialog" aria-modal="true" aria-label="How crowdIQ works">
       <div class="onboarding-handle" aria-hidden="true"></div>
       <div class="onboarding-header">
-        <button class="onboarding-skip" type="button" data-onboarding-skip>✕ Skip</button>
+        <span class="onboarding-kicker">How it works</span>
+        <button class="onboarding-skip" type="button" data-onboarding-skip>Skip</button>
       </div>
       <section class="onboarding-carousel" aria-live="polite">
         <div class="onboarding-track" data-onboarding-track style="transform: translateX(-${uiState.onboardingSlideIndex * 100}%);">
