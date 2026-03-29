@@ -34,8 +34,9 @@ body.onboarding-open {
   inset: 0;
   z-index: 1900;
   display: flex;
-  align-items: flex-end;
-  justify-content: stretch;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 14px max(18px, env(safe-area-inset-bottom));
   background: rgba(0, 0, 0, 0.7);
   opacity: 1;
   transition: opacity 300ms ease;
@@ -50,25 +51,26 @@ body.onboarding-open {
 }
 
 .onboarding-sheet {
-  width: 100%;
-  min-height: 70dvh;
-  max-height: 70dvh;
+  width: min(100%, 402px);
+  min-height: min(66dvh, 620px);
+  max-height: min(66dvh, 620px);
   padding: 14px 24px 32px;
-  border-radius: 20px 20px 0 0;
+  border-radius: 24px;
   background: #1A1A2E;
-  transform: translateY(100%);
+  transform: translateY(28px) scale(0.97);
   transition: transform 350ms ease-out;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
 }
 
 .onboarding-overlay.is-visible .onboarding-sheet {
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .onboarding-overlay.is-closing .onboarding-sheet {
-  transform: translateY(100%);
+  transform: translateY(28px) scale(0.97);
   transition: transform 300ms ease;
 }
 
