@@ -90,11 +90,11 @@ body.onboarding-open {
 }
 
 .onboarding-kicker {
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 12px;
+  color: #ffffff;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  text-transform: none;
 }
 
 .onboarding-skip {
@@ -1223,8 +1223,8 @@ button {
 
 .auth-hero-inline {
   display: grid;
-  gap: 28px;
-  padding-top: 20px;
+  gap: 18px;
+  padding-top: 10px;
 }
 
 .guest-hero-scroll-hint {
@@ -1246,7 +1246,7 @@ button {
 }
 
 .guest-hero-divider {
-  margin-top: 32px;
+  margin-top: 16px;
   height: 1px;
   background: rgba(255, 255, 255, 0.06);
 }
@@ -1276,6 +1276,49 @@ button {
 
 .home-unauth-soft-cta {
   padding: 0 16px;
+}
+
+.home-unauth-info-wrap {
+  padding-bottom: 0;
+}
+
+.home-unauth-info-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-unauth-info-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.home-unauth-info-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.home-unauth-info-copy strong {
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+}
+
+.home-unauth-info-button i {
+  color: #00C853;
+  font-size: 18px;
+  flex: 0 0 auto;
 }
 
 .home-soft-cta-button {
@@ -1391,13 +1434,13 @@ button {
   color: #1A1A1A;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
   animation: homePrizePoolGlow 2s ease-in-out infinite;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   position: static;
   top: auto;
 }
 
 #home-games-strip {
-  margin: -2px 0 10px;
+  margin: -2px 0 6px;
 }
 
 .games-carousel {

@@ -754,14 +754,14 @@ function renderGuestUnauthBottom() {
     container.innerHTML = "";
     return;
   }
-  const howItWorksHTML = `<section class="home-unauth-section auth-feature-list"><p class="auth-feature-eyebrow">HOW IT WORKS</p><div class="auth-feature-item"><i class="ph-fill ph-arrows-down-up" aria-hidden="true"></i><span>Pick over or under on live player projections</span></div><div class="auth-feature-item"><i class="ph-fill ph-chart-line-up" aria-hidden="true"></i><span>Watch the crowd move the line in real time</span></div><div class="auth-feature-item"><i class="ph-fill ph-trophy" aria-hidden="true"></i><span>See where the market settles before kick-off</span></div></section>`;
+  const howItWorksHTML = `<section class="home-unauth-section home-unauth-info-wrap"><button class="home-unauth-info-button" id="home-open-onboarding" type="button"><span class="home-unauth-info-copy"><span class="home-unauth-info-label">How it works</span><strong>See how crowdIQ works</strong></span><i class="ph-fill ph-info" aria-hidden="true"></i></button></section>`;
 
   const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
 
   container.innerHTML = howItWorksHTML + conversionCtaHTML;
 
-  container.querySelector("#home-soft-cta-btn")?.addEventListener("click", () => {
-    openAuthPrompt("signup");
+  container.querySelector("#home-open-onboarding")?.addEventListener("click", () => {
+    openOnboardingPopup();
   });
 
   const form = container.querySelector("#inline-auth-form");
@@ -981,6 +981,16 @@ function scheduleOnboardingPopup() {
     uiState.onboardingSlideIndex = 0;
     renderOnboardingOverlay();
   }, ONBOARDING_POPUP_DELAY_MS);
+}
+
+function openOnboardingPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  uiState.onboardingHasScheduled = false;
+  uiState.onboardingHasRendered = true;
+  uiState.onboardingOpen = true;
+  uiState.onboardingSlideIndex = 0;
+  renderOnboardingOverlay();
 }
 
 function renderOnboardingOverlay() {
