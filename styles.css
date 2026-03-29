@@ -60,7 +60,7 @@ body.onboarding-open {
   transition: transform 350ms ease-out;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .onboarding-overlay.is-visible .onboarding-sheet {
@@ -84,14 +84,15 @@ body.onboarding-open {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  min-height: 24px;
 }
 
 .onboarding-skip {
   border: 0;
   background: transparent;
-  color: #888888;
-  font-size: 12px;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -99,6 +100,8 @@ body.onboarding-open {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  align-items: flex-start;
 }
 
 .onboarding-track {
@@ -119,8 +122,9 @@ body.onboarding-open {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
+  justify-content: flex-start;
+  gap: 14px;
+  padding-top: 18px;
   text-align: center;
 }
 
@@ -145,18 +149,42 @@ body.onboarding-open {
   letter-spacing: -0.03em;
 }
 
-.onboarding-slide p {
-  max-width: 320px;
+.onboarding-copy {
+  max-width: 322px;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-copy li {
+  position: relative;
   margin: 0;
-  color: #9aa4b2;
+  padding-left: 16px;
+  color: #b0b7c6;
   font-size: 14px;
   line-height: 1.5;
+  text-align: left;
+}
+
+.onboarding-copy li::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .onboarding-footer {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .onboarding-dots {

@@ -18,19 +18,30 @@ const ONBOARDING_SLIDES = [
   {
     icon: "ph-fill ph-arrows-down-up",
     headline: "The crowd sets the line",
-    description: "crowdIQ builds a live NRL Fantasy projection for every player from real user trading. If you think the crowd has got it wrong, this is your chance to have your say.",
+    bullets: [
+      "crowdIQ builds a live NRL Fantasy projection for every player from real user trading.",
+      "If you think the crowd has got it wrong, this is your chance to have your say."
+    ],
     buttonLabel: "Next →"
   },
   {
     icon: "ph-fill ph-users",
     headline: "Back your edge",
-    description: "Pick Over or Under on any player projection and back your view. You are trading against other users, and as more users back one side, the projection moves with the crowd.",
+    bullets: [
+      "Pick Over or Under on any player projection and back your view.",
+      "You are trading against other users.",
+      "As more users back one side, the projection moves with the crowd."
+    ],
     buttonLabel: "Next →"
   },
   {
     icon: "ph-fill ph-chart-line-up",
-    headline: "More ways to play",
-    description: "At kickoff, the line locks, and you win if the player's final score lands on your side. Want bigger stakes? Enter the weekly $10 Prize Pool and make Over or Under picks on 13 randomly assigned players. You can browse first with no sign-up required.",
+    headline: "How to read the market",
+    bullets: [
+      "At kickoff, the line locks, and you win if the player's final score lands on your side.",
+      "As more people have their say, the crowdIQ projection becomes more accurate.",
+      "This is shown by the Market Confidence icon on each player."
+    ],
     buttonLabel: "Got it"
   }
 ];
@@ -1000,7 +1011,9 @@ function renderOnboardingOverlay() {
             <article class="onboarding-slide" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
               <div class="onboarding-icon" aria-hidden="true"><i class="${slide.icon}"></i></div>
               <h2>${slide.headline}</h2>
-              <p>${slide.description}</p>
+              <ul class="onboarding-copy">
+                ${(slide.bullets || []).map((bullet) => `<li>${bullet}</li>`).join("")}
+              </ul>
             </article>
           `).join("")}
         </div>
