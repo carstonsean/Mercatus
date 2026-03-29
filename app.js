@@ -1020,7 +1020,7 @@ function renderOnboardingOverlay() {
       <section class="onboarding-carousel" aria-live="polite">
         <div class="onboarding-track" data-onboarding-track style="transform: translateX(-${uiState.onboardingSlideIndex * 100}%);">
           ${ONBOARDING_SLIDES.map((slide, index) => `
-            <article class="onboarding-slide" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
+            <article class="onboarding-slide onboarding-slide-${slide.exampleType || "default"}" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
               <div class="onboarding-copy-block">
                 <h2>${slide.headline}</h2>
                 <ul class="onboarding-body">
@@ -1149,7 +1149,6 @@ function renderOnboardingMicroExample(slide) {
           <div class="onboarding-confidence-module onboarding-micro-card">
             <div class="onboarding-confidence-copy">
               <span class="onboarding-micro-ticket-label">Confidence</span>
-              <strong>${confidence}%</strong>
             </div>
             <div class="onboarding-confidence-meter">
               <div class="home-confidence-primary onboarding-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent is-high">${confidence}%</span></div>
