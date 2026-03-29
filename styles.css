@@ -181,6 +181,29 @@ body.onboarding-open {
   gap: 10px;
 }
 
+.onboarding-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.onboarding-back-button {
+  min-width: 84px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.onboarding-back-button[hidden] {
+  display: none;
+}
+
 .onboarding-micro-shell {
   width: 100%;
   min-height: 86px;

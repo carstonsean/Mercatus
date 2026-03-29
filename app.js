@@ -1034,7 +1034,10 @@ function renderOnboardingOverlay() {
         <div class="onboarding-dots" aria-label="Onboarding progress">
           ${ONBOARDING_SLIDES.map((_, index) => `<span class="onboarding-dot ${index === uiState.onboardingSlideIndex ? "active" : ""}" aria-hidden="true"></span>`).join("")}
         </div>
-        <button class="onboarding-button ${isFinalSlide ? "is-primary" : "is-secondary"}" type="button" data-onboarding-advance>${ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel}</button>
+        <div class="onboarding-actions">
+          <button class="onboarding-back-button" type="button" data-onboarding-back ${uiState.onboardingSlideIndex === 0 ? "hidden" : ""}>Back</button>
+          <button class="onboarding-button ${isFinalSlide ? "is-primary" : "is-secondary"}" type="button" data-onboarding-advance>${ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel}</button>
+        </div>
       </footer>
     </div>
   `;
@@ -1056,6 +1059,7 @@ function updateOnboardingOverlayState() {
   if (!overlay) return;
   const track = overlay.querySelector("[data-onboarding-track]");
   const button = overlay.querySelector("[data-onboarding-advance]");
+  const backButton = overlay.querySelector("[data-onboarding-back]");
   const isFinalSlide = uiState.onboardingSlideIndex === ONBOARDING_SLIDES.length - 1;
   if (track) {
     track.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
@@ -1070,6 +1074,9 @@ function updateOnboardingOverlayState() {
     button.textContent = ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel;
     button.classList.toggle("is-primary", isFinalSlide);
     button.classList.toggle("is-secondary", !isFinalSlide);
+  }
+  if (backButton) {
+    backButton.hidden = uiState.onboardingSlideIndex === 0;
   }
 }
 
@@ -1149,6 +1156,9 @@ function renderOnboardingMicroExample(slide) {
 function bindOnboardingOverlayEvents(overlay) {
   overlay.querySelector("[data-onboarding-skip]")?.addEventListener("click", () => {
     dismissOnboardingPopup();
+  });
+  overlay.querySelector("[data-onboarding-back]")?.addEventListener("click", () => {
+    goToOnboardingSlide(uiState.onboardingSlideIndex - 1);
   });
   overlay.querySelector("[data-onboarding-advance]")?.addEventListener("click", () => {
     if (uiState.onboardingSlideIndex >= ONBOARDING_SLIDES.length - 1) {
