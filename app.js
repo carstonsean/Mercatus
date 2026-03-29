@@ -955,8 +955,7 @@ function shouldShowOnboardingPopup() {
 }
 
 function scheduleOnboardingPopup() {
-  window.clearTimeout(onboardingPopupTimer);
-  if (uiState.onboardingHasScheduled || uiState.onboardingHasRendered || !shouldShowOnboardingPopup()) {
+  if (onboardingPopupTimer || uiState.onboardingHasScheduled || uiState.onboardingHasRendered || uiState.onboardingOpen || !shouldShowOnboardingPopup()) {
     return;
   }
   uiState.onboardingHasScheduled = true;
@@ -1147,6 +1146,7 @@ function resetOnboardingTrackPosition() {
 
 function renderAll() {
   normalizeNavigationState();
+  scheduleOnboardingPopup();
   safelyRender("header balance", renderHeaderBalance);
   safelyRender("guest hero", renderGuestHero);
   safelyRender("screens", renderScreens);
