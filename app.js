@@ -1117,11 +1117,7 @@ function renderOnboardingMicroExample(slide) {
     const lines = linePairForMidpoint(58.5);
     return `
       <div class="onboarding-micro-shell">
-        <div class="onboarding-preview onboarding-preview-ticket">
-          <div class="onboarding-preview-ticket-head">
-            <span class="onboarding-preview-label">Projection</span>
-            <strong class="onboarding-preview-value">58.5</strong>
-          </div>
+        <div class="onboarding-preview onboarding-preview-ticket onboarding-preview-ticket-compact">
           <div class="onboarding-preview-ticket-actions">
             <div class="onboarding-preview-choice is-over">
               <span class="onboarding-preview-choice-label">Over</span>
@@ -1132,7 +1128,6 @@ function renderOnboardingMicroExample(slide) {
               <strong>${lines.underLine.toFixed(1)}</strong>
             </div>
           </div>
-          <span class="onboarding-preview-support onboarding-preview-ticket-support">↑ line ticking toward 59.0</span>
         </div>
       </div>
     `;
@@ -1141,21 +1136,14 @@ function renderOnboardingMicroExample(slide) {
     const confidence = 72;
     return `
       <div class="onboarding-micro-shell">
-        <div class="onboarding-preview onboarding-preview-confidence">
-          <div class="onboarding-preview-confidence-copy">
-            <span class="onboarding-preview-label">Confidence</span>
-            <span class="onboarding-preview-confidence-meta">Participation behind this line</span>
+        <div class="onboarding-preview onboarding-preview-confidence onboarding-preview-confidence-compact">
+          <div class="onboarding-preview-confidence-indicator" aria-hidden="true">
+            <svg viewBox="0 0 36 20">
+              <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-base"></path>
+              <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-fill is-high" pathLength="100" stroke-dasharray="${confidence} 100"></path>
+            </svg>
           </div>
-          <div class="onboarding-preview-confidence-meter">
-            <div class="onboarding-preview-gauge" aria-hidden="true">
-              <svg viewBox="0 0 36 20">
-                <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-base"></path>
-                <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-fill is-high" pathLength="100" stroke-dasharray="${confidence} 100"></path>
-              </svg>
-            </div>
-            <span class="onboarding-preview-confidence-percent">${confidence}%</span>
-            <span class="onboarding-preview-confidence-note">High confidence</span>
-          </div>
+          <span class="onboarding-preview-confidence-percent">${confidence}%</span>
         </div>
       </div>
     `;
