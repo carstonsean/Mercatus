@@ -52,9 +52,9 @@ body.onboarding-open {
 
 .onboarding-sheet {
   width: min(100%, 402px);
-  min-height: min(60dvh, 560px);
-  max-height: min(60dvh, 560px);
-  padding: 14px 24px 26px;
+  min-height: min(54dvh, 500px);
+  max-height: min(54dvh, 500px);
+  padding: 14px 24px 22px;
   border-radius: 24px;
   background: #1A1A2E;
   transform: translateY(28px) scale(0.97);
@@ -133,7 +133,7 @@ body.onboarding-open {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 8px;
   padding-top: 4px;
   text-align: center;
 }
@@ -164,7 +164,7 @@ body.onboarding-open {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .onboarding-body p {
@@ -178,37 +178,37 @@ body.onboarding-open {
 .onboarding-footer {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .onboarding-micro-shell {
   width: 100%;
-  min-height: 112px;
+  min-height: 86px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .onboarding-micro-scale {
   pointer-events: none;
-  opacity: 0.84;
+  opacity: 0.76;
   transform-origin: center top;
 }
 
 .onboarding-micro-scale-card {
-  width: 142%;
-  transform: scale(0.68);
+  width: 150%;
+  transform: scale(0.58);
 }
 
 .onboarding-micro-scale-ticket {
-  width: 146%;
-  transform: scale(0.64);
+  width: 150%;
+  transform: scale(0.56);
 }
 
 .onboarding-micro-scale-confidence {
-  width: 146%;
-  transform: scale(0.66);
+  width: 148%;
+  transform: scale(0.58);
 }
 
 .onboarding-micro-card,
@@ -232,12 +232,93 @@ body.onboarding-open {
 }
 
 .onboarding-micro-ticket {
-  padding: 12px;
-  gap: 8px;
+  padding: 10px;
+  gap: 6px;
 }
 
-.onboarding-micro-projection {
-  font-size: 42px;
+.onboarding-micro-live-card {
+  animation: onboardingLiveCardPulse 2.4s ease-in-out infinite;
+}
+
+.onboarding-micro-live-value,
+.onboarding-micro-live-shift {
+  animation: onboardingLiveTick 2.4s ease-in-out infinite;
+}
+
+.onboarding-micro-ticket-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.onboarding-micro-ticket-label {
+  color: rgba(239, 247, 255, 0.62);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboarding-micro-ticket-line {
+  font-size: 22px;
+  font-weight: 880;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.onboarding-confidence-module {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, #1A1A2E, rgba(26,26,46,0.96)),
+    linear-gradient(135deg, rgba(0,200,83,0.14), transparent 62%);
+  box-shadow:
+    0 8px 18px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.onboarding-confidence-copy {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.onboarding-confidence-copy strong {
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.onboarding-confidence-meter {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.onboarding-confidence-primary {
+  gap: 6px;
+}
+
+.onboarding-confidence-note {
+  color: #00C853;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@keyframes onboardingLiveCardPulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+@keyframes onboardingLiveTick {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
 }
 
 .onboarding-dots {

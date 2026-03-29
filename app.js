@@ -1079,7 +1079,7 @@ function renderOnboardingMicroExample(slide) {
     return `
       <div class="onboarding-micro-shell">
         <div class="onboarding-micro-scale onboarding-micro-scale-card">
-          <div class="home-leaderboard-card onboarding-micro-card" style="--team-surface-primary:rgba(15, 130, 70, 0.28);--team-surface-secondary:rgba(248, 192, 78, 0.18);">
+          <div class="home-leaderboard-card onboarding-micro-card onboarding-micro-live-card" style="--team-surface-primary:rgba(15, 130, 70, 0.28);--team-surface-secondary:rgba(248, 192, 78, 0.18);">
             <span class="home-card-rank onboarding-micro-rank"><i class="ph-fill ph-arrow-up-right"></i></span>
             <div class="home-card-copy">
               <div class="home-card-topline"><strong>Nathan Cleary</strong></div>
@@ -1090,8 +1090,8 @@ function renderOnboardingMicroExample(slide) {
               <span class="onboarding-micro-support move-up">↑ Live projection moving</span>
             </div>
             <div class="home-card-metric onboarding-micro-metric">
-              <strong>58.5</strong>
-              <span class="move-up">↑ 58.7</span>
+              <strong class="onboarding-micro-live-value">58.5</strong>
+              <span class="move-up onboarding-micro-live-shift">↑ 58.7</span>
             </div>
           </div>
         </div>
@@ -1104,11 +1104,9 @@ function renderOnboardingMicroExample(slide) {
       <div class="onboarding-micro-shell">
         <div class="onboarding-micro-scale onboarding-micro-scale-ticket">
           <div class="trade-ticket trade-ticket-compact onboarding-micro-ticket">
-            <div class="trade-ticket-metric-row">
-              <div class="trade-ticket-projection-block">
-                <div class="quick-take-line trade-ticket-projection onboarding-micro-projection">58.5</div>
-                <span class="quick-take-move trade-ticket-projection-delta move-up onboarding-micro-support">↑ crowd pushing to 59.0</span>
-              </div>
+            <div class="onboarding-micro-ticket-head">
+              <span class="onboarding-micro-ticket-label">Projection</span>
+              <strong class="onboarding-micro-ticket-line">58.5</strong>
             </div>
             <div class="trade-actions">
               <button class="trade-button trade-over active" type="button" tabindex="-1">
@@ -1120,6 +1118,7 @@ function renderOnboardingMicroExample(slide) {
                 <span class="trade-button-price">${lines.underLine.toFixed(1)}</span>
               </button>
             </div>
+            <span class="quick-take-move trade-ticket-projection-delta move-up onboarding-micro-support">↑ line ticking toward 59.0</span>
           </div>
         </div>
       </div>
@@ -1130,17 +1129,14 @@ function renderOnboardingMicroExample(slide) {
     return `
       <div class="onboarding-micro-shell">
         <div class="onboarding-micro-scale onboarding-micro-scale-confidence">
-          <div class="home-projection-subcard home-confidence-subcard onboarding-micro-card" style="--team-surface-primary:rgba(0, 200, 83, 0.22);--team-surface-secondary:rgba(248, 192, 78, 0.12);">
-            <span class="home-card-rank onboarding-micro-rank"><i class="ph-fill ph-gauge"></i></span>
-            <div class="home-confidence-row">
-              <div class="home-confidence-copy">
-                <div class="home-card-mainline"><strong>Confidence</strong></div>
-                <span>High participation behind this line</span>
-              </div>
-              <div class="home-confidence-metric-block">
-                <div class="home-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent is-high">${confidence}%</span></div>
-                <strong class="home-confidence-projection">High confidence</strong>
-              </div>
+          <div class="onboarding-confidence-module onboarding-micro-card">
+            <div class="onboarding-confidence-copy">
+              <span class="onboarding-micro-ticket-label">Confidence</span>
+              <strong>${confidence}%</strong>
+            </div>
+            <div class="onboarding-confidence-meter">
+              <div class="home-confidence-primary onboarding-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent is-high">${confidence}%</span></div>
+              <span class="onboarding-confidence-note">High confidence</span>
             </div>
           </div>
         </div>
