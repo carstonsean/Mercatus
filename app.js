@@ -962,7 +962,7 @@ function hasSeenOnboarding() {
 
 function shouldShowOnboardingPopup() {
   const authPromptClosed = !elements.authGate || elements.authGate.classList.contains("is-hidden");
-  return !hasSeenOnboarding() && !isAuthenticated() && uiState.activeScreen === "home" && authPromptClosed;
+  return !isAuthenticated() && uiState.activeScreen === "home" && authPromptClosed;
 }
 
 function scheduleOnboardingPopup() {
