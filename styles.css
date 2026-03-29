@@ -83,18 +83,23 @@ body.onboarding-open {
 }
 
 .onboarding-header {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-height: 24px;
+  justify-content: flex-end;
+  min-height: 32px;
 }
 
 .onboarding-kicker {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
   text-transform: none;
+  text-align: center;
 }
 
 .onboarding-skip {
@@ -131,11 +136,12 @@ body.onboarding-open {
   flex: 0 0 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
   gap: 8px;
   padding-top: 4px;
-  text-align: center;
+  text-align: left;
+  min-height: 100%;
 }
 
 .onboarding-icon {
@@ -153,26 +159,43 @@ body.onboarding-open {
 .onboarding-slide h2 {
   margin: 0;
   color: #ffffff;
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
+  text-align: center;
 }
 
 .onboarding-body {
   max-width: 320px;
   width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
-.onboarding-body p {
+.onboarding-body li {
+  position: relative;
   margin: 0;
+  padding-left: 16px;
   color: #b0b7c6;
-  font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.onboarding-body li::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
 }
 
 .onboarding-footer {
@@ -186,6 +209,10 @@ body.onboarding-open {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   align-items: stretch;
+}
+
+.onboarding-actions.is-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .onboarding-back-button {
@@ -206,11 +233,12 @@ body.onboarding-open {
 
 .onboarding-micro-shell {
   width: 100%;
-  min-height: 86px;
+  min-height: 120px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: auto;
+  padding-top: 8px;
 }
 
 .onboarding-micro-scale {

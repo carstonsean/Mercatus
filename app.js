@@ -1015,15 +1015,17 @@ function renderOnboardingOverlay() {
       <div class="onboarding-handle" aria-hidden="true"></div>
       <div class="onboarding-header">
         <span class="onboarding-kicker">How it works</span>
-        <button class="onboarding-skip" type="button" data-onboarding-skip>Skip</button>
+        <button class="onboarding-skip" type="button" data-onboarding-skip ${isFinalSlide ? "hidden" : ""}>Skip</button>
       </div>
       <section class="onboarding-carousel" aria-live="polite">
         <div class="onboarding-track" data-onboarding-track style="transform: translateX(-${uiState.onboardingSlideIndex * 100}%);">
           ${ONBOARDING_SLIDES.map((slide, index) => `
             <article class="onboarding-slide" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
-              <h2>${slide.headline}</h2>
-              <div class="onboarding-body">
-                ${(slide.body || []).map((line) => `<p>${line}</p>`).join("")}
+              <div class="onboarding-copy-block">
+                <h2>${slide.headline}</h2>
+                <ul class="onboarding-body">
+                  ${(slide.body || []).map((line) => `<li>${line}</li>`).join("")}
+                </ul>
               </div>
               ${renderOnboardingMicroExample(slide)}
             </article>
@@ -1034,7 +1036,7 @@ function renderOnboardingOverlay() {
         <div class="onboarding-dots" aria-label="Onboarding progress">
           ${ONBOARDING_SLIDES.map((_, index) => `<span class="onboarding-dot ${index === uiState.onboardingSlideIndex ? "active" : ""}" aria-hidden="true"></span>`).join("")}
         </div>
-        <div class="onboarding-actions">
+        <div class="onboarding-actions ${uiState.onboardingSlideIndex === 0 ? "is-single" : ""}">
           <button class="onboarding-back-button" type="button" data-onboarding-back ${uiState.onboardingSlideIndex === 0 ? "hidden" : ""}>Back</button>
           <button class="onboarding-button ${isFinalSlide ? "is-primary" : "is-secondary"}" type="button" data-onboarding-advance>${ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel}</button>
         </div>
@@ -1060,6 +1062,8 @@ function updateOnboardingOverlayState() {
   const track = overlay.querySelector("[data-onboarding-track]");
   const button = overlay.querySelector("[data-onboarding-advance]");
   const backButton = overlay.querySelector("[data-onboarding-back]");
+  const skipButton = overlay.querySelector("[data-onboarding-skip]");
+  const actions = overlay.querySelector(".onboarding-actions");
   const isFinalSlide = uiState.onboardingSlideIndex === ONBOARDING_SLIDES.length - 1;
   if (track) {
     track.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
@@ -1077,6 +1081,12 @@ function updateOnboardingOverlayState() {
   }
   if (backButton) {
     backButton.hidden = uiState.onboardingSlideIndex === 0;
+  }
+  if (skipButton) {
+    skipButton.hidden = isFinalSlide;
+  }
+  if (actions) {
+    actions.classList.toggle("is-single", uiState.onboardingSlideIndex === 0);
   }
 }
 
