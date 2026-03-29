@@ -7,10 +7,33 @@ const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
 const USER_NAME_KEY = "mercatus-user-name";
 const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
+const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 2500;
 const PRIZE_POOL_POLL_MS = 10000;
+const ONBOARDING_POPUP_DELAY_MS = 800;
+
+const ONBOARDING_SLIDES = [
+  {
+    icon: "ph-fill ph-arrows-down-up",
+    headline: "The crowd sets the line",
+    description: "crowdIQ builds a live NRL Fantasy projection for every player from real user trading. If you think the crowd has got it wrong, this is your chance to have your say.",
+    buttonLabel: "Next →"
+  },
+  {
+    icon: "ph-fill ph-users",
+    headline: "Back your edge",
+    description: "Pick Over or Under on any player projection and back your view. You are trading against other users, and as more users back one side, the projection moves with the crowd.",
+    buttonLabel: "Next →"
+  },
+  {
+    icon: "ph-fill ph-chart-line-up",
+    headline: "More ways to play",
+    description: "At kickoff, the line locks, and you win if the player's final score lands on your side. Want bigger stakes? Enter the weekly $10 Prize Pool and make Over or Under picks on 13 randomly assigned players. You can browse first with no sign-up required.",
+    buttonLabel: "Got it"
+  }
+];
 
 const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
@@ -59,6 +82,9 @@ let authFocusTimer = null;
 let popularFeaturedMarketIds = [];
 let popularFeaturedRoundNumber = null;
 let popularFeaturedRequest = null;
+let onboardingPopupTimer = null;
+let onboardingPopupTouchStartX = null;
+let onboardingPopupTouchDeltaX = 0;
 
 const uiState = {
   activeScreen: "home",
@@ -98,6 +124,10 @@ const uiState = {
   prizePoolInterchangeRulesExpanded: false,
   prizePoolShareOpen: false,
   prizePoolInterchangeDividerSeenDraftId: "",
+  onboardingOpen: false,
+  onboardingSlideIndex: 0,
+  onboardingHasScheduled: false,
+  onboardingHasRendered: false,
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
@@ -116,6 +146,7 @@ const elements = {
   authClose: document.getElementById("auth-close"),
   authHeaderSignup: document.getElementById("auth-header-signup"),
   authHeroEntry: document.getElementById("auth-hero-entry"),
+  onboardingOverlay: document.getElementById("onboarding-overlay"),
   appFrame: document.querySelector(".mobile-frame"),
   headerBalance: document.getElementById("header-balance"),
   navButtons: [...document.querySelectorAll(".nav-button")],
@@ -258,6 +289,7 @@ async function init() {
     dismissGuestHero();
   }
   startLiveSync();
+  scheduleOnboardingPopup();
 }
 
 function bindEvents() {
@@ -911,6 +943,206 @@ async function handlePageResume() {
   }
   startLiveSync();
   applyLiveStateRender();
+}
+
+function hasSeenOnboarding() {
+  return localStorage.getItem(HAS_SEEN_ONBOARDING_KEY) != null;
+}
+
+function shouldShowOnboardingPopup() {
+  const authPromptClosed = !elements.authGate || elements.authGate.classList.contains("is-hidden");
+  return !hasSeenOnboarding() && !isAuthenticated() && uiState.activeScreen === "home" && authPromptClosed;
+}
+
+function scheduleOnboardingPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  if (uiState.onboardingHasScheduled || uiState.onboardingHasRendered || !shouldShowOnboardingPopup()) {
+    return;
+  }
+  uiState.onboardingHasScheduled = true;
+  onboardingPopupTimer = window.setTimeout(() => {
+    onboardingPopupTimer = null;
+    uiState.onboardingHasScheduled = false;
+    if (!shouldShowOnboardingPopup()) {
+      return;
+    }
+    uiState.onboardingOpen = true;
+    uiState.onboardingHasRendered = true;
+    uiState.onboardingSlideIndex = 0;
+    renderOnboardingOverlay();
+  }, ONBOARDING_POPUP_DELAY_MS);
+}
+
+function renderOnboardingOverlay() {
+  const overlay = elements.onboardingOverlay;
+  if (!overlay) return;
+  if (!uiState.onboardingOpen) {
+    overlay.innerHTML = "";
+    overlay.className = "onboarding-overlay is-hidden";
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("onboarding-open");
+    return;
+  }
+  const isAlreadyVisible = overlay.classList.contains("is-visible");
+  if (isAlreadyVisible && overlay.querySelector(".onboarding-sheet")) {
+    updateOnboardingOverlayState();
+    return;
+  }
+  const isFinalSlide = uiState.onboardingSlideIndex === ONBOARDING_SLIDES.length - 1;
+  overlay.innerHTML = `
+    <div class="onboarding-sheet" role="dialog" aria-modal="true" aria-label="How crowdIQ works">
+      <div class="onboarding-handle" aria-hidden="true"></div>
+      <div class="onboarding-header">
+        <button class="onboarding-skip" type="button" data-onboarding-skip>✕ Skip</button>
+      </div>
+      <section class="onboarding-carousel" aria-live="polite">
+        <div class="onboarding-track" data-onboarding-track style="transform: translateX(-${uiState.onboardingSlideIndex * 100}%);">
+          ${ONBOARDING_SLIDES.map((slide, index) => `
+            <article class="onboarding-slide" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
+              <div class="onboarding-icon" aria-hidden="true"><i class="${slide.icon}"></i></div>
+              <h2>${slide.headline}</h2>
+              <p>${slide.description}</p>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+      <footer class="onboarding-footer">
+        <div class="onboarding-dots" aria-label="Onboarding progress">
+          ${ONBOARDING_SLIDES.map((_, index) => `<span class="onboarding-dot ${index === uiState.onboardingSlideIndex ? "active" : ""}" aria-hidden="true"></span>`).join("")}
+        </div>
+        <button class="onboarding-button ${isFinalSlide ? "is-primary" : "is-secondary"}" type="button" data-onboarding-advance>${ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel}</button>
+      </footer>
+    </div>
+  `;
+  overlay.className = `onboarding-overlay${isAlreadyVisible ? " is-visible" : ""}`;
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("onboarding-open");
+  bindOnboardingOverlayEvents(overlay);
+  if (!isAlreadyVisible) {
+    window.requestAnimationFrame(() => {
+      if (uiState.onboardingOpen) {
+        overlay.classList.add("is-visible");
+      }
+    });
+  }
+}
+
+function updateOnboardingOverlayState() {
+  const overlay = elements.onboardingOverlay;
+  if (!overlay) return;
+  const track = overlay.querySelector("[data-onboarding-track]");
+  const button = overlay.querySelector("[data-onboarding-advance]");
+  const isFinalSlide = uiState.onboardingSlideIndex === ONBOARDING_SLIDES.length - 1;
+  if (track) {
+    track.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
+  }
+  overlay.querySelectorAll(".onboarding-slide").forEach((slide, index) => {
+    slide.setAttribute("aria-hidden", String(index !== uiState.onboardingSlideIndex));
+  });
+  overlay.querySelectorAll(".onboarding-dot").forEach((dot, index) => {
+    dot.classList.toggle("active", index === uiState.onboardingSlideIndex);
+  });
+  if (button) {
+    button.textContent = ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel;
+    button.classList.toggle("is-primary", isFinalSlide);
+    button.classList.toggle("is-secondary", !isFinalSlide);
+  }
+}
+
+function bindOnboardingOverlayEvents(overlay) {
+  overlay.querySelector("[data-onboarding-skip]")?.addEventListener("click", () => {
+    dismissOnboardingPopup();
+  });
+  overlay.querySelector("[data-onboarding-advance]")?.addEventListener("click", () => {
+    if (uiState.onboardingSlideIndex >= ONBOARDING_SLIDES.length - 1) {
+      dismissOnboardingPopup();
+      return;
+    }
+    goToOnboardingSlide(uiState.onboardingSlideIndex + 1);
+  });
+  const track = overlay.querySelector("[data-onboarding-track]");
+  if (!track) return;
+  track.addEventListener("touchstart", handleOnboardingTouchStart, { passive: true });
+  track.addEventListener("touchmove", handleOnboardingTouchMove, { passive: true });
+  track.addEventListener("touchend", handleOnboardingTouchEnd);
+  track.addEventListener("touchcancel", (event) => {
+    resetOnboardingTouchState(event.currentTarget);
+  });
+}
+
+function goToOnboardingSlide(nextIndex) {
+  const clampedIndex = Math.max(0, Math.min(nextIndex, ONBOARDING_SLIDES.length - 1));
+  if (clampedIndex === uiState.onboardingSlideIndex) {
+    resetOnboardingTrackPosition();
+    return;
+  }
+  uiState.onboardingSlideIndex = clampedIndex;
+  updateOnboardingOverlayState();
+}
+
+function dismissOnboardingPopup() {
+  const overlay = elements.onboardingOverlay;
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  localStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
+  uiState.onboardingOpen = false;
+  uiState.onboardingSlideIndex = 0;
+  if (!overlay || overlay.classList.contains("is-hidden")) {
+    renderOnboardingOverlay();
+    return;
+  }
+  overlay.classList.remove("is-visible");
+  overlay.classList.add("is-closing");
+  document.body.classList.remove("onboarding-open");
+  window.setTimeout(() => {
+    overlay.innerHTML = "";
+    overlay.className = "onboarding-overlay is-hidden";
+    overlay.setAttribute("aria-hidden", "true");
+  }, 300);
+}
+
+function handleOnboardingTouchStart(event) {
+  onboardingPopupTouchStartX = event.touches?.[0]?.clientX ?? null;
+  onboardingPopupTouchDeltaX = 0;
+  event.currentTarget?.classList.add("is-dragging");
+}
+
+function handleOnboardingTouchMove(event) {
+  if (onboardingPopupTouchStartX === null) return;
+  const currentX = event.touches?.[0]?.clientX;
+  if (!Number.isFinite(currentX)) return;
+  onboardingPopupTouchDeltaX = currentX - onboardingPopupTouchStartX;
+  const track = event.currentTarget;
+  if (!track) return;
+  const baseOffset = -uiState.onboardingSlideIndex * track.clientWidth;
+  track.style.transform = `translateX(${baseOffset + onboardingPopupTouchDeltaX}px)`;
+}
+
+function handleOnboardingTouchEnd(event) {
+  const swipeThreshold = 48;
+  if (onboardingPopupTouchDeltaX <= -swipeThreshold && uiState.onboardingSlideIndex < ONBOARDING_SLIDES.length - 1) {
+    uiState.onboardingSlideIndex += 1;
+  } else if (onboardingPopupTouchDeltaX >= swipeThreshold && uiState.onboardingSlideIndex > 0) {
+    uiState.onboardingSlideIndex -= 1;
+  }
+  resetOnboardingTouchState(event.currentTarget);
+  updateOnboardingOverlayState();
+}
+
+function resetOnboardingTouchState(track = null) {
+  onboardingPopupTouchStartX = null;
+  onboardingPopupTouchDeltaX = 0;
+  const activeTrack = track || elements.onboardingOverlay?.querySelector("[data-onboarding-track]");
+  if (!activeTrack) return;
+  activeTrack.classList.remove("is-dragging");
+  activeTrack.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
+}
+
+function resetOnboardingTrackPosition() {
+  const track = elements.onboardingOverlay?.querySelector("[data-onboarding-track]");
+  if (!track) return;
+  track.classList.remove("is-dragging");
+  track.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
 }
 
 function renderAll() {

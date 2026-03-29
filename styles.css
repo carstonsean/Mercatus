@@ -24,8 +24,180 @@
 }
 
 body.prize-pool-share-open,
-body.auth-prompt-open {
+body.auth-prompt-open,
+body.onboarding-open {
   overflow: hidden;
+}
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1900;
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  background: rgba(0, 0, 0, 0.7);
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+
+.onboarding-overlay.is-hidden {
+  display: none;
+}
+
+.onboarding-overlay.is-closing {
+  opacity: 0;
+}
+
+.onboarding-sheet {
+  width: 100%;
+  min-height: 70dvh;
+  max-height: 70dvh;
+  padding: 14px 24px 32px;
+  border-radius: 20px 20px 0 0;
+  background: #1A1A2E;
+  transform: translateY(100%);
+  transition: transform 350ms ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.onboarding-overlay.is-visible .onboarding-sheet {
+  transform: translateY(0);
+}
+
+.onboarding-overlay.is-closing .onboarding-sheet {
+  transform: translateY(100%);
+  transition: transform 300ms ease;
+}
+
+.onboarding-handle {
+  width: 40px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.onboarding-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.onboarding-skip {
+  border: 0;
+  background: transparent;
+  color: #888888;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.onboarding-carousel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.onboarding-track {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  transition: transform 250ms ease;
+  will-change: transform;
+}
+
+.onboarding-track.is-dragging {
+  transition: none;
+}
+
+.onboarding-slide {
+  width: 100%;
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.onboarding-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(0, 200, 83, 0.12);
+  color: #00C853;
+  font-size: 48px;
+}
+
+.onboarding-slide h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.onboarding-slide p {
+  max-width: 320px;
+  margin: 0;
+  color: #9aa4b2;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.onboarding-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.onboarding-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.onboarding-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 200ms ease;
+}
+
+.onboarding-dot.active {
+  width: 8px;
+  height: 8px;
+  background: #ffffff;
+}
+
+.onboarding-button {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.onboarding-button.is-secondary {
+  background: #2A2A3E;
+  color: #ffffff;
+}
+
+.onboarding-button.is-primary {
+  background: linear-gradient(90deg, #00C853 0%, #C8F400 100%);
+  color: #1A1A1A;
 }
 
 .prize-pool-share-trigger {
