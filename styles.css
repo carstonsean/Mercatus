@@ -52,8 +52,8 @@ body.onboarding-open {
 
 .onboarding-sheet {
   width: min(100%, 402px);
-  min-height: min(58dvh, 540px);
-  max-height: min(58dvh, 540px);
+  min-height: min(60dvh, 560px);
+  max-height: min(60dvh, 560px);
   padding: 14px 24px 26px;
   border-radius: 24px;
   background: #1A1A2E;
@@ -133,8 +133,8 @@ body.onboarding-open {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
-  padding-top: 8px;
+  gap: 10px;
+  padding-top: 4px;
   text-align: center;
 }
 
@@ -159,42 +159,85 @@ body.onboarding-open {
   letter-spacing: -0.03em;
 }
 
-.onboarding-copy {
-  max-width: 322px;
+.onboarding-body {
+  max-width: 320px;
   width: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.onboarding-copy li {
-  position: relative;
+.onboarding-body p {
   margin: 0;
-  padding-left: 16px;
   color: #b0b7c6;
   font-size: 14px;
   line-height: 1.5;
-  text-align: left;
-}
-
-.onboarding-copy li::before {
-  content: "";
-  position: absolute;
-  top: 9px;
-  left: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.72);
+  text-align: center;
 }
 
 .onboarding-footer {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.onboarding-micro-shell {
+  width: 100%;
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.onboarding-micro-scale {
+  pointer-events: none;
+  opacity: 0.84;
+  transform-origin: center top;
+}
+
+.onboarding-micro-scale-card {
+  width: 142%;
+  transform: scale(0.68);
+}
+
+.onboarding-micro-scale-ticket {
+  width: 146%;
+  transform: scale(0.64);
+}
+
+.onboarding-micro-scale-confidence {
+  width: 146%;
+  transform: scale(0.66);
+}
+
+.onboarding-micro-card,
+.onboarding-micro-ticket {
+  cursor: default;
+}
+
+.onboarding-micro-rank {
+  color: #00C853;
+  font-size: 13px;
+}
+
+.onboarding-micro-support {
+  color: #00C853;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.onboarding-micro-metric span {
+  margin-top: 4px;
+}
+
+.onboarding-micro-ticket {
+  padding: 12px;
+  gap: 8px;
+}
+
+.onboarding-micro-projection {
+  font-size: 42px;
 }
 
 .onboarding-dots {

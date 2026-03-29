@@ -18,31 +18,32 @@ const ONBOARDING_SLIDES = [
   {
     icon: "ph-fill ph-arrows-down-up",
     headline: "The crowd sets the line",
-    bullets: [
-      "crowdIQ builds a live NRL Fantasy projection for every player from real user trading.",
-      "If you think the crowd has got it wrong, this is your chance to have your say."
+    body: [
+      "crowdIQ builds a live NRL Fantasy projection for every player from real user trading."
     ],
+    exampleType: "live-projection",
     buttonLabel: "Next →"
   },
   {
     icon: "ph-fill ph-users",
-    headline: "Back your edge",
-    bullets: [
+    headline: "Back your view",
+    body: [
       "Pick Over or Under on any player projection and back your view.",
       "You are trading against other users.",
       "As more users back one side, the projection moves with the crowd."
     ],
+    exampleType: "over-under",
     buttonLabel: "Next →"
   },
   {
     icon: "ph-fill ph-chart-line-up",
-    headline: "How to read the market",
-    bullets: [
-      "At kickoff, the line locks, and you win if the player's final score lands on your side.",
+    headline: "Market confidence",
+    body: [
       "As more people have their say, the crowdIQ projection becomes more accurate.",
       "This is shown by the Market Confidence icon on each player."
     ],
-    buttonLabel: "Got it"
+    exampleType: "confidence",
+    buttonLabel: "Start Trading"
   }
 ];
 
@@ -1020,11 +1021,11 @@ function renderOnboardingOverlay() {
         <div class="onboarding-track" data-onboarding-track style="transform: translateX(-${uiState.onboardingSlideIndex * 100}%);">
           ${ONBOARDING_SLIDES.map((slide, index) => `
             <article class="onboarding-slide" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
-              <div class="onboarding-icon" aria-hidden="true"><i class="${slide.icon}"></i></div>
               <h2>${slide.headline}</h2>
-              <ul class="onboarding-copy">
-                ${(slide.bullets || []).map((bullet) => `<li>${bullet}</li>`).join("")}
-              </ul>
+              <div class="onboarding-body">
+                ${(slide.body || []).map((line) => `<p>${line}</p>`).join("")}
+              </div>
+              ${renderOnboardingMicroExample(slide)}
             </article>
           `).join("")}
         </div>
@@ -1070,6 +1071,83 @@ function updateOnboardingOverlayState() {
     button.classList.toggle("is-primary", isFinalSlide);
     button.classList.toggle("is-secondary", !isFinalSlide);
   }
+}
+
+function renderOnboardingMicroExample(slide) {
+  if (!slide?.exampleType) return "";
+  if (slide.exampleType === "live-projection") {
+    return `
+      <div class="onboarding-micro-shell">
+        <div class="onboarding-micro-scale onboarding-micro-scale-card">
+          <div class="home-leaderboard-card onboarding-micro-card" style="--team-surface-primary:rgba(15, 130, 70, 0.28);--team-surface-secondary:rgba(248, 192, 78, 0.18);">
+            <span class="home-card-rank onboarding-micro-rank"><i class="ph-fill ph-arrow-up-right"></i></span>
+            <div class="home-card-copy">
+              <div class="home-card-topline"><strong>Nathan Cleary</strong></div>
+              <div class="home-projection-meta-row">
+                <span class="home-team-badge" style="background:#111827;color:#ffffff;">PEN</span>
+                <span>Halfback</span>
+              </div>
+              <span class="onboarding-micro-support move-up">↑ Live projection moving</span>
+            </div>
+            <div class="home-card-metric onboarding-micro-metric">
+              <strong>58.5</strong>
+              <span class="move-up">↑ 58.7</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  if (slide.exampleType === "over-under") {
+    const lines = linePairForMidpoint(58.5);
+    return `
+      <div class="onboarding-micro-shell">
+        <div class="onboarding-micro-scale onboarding-micro-scale-ticket">
+          <div class="trade-ticket trade-ticket-compact onboarding-micro-ticket">
+            <div class="trade-ticket-metric-row">
+              <div class="trade-ticket-projection-block">
+                <div class="quick-take-line trade-ticket-projection onboarding-micro-projection">58.5</div>
+                <span class="quick-take-move trade-ticket-projection-delta move-up onboarding-micro-support">↑ crowd pushing to 59.0</span>
+              </div>
+            </div>
+            <div class="trade-actions">
+              <button class="trade-button trade-over active" type="button" tabindex="-1">
+                <span class="trade-button-label">Over</span>
+                <span class="trade-button-price">${lines.overLine.toFixed(1)}</span>
+              </button>
+              <button class="trade-button trade-under" type="button" tabindex="-1">
+                <span class="trade-button-label">Under</span>
+                <span class="trade-button-price">${lines.underLine.toFixed(1)}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  if (slide.exampleType === "confidence") {
+    const confidence = 72;
+    return `
+      <div class="onboarding-micro-shell">
+        <div class="onboarding-micro-scale onboarding-micro-scale-confidence">
+          <div class="home-projection-subcard home-confidence-subcard onboarding-micro-card" style="--team-surface-primary:rgba(0, 200, 83, 0.22);--team-surface-secondary:rgba(248, 192, 78, 0.12);">
+            <span class="home-card-rank onboarding-micro-rank"><i class="ph-fill ph-gauge"></i></span>
+            <div class="home-confidence-row">
+              <div class="home-confidence-copy">
+                <div class="home-card-mainline"><strong>Confidence</strong></div>
+                <span>High participation behind this line</span>
+              </div>
+              <div class="home-confidence-metric-block">
+                <div class="home-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent is-high">${confidence}%</span></div>
+                <strong class="home-confidence-projection">High confidence</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  return "";
 }
 
 function bindOnboardingOverlayEvents(overlay) {
