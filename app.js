@@ -1095,21 +1095,19 @@ function renderOnboardingMicroExample(slide) {
   if (slide.exampleType === "live-projection") {
     return `
       <div class="onboarding-micro-shell">
-        <div class="onboarding-micro-scale onboarding-micro-scale-card">
-          <div class="home-leaderboard-card onboarding-micro-card onboarding-micro-live-card" style="--team-surface-primary:rgba(15, 130, 70, 0.28);--team-surface-secondary:rgba(248, 192, 78, 0.18);">
-            <span class="home-card-rank onboarding-micro-rank"><i class="ph-fill ph-arrow-up-right"></i></span>
-            <div class="home-card-copy">
-              <div class="home-card-topline"><strong>Nathan Cleary</strong></div>
-              <div class="home-projection-meta-row">
-                <span class="home-team-badge" style="background:#111827;color:#ffffff;">PEN</span>
-                <span>Halfback</span>
-              </div>
-              <span class="onboarding-micro-support move-up">↑ Live projection moving</span>
+        <div class="onboarding-preview onboarding-preview-live onboarding-preview-live-card">
+          <div class="onboarding-preview-live-arrow"><i class="ph-fill ph-arrow-up-right"></i></div>
+          <div class="onboarding-preview-live-copy">
+            <strong class="onboarding-preview-player-name">Nathan Cleary</strong>
+            <div class="onboarding-preview-player-meta">
+              <span class="onboarding-preview-team-badge">PEN</span>
+              <span>Halfback</span>
             </div>
-            <div class="home-card-metric onboarding-micro-metric">
-              <strong class="onboarding-micro-live-value">58.5</strong>
-              <span class="move-up onboarding-micro-live-shift">↑ 58.7</span>
-            </div>
+            <span class="onboarding-preview-support">↑ Live projection moving</span>
+          </div>
+          <div class="onboarding-preview-live-metric">
+            <strong class="onboarding-preview-value onboarding-preview-live-value">58.5</strong>
+            <span class="onboarding-preview-shift onboarding-preview-live-shift">↑ 58.7</span>
           </div>
         </div>
       </div>
@@ -1119,24 +1117,22 @@ function renderOnboardingMicroExample(slide) {
     const lines = linePairForMidpoint(58.5);
     return `
       <div class="onboarding-micro-shell">
-        <div class="onboarding-micro-scale onboarding-micro-scale-ticket">
-          <div class="trade-ticket trade-ticket-compact onboarding-micro-ticket">
-            <div class="onboarding-micro-ticket-head">
-              <span class="onboarding-micro-ticket-label">Projection</span>
-              <strong class="onboarding-micro-ticket-line">58.5</strong>
-            </div>
-            <div class="trade-actions">
-              <button class="trade-button trade-over active" type="button" tabindex="-1">
-                <span class="trade-button-label">Over</span>
-                <span class="trade-button-price">${lines.overLine.toFixed(1)}</span>
-              </button>
-              <button class="trade-button trade-under" type="button" tabindex="-1">
-                <span class="trade-button-label">Under</span>
-                <span class="trade-button-price">${lines.underLine.toFixed(1)}</span>
-              </button>
-            </div>
-            <span class="quick-take-move trade-ticket-projection-delta move-up onboarding-micro-support">↑ line ticking toward 59.0</span>
+        <div class="onboarding-preview onboarding-preview-ticket">
+          <div class="onboarding-preview-ticket-head">
+            <span class="onboarding-preview-label">Projection</span>
+            <strong class="onboarding-preview-value">58.5</strong>
           </div>
+          <div class="onboarding-preview-ticket-actions">
+            <div class="onboarding-preview-choice is-over">
+              <span class="onboarding-preview-choice-label">Over</span>
+              <strong>${lines.overLine.toFixed(1)}</strong>
+            </div>
+            <div class="onboarding-preview-choice is-under">
+              <span class="onboarding-preview-choice-label">Under</span>
+              <strong>${lines.underLine.toFixed(1)}</strong>
+            </div>
+          </div>
+          <span class="onboarding-preview-support onboarding-preview-ticket-support">↑ line ticking toward 59.0</span>
         </div>
       </div>
     `;
@@ -1145,15 +1141,20 @@ function renderOnboardingMicroExample(slide) {
     const confidence = 72;
     return `
       <div class="onboarding-micro-shell">
-        <div class="onboarding-micro-scale onboarding-micro-scale-confidence">
-          <div class="onboarding-confidence-module onboarding-micro-card">
-            <div class="onboarding-confidence-copy">
-              <span class="onboarding-micro-ticket-label">Confidence</span>
+        <div class="onboarding-preview onboarding-preview-confidence">
+          <div class="onboarding-preview-confidence-copy">
+            <span class="onboarding-preview-label">Confidence</span>
+            <span class="onboarding-preview-confidence-meta">Participation behind this line</span>
+          </div>
+          <div class="onboarding-preview-confidence-meter">
+            <div class="onboarding-preview-gauge" aria-hidden="true">
+              <svg viewBox="0 0 36 20">
+                <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-base"></path>
+                <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-fill is-high" pathLength="100" stroke-dasharray="${confidence} 100"></path>
+              </svg>
             </div>
-            <div class="onboarding-confidence-meter">
-              <div class="home-confidence-primary onboarding-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent is-high">${confidence}%</span></div>
-              <span class="onboarding-confidence-note">High confidence</span>
-            </div>
+            <span class="onboarding-preview-confidence-percent">${confidence}%</span>
+            <span class="onboarding-preview-confidence-note">High confidence</span>
           </div>
         </div>
       </div>
