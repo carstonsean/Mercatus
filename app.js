@@ -14,39 +14,6 @@ const LIVE_SYNC_MS = 2500;
 const PRIZE_POOL_POLL_MS = 10000;
 const ONBOARDING_POPUP_DELAY_MS = 800;
 
-const ONBOARDING_SLIDES = [
-  {
-    icon: "ph-fill ph-arrows-down-up",
-    headline: "The crowd sets the line",
-    body: [
-      "crowdIQ builds a live NRL Fantasy projection for every player from real user trading."
-    ],
-    exampleType: "live-projection",
-    buttonLabel: "Next →"
-  },
-  {
-    icon: "ph-fill ph-users",
-    headline: "Back your view",
-    body: [
-      "Pick Over or Under on any player projection and back your view.",
-      "You are trading against other users.",
-      "As more users back one side, the projection moves with the crowd."
-    ],
-    exampleType: "over-under",
-    buttonLabel: "Next →"
-  },
-  {
-    icon: "ph-fill ph-chart-line-up",
-    headline: "Market confidence",
-    body: [
-      "As more people have their say, the crowdIQ projection becomes more accurate.",
-      "This is shown by the Market Confidence icon on each player."
-    ],
-    exampleType: "confidence",
-    buttonLabel: "Start Trading"
-  }
-];
-
 const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
 const roundGames = seed.roundGames;
@@ -95,8 +62,6 @@ let popularFeaturedMarketIds = [];
 let popularFeaturedRoundNumber = null;
 let popularFeaturedRequest = null;
 let onboardingPopupTimer = null;
-let onboardingPopupTouchStartX = null;
-let onboardingPopupTouchDeltaX = 0;
 
 const uiState = {
   activeScreen: "home",
@@ -272,6 +237,17 @@ const elements = {
   resetDemo: document.getElementById("reset-demo"),
   toast: document.getElementById("toast")
 };
+
+const onboardingModal = typeof window.createCrowdIQOnboardingModal === "function"
+  ? window.createCrowdIQOnboardingModal({
+      host: elements.onboardingOverlay,
+      onSkip: dismissOnboardingPopup,
+      onBack: () => goToOnboardingSlide(uiState.onboardingSlideIndex - 1),
+      onAdvance: handleOnboardingAdvance,
+      onComplete: dismissOnboardingPopup,
+      onRequestSlide: goToOnboardingSlide
+    })
+  : null;
 
 init();
 
@@ -751,11 +727,15 @@ function renderGuestHero() {
 function renderGuestUnauthBottom() {
   const container = elements.homeUnauthBottom;
   if (!container) return;
+  const howItWorksHTML = `<section class="home-unauth-section home-unauth-info-wrap"><button class="home-unauth-info-button" id="home-open-onboarding" type="button"><span class="home-unauth-info-copy"><span class="home-unauth-info-label">How it works</span><strong>See how crowdIQ works</strong></span><i class="ph-fill ph-info" aria-hidden="true"></i></button></section>`;
+
   if (isAuthenticated()) {
-    container.innerHTML = "";
+    container.innerHTML = howItWorksHTML;
+    container.querySelector("#home-open-onboarding")?.addEventListener("click", () => {
+      openOnboardingPopup();
+    });
     return;
   }
-  const howItWorksHTML = `<section class="home-unauth-section home-unauth-info-wrap"><button class="home-unauth-info-button" id="home-open-onboarding" type="button"><span class="home-unauth-info-copy"><span class="home-unauth-info-label">How it works</span><strong>See how crowdIQ works</strong></span><i class="ph-fill ph-info" aria-hidden="true"></i></button></section>`;
 
   const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
 
@@ -961,7 +941,20 @@ function hasSeenOnboarding() {
   return localStorage.getItem(HAS_SEEN_ONBOARDING_KEY) != null;
 }
 
+function isOnboardingPreviewRequested() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const value = (params.get("onboarding") || "").toLowerCase();
+    return value === "1" || value === "true" || value === "preview";
+  } catch (error) {
+    return false;
+  }
+}
+
 function shouldShowOnboardingPopup() {
+  if (isOnboardingPreviewRequested()) {
+    return true;
+  }
   const authPromptClosed = !elements.authGate || elements.authGate.classList.contains("is-hidden");
   return !isAuthenticated() && uiState.activeScreen === "home" && authPromptClosed;
 }
@@ -995,259 +988,54 @@ function openOnboardingPopup() {
 }
 
 function renderOnboardingOverlay() {
-  const overlay = elements.onboardingOverlay;
-  if (!overlay) return;
+  if (!onboardingModal) return;
   if (!uiState.onboardingOpen) {
-    overlay.innerHTML = "";
-    overlay.className = "onboarding-overlay is-hidden";
-    overlay.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("onboarding-open");
+    onboardingModal.hide();
     return;
   }
-  const isAlreadyVisible = overlay.classList.contains("is-visible");
-  if (isAlreadyVisible && overlay.querySelector(".onboarding-sheet")) {
-    updateOnboardingOverlayState();
+  const isVisible = elements.onboardingOverlay?.dataset.state === "visible" || elements.onboardingOverlay?.dataset.state === "mounted";
+  if (isVisible) {
+    onboardingModal.update(uiState.onboardingSlideIndex);
     return;
   }
-  const isFinalSlide = uiState.onboardingSlideIndex === ONBOARDING_SLIDES.length - 1;
-  overlay.innerHTML = `
-    <div class="onboarding-sheet" role="dialog" aria-modal="true" aria-label="How crowdIQ works">
-      <div class="onboarding-handle" aria-hidden="true"></div>
-      <div class="onboarding-header">
-        <span class="onboarding-kicker">How it works</span>
-        <button class="onboarding-skip" type="button" data-onboarding-skip ${isFinalSlide ? "hidden" : ""}>Skip</button>
-      </div>
-      <section class="onboarding-carousel" aria-live="polite">
-        <div class="onboarding-track" data-onboarding-track style="transform: translateX(-${uiState.onboardingSlideIndex * 100}%);">
-          ${ONBOARDING_SLIDES.map((slide, index) => `
-            <article class="onboarding-slide onboarding-slide-${slide.exampleType || "default"}" aria-hidden="${index === uiState.onboardingSlideIndex ? "false" : "true"}">
-              <div class="onboarding-copy-block">
-                <h2>${slide.headline}</h2>
-                <ul class="onboarding-body">
-                  ${(slide.body || []).map((line) => `<li>${line}</li>`).join("")}
-                </ul>
-              </div>
-              ${renderOnboardingMicroExample(slide)}
-            </article>
-          `).join("")}
-        </div>
-      </section>
-      <footer class="onboarding-footer">
-        <div class="onboarding-dots" aria-label="Onboarding progress">
-          ${ONBOARDING_SLIDES.map((_, index) => `<span class="onboarding-dot ${index === uiState.onboardingSlideIndex ? "active" : ""}" aria-hidden="true"></span>`).join("")}
-        </div>
-        <div class="onboarding-actions ${uiState.onboardingSlideIndex === 0 ? "is-single" : ""}">
-          <button class="onboarding-back-button" type="button" data-onboarding-back ${uiState.onboardingSlideIndex === 0 ? "hidden" : ""}>Back</button>
-          <button class="onboarding-button ${isFinalSlide ? "is-primary" : "is-secondary"}" type="button" data-onboarding-advance>${ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel}</button>
-        </div>
-      </footer>
-    </div>
-  `;
-  overlay.className = `onboarding-overlay${isAlreadyVisible ? " is-visible" : ""}`;
-  overlay.setAttribute("aria-hidden", "false");
-  document.body.classList.add("onboarding-open");
-  bindOnboardingOverlayEvents(overlay);
-  if (!isAlreadyVisible) {
-    window.requestAnimationFrame(() => {
-      if (uiState.onboardingOpen) {
-        overlay.classList.add("is-visible");
-      }
-    });
-  }
+  onboardingModal.show(uiState.onboardingSlideIndex);
 }
 
 function updateOnboardingOverlayState() {
-  const overlay = elements.onboardingOverlay;
-  if (!overlay) return;
-  const track = overlay.querySelector("[data-onboarding-track]");
-  const button = overlay.querySelector("[data-onboarding-advance]");
-  const backButton = overlay.querySelector("[data-onboarding-back]");
-  const skipButton = overlay.querySelector("[data-onboarding-skip]");
-  const actions = overlay.querySelector(".onboarding-actions");
-  const isFinalSlide = uiState.onboardingSlideIndex === ONBOARDING_SLIDES.length - 1;
-  if (track) {
-    track.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
-  }
-  overlay.querySelectorAll(".onboarding-slide").forEach((slide, index) => {
-    slide.setAttribute("aria-hidden", String(index !== uiState.onboardingSlideIndex));
-  });
-  overlay.querySelectorAll(".onboarding-dot").forEach((dot, index) => {
-    dot.classList.toggle("active", index === uiState.onboardingSlideIndex);
-  });
-  if (button) {
-    button.textContent = ONBOARDING_SLIDES[uiState.onboardingSlideIndex].buttonLabel;
-    button.classList.toggle("is-primary", isFinalSlide);
-    button.classList.toggle("is-secondary", !isFinalSlide);
-  }
-  if (backButton) {
-    backButton.hidden = uiState.onboardingSlideIndex === 0;
-  }
-  if (skipButton) {
-    skipButton.hidden = isFinalSlide;
-  }
-  if (actions) {
-    actions.classList.toggle("is-single", uiState.onboardingSlideIndex === 0);
-  }
-}
-
-function renderOnboardingMicroExample(slide) {
-  if (!slide?.exampleType) return "";
-  if (slide.exampleType === "live-projection") {
-    return `
-      <div class="onboarding-micro-shell">
-        <div class="onboarding-preview onboarding-preview-live onboarding-preview-live-card">
-          <div class="onboarding-preview-live-arrow"><i class="ph-fill ph-arrow-up-right"></i></div>
-          <div class="onboarding-preview-live-copy">
-            <strong class="onboarding-preview-player-name">Nathan Cleary</strong>
-            <div class="onboarding-preview-player-meta">
-              <span class="onboarding-preview-team-badge">PEN</span>
-              <span>Halfback</span>
-            </div>
-            <span class="onboarding-preview-support">↑ Live projection moving</span>
-          </div>
-          <div class="onboarding-preview-live-metric">
-            <strong class="onboarding-preview-value onboarding-preview-live-value">58.5</strong>
-            <span class="onboarding-preview-shift onboarding-preview-live-shift">↑ 58.7</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  if (slide.exampleType === "over-under") {
-    const lines = linePairForMidpoint(58.5);
-    return `
-      <div class="onboarding-micro-shell">
-        <div class="onboarding-preview onboarding-preview-ticket onboarding-preview-ticket-compact">
-          <div class="onboarding-preview-ticket-actions">
-            <div class="onboarding-preview-choice is-over">
-              <span class="onboarding-preview-choice-label">Over</span>
-              <strong>${lines.overLine.toFixed(1)}</strong>
-            </div>
-            <div class="onboarding-preview-choice is-under">
-              <span class="onboarding-preview-choice-label">Under</span>
-              <strong>${lines.underLine.toFixed(1)}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  if (slide.exampleType === "confidence") {
-    const confidence = 72;
-    return `
-      <div class="onboarding-micro-shell">
-        <div class="onboarding-preview onboarding-preview-confidence onboarding-preview-confidence-compact">
-          <div class="onboarding-preview-confidence-indicator" aria-hidden="true">
-            <svg viewBox="0 0 36 20">
-              <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-base"></path>
-              <path d="M 2 18 A 16 16 0 0 1 34 18" class="onboarding-preview-gauge-fill is-high" pathLength="100" stroke-dasharray="${confidence} 100"></path>
-            </svg>
-          </div>
-          <span class="onboarding-preview-confidence-percent">${confidence}%</span>
-        </div>
-      </div>
-    `;
-  }
-  return "";
-}
-
-function bindOnboardingOverlayEvents(overlay) {
-  overlay.querySelector("[data-onboarding-skip]")?.addEventListener("click", () => {
-    dismissOnboardingPopup();
-  });
-  overlay.querySelector("[data-onboarding-back]")?.addEventListener("click", () => {
-    goToOnboardingSlide(uiState.onboardingSlideIndex - 1);
-  });
-  overlay.querySelector("[data-onboarding-advance]")?.addEventListener("click", () => {
-    if (uiState.onboardingSlideIndex >= ONBOARDING_SLIDES.length - 1) {
-      dismissOnboardingPopup();
-      return;
-    }
-    goToOnboardingSlide(uiState.onboardingSlideIndex + 1);
-  });
-  const track = overlay.querySelector("[data-onboarding-track]");
-  if (!track) return;
-  track.addEventListener("touchstart", handleOnboardingTouchStart, { passive: true });
-  track.addEventListener("touchmove", handleOnboardingTouchMove, { passive: true });
-  track.addEventListener("touchend", handleOnboardingTouchEnd);
-  track.addEventListener("touchcancel", (event) => {
-    resetOnboardingTouchState(event.currentTarget);
-  });
+  onboardingModal?.update(uiState.onboardingSlideIndex);
 }
 
 function goToOnboardingSlide(nextIndex) {
-  const clampedIndex = Math.max(0, Math.min(nextIndex, ONBOARDING_SLIDES.length - 1));
+  const clampedIndex = Math.max(0, Math.min(nextIndex, getOnboardingSlideCount() - 1));
   if (clampedIndex === uiState.onboardingSlideIndex) {
-    resetOnboardingTrackPosition();
+    updateOnboardingOverlayState();
     return;
   }
   uiState.onboardingSlideIndex = clampedIndex;
   updateOnboardingOverlayState();
 }
 
-function dismissOnboardingPopup() {
-  const overlay = elements.onboardingOverlay;
-  window.clearTimeout(onboardingPopupTimer);
-  onboardingPopupTimer = null;
-  localStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
-  uiState.onboardingOpen = false;
-  uiState.onboardingSlideIndex = 0;
-  if (!overlay || overlay.classList.contains("is-hidden")) {
-    renderOnboardingOverlay();
+function handleOnboardingAdvance() {
+  if (uiState.onboardingSlideIndex >= getOnboardingSlideCount() - 1) {
+    dismissOnboardingPopup();
     return;
   }
-  overlay.classList.remove("is-visible");
-  overlay.classList.add("is-closing");
-  document.body.classList.remove("onboarding-open");
-  window.setTimeout(() => {
-    overlay.innerHTML = "";
-    overlay.className = "onboarding-overlay is-hidden";
-    overlay.setAttribute("aria-hidden", "true");
-  }, 300);
+  goToOnboardingSlide(uiState.onboardingSlideIndex + 1);
 }
 
-function handleOnboardingTouchStart(event) {
-  onboardingPopupTouchStartX = event.touches?.[0]?.clientX ?? null;
-  onboardingPopupTouchDeltaX = 0;
-  event.currentTarget?.classList.add("is-dragging");
+function getOnboardingSlideCount() {
+  return onboardingModal?.getSlideCount?.() || 3;
 }
 
-function handleOnboardingTouchMove(event) {
-  if (onboardingPopupTouchStartX === null) return;
-  const currentX = event.touches?.[0]?.clientX;
-  if (!Number.isFinite(currentX)) return;
-  onboardingPopupTouchDeltaX = currentX - onboardingPopupTouchStartX;
-  const track = event.currentTarget;
-  if (!track) return;
-  const baseOffset = -uiState.onboardingSlideIndex * track.clientWidth;
-  track.style.transform = `translateX(${baseOffset + onboardingPopupTouchDeltaX}px)`;
-}
-
-function handleOnboardingTouchEnd(event) {
-  const swipeThreshold = 48;
-  if (onboardingPopupTouchDeltaX <= -swipeThreshold && uiState.onboardingSlideIndex < ONBOARDING_SLIDES.length - 1) {
-    uiState.onboardingSlideIndex += 1;
-  } else if (onboardingPopupTouchDeltaX >= swipeThreshold && uiState.onboardingSlideIndex > 0) {
-    uiState.onboardingSlideIndex -= 1;
+function dismissOnboardingPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  if (!isOnboardingPreviewRequested()) {
+    localStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
   }
-  resetOnboardingTouchState(event.currentTarget);
-  updateOnboardingOverlayState();
-}
-
-function resetOnboardingTouchState(track = null) {
-  onboardingPopupTouchStartX = null;
-  onboardingPopupTouchDeltaX = 0;
-  const activeTrack = track || elements.onboardingOverlay?.querySelector("[data-onboarding-track]");
-  if (!activeTrack) return;
-  activeTrack.classList.remove("is-dragging");
-  activeTrack.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
-}
-
-function resetOnboardingTrackPosition() {
-  const track = elements.onboardingOverlay?.querySelector("[data-onboarding-track]");
-  if (!track) return;
-  track.classList.remove("is-dragging");
-  track.style.transform = `translateX(-${uiState.onboardingSlideIndex * 100}%)`;
+  uiState.onboardingOpen = false;
+  uiState.onboardingSlideIndex = 0;
+  onboardingModal?.hide();
 }
 
 function renderAll() {
