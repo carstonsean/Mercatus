@@ -75,6 +75,12 @@ function roundTo(value, decimals = 1) {
   return Math.round((Number(value) || 0) * factor) / factor;
 }
 
+function priceImpliedProjectionFor(price) {
+  const normalizedPrice = Number(price);
+  if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) return null;
+  return roundTo(normalizedPrice / 12800);
+}
+
 function average(values) {
   if (!values.length) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -109,6 +115,15 @@ function writeModule(filePath, payload) {
 }
 
 const raw = JSON.parse(fs.readFileSync(INPUT_PATH, "utf8"));
+let existingDerived = null;
+if (fs.existsSync(OUTPUT_PATH)) {
+  try {
+    delete require.cache[require.resolve(OUTPUT_PATH)];
+    existingDerived = require(OUTPUT_PATH);
+  } catch (error) {
+    existingDerived = null;
+  }
+}
 const playerStatsByName = {};
 const concessionMap = new Map();
 const leaguePositionMap = new Map();
@@ -155,12 +170,16 @@ for (const entry of raw) {
     }, {})
   ).sort((left, right) => right[1] - left[1])[0]?.[0] || playerRows[playerRows.length - 1].position;
 
+  const existingPlayer = existingDerived?.playerStatsByName?.[playerKey] || null;
+  const averagePoints = roundTo(average(fantasyPoints));
   playerStatsByName[playerKey] = {
     playerName,
     key: playerKey,
     primaryPosition,
     gamesPlayed: playerRows.length,
-    seasonAverage: roundTo(average(fantasyPoints)),
+    currentPrice: Number.isFinite(Number(existingPlayer?.currentPrice)) ? Number(existingPlayer.currentPrice) : null,
+    priceImpliedProjection: priceImpliedProjectionFor(existingPlayer?.currentPrice),
+    seasonAverage: averagePoints,
     last3Average: roundTo(average(lastThreeRows.map((row) => row.fantasyPoints))),
     lastGameScore: roundTo(playerRows[playerRows.length - 1].fantasyPoints),
     scoreVolatility: roundTo(standardDeviation(fantasyPoints)),

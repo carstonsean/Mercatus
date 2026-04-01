@@ -256,6 +256,44 @@ const SUCCESSFUL_BOT_PROFILE = {
   crowdBias: 0
 };
 
+const BOT_NAME_PREFIXES = [
+  "Ari",
+  "Beau",
+  "Cruz",
+  "Dax",
+  "Eli",
+  "Finn",
+  "Hudson",
+  "Jett",
+  "Kai",
+  "Luca",
+  "Milo",
+  "Nash",
+  "Remy",
+  "Rory",
+  "Taj",
+  "Zeke"
+];
+
+const BOT_NAME_SUFFIXES = [
+  "Aces",
+  "Atlas",
+  "Comets",
+  "Crew",
+  "Dash",
+  "Flux",
+  "Forge",
+  "Nova",
+  "Orbit",
+  "Raiders",
+  "Shift",
+  "Signal",
+  "Slate",
+  "Volt",
+  "Wave",
+  "Yard"
+];
+
 function normalizeSimulationConfig(input = {}) {
   const botCounts = { ...DEFAULT_SIMULATION_CONFIG.botCounts, ...(input.botCounts || {}) };
   const globalWeights = { ...DEFAULT_SIMULATION_CONFIG.globalWeights, ...(input.globalWeights || {}) };
@@ -277,6 +315,19 @@ function createBotRoster(config) {
   return [];
 }
 
+function createRandomBotName(existingBots = []) {
+  const usedNames = new Set(existingBots.map((bot) => bot?.userName).filter(Boolean));
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const prefix = BOT_NAME_PREFIXES[Math.floor(Math.random() * BOT_NAME_PREFIXES.length)] || "Milo";
+    const suffix = BOT_NAME_SUFFIXES[Math.floor(Math.random() * BOT_NAME_SUFFIXES.length)] || "Nova";
+    const name = `${prefix} ${suffix}`;
+    if (!usedNames.has(name)) {
+      return name;
+    }
+  }
+  return `Bot ${existingBots.length + 1}`;
+}
+
 function createRandomBot(existingBots = []) {
   const customCount = existingBots.filter((bot) => bot.source === "custom").length + 1;
   const archetypeKeys = Object.keys(BOT_ARCHETYPES);
@@ -287,7 +338,7 @@ function createRandomBot(existingBots = []) {
   const tunedBase = blendConfig(baseArchetype, SUCCESSFUL_BOT_PROFILE, targetBlend);
   return {
     id: `bot-custom-${customCount}`,
-    userName: `${baseArchetype.label} Bot ${customCount}`,
+    userName: createRandomBotName(existingBots),
     archetype: archetypeKey,
     source: "custom",
     startingBankroll: 200,
@@ -320,7 +371,7 @@ function createRandomProbBot(existingBots = []) {
   const baseBot = createRandomBot(existingBots);
   return {
     id: `bot-random-prob-${randomProbCount}`,
-    userName: `Random Prob Bot ${randomProbCount}`,
+    userName: createRandomBotName([...existingBots, baseBot]),
     archetype: "random-prob",
     source: "random-prob",
     startingBankroll: 200,
@@ -344,7 +395,7 @@ function runSimulationTick({ state, bots, config, tick = 0 }) {
   const events = [];
   openMarkets.forEach((market) => {
     const openExposure = market.trades
-      .filter((trade) => trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot "))
+      .filter((trade) => isBotTrade(trade))
       .reduce((sum, trade) => sum + (trade.unmatchedStake || 0) + (trade.matchedStake || 0), 0);
     market.botOpenExposure = openExposure;
   });
@@ -574,6 +625,16 @@ function randomFor(seed, key) {
 
 function randomNoise(seed, key) {
   return (randomFor(seed, key) - 0.5) * 2.2;
+}
+
+function isBotTrade(trade) {
+  return Boolean(
+    trade?.botId ||
+    trade?.botSource ||
+    trade?.archetype ||
+    trade?.userName?.startsWith("Bot ") ||
+    trade?.userName?.includes(" Bot ")
+  );
 }
 
 function shuffle(items, seed) {

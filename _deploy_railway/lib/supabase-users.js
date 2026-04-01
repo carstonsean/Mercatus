@@ -1,7 +1,7 @@
 const {supabaseRequest}=require("./supabase");
 const {isSupabaseConfigured}=require("./config");
 
-const STARTING_BANKROLL=1000;
+const STARTING_BANKROLL=200;
 
 async function ensureSupabaseDemoUser(userName){
   if(!isSupabaseConfigured()){
@@ -64,7 +64,11 @@ async function createUser(username){
 
 async function ensureOpeningBalance(userId){
   if(await hasWalletLedgerEntries(userId)){
-    return fetchWalletBalance(userId);
+    const balance=await fetchWalletBalance(userId);
+    if(Number.isFinite(balance)){
+      await upsertWalletSnapshot(userId,balance);
+    }
+    return balance;
   }
   await supabaseRequest("wallet_ledger",{
     method:"POST",
@@ -77,6 +81,7 @@ async function ensureOpeningBalance(userId){
       note:"Demo account created"
     }
   });
+  await upsertWalletSnapshot(userId,STARTING_BANKROLL);
   return STARTING_BANKROLL;
 }
 
@@ -92,17 +97,62 @@ async function hasWalletLedgerEntries(userId){
 }
 
 async function fetchWalletBalance(userId){
-  const rows=await supabaseRequest("wallet_balances",{
+  try{
+    const snapshotRows=await supabaseRequest("wallet_snapshots",{
+      query:{
+        select:"current_balance",
+        user_id:`eq.${userId}`,
+        limit:1
+      }
+    });
+    if(snapshotRows?.length){
+      return Number(snapshotRows[0].current_balance)||0;
+    }
+  }catch(error){
+    void error;
+  }
+  try{
+    const balanceRows=await supabaseRequest("wallet_balances",{
+      query:{
+        select:"current_balance",
+        user_id:`eq.${userId}`,
+        limit:1
+      }
+    });
+    if(balanceRows?.length){
+      return Number(balanceRows[0].current_balance)||0;
+    }
+  }catch(error){
+    void error;
+  }
+  return null;
+}
+
+async function upsertWalletSnapshot(userId,balance){
+  const userRows=await supabaseRequest("users",{
     query:{
-      select:"current_balance",
-      user_id:`eq.${userId}`,
+      select:"username",
+      id:`eq.${userId}`,
       limit:1
     }
   });
-  if(!rows?.length){
-    return null;
+  const username=userRows?.[0]?.username;
+  if(!username){
+    return;
   }
-  return Number(rows[0].current_balance)||0;
+  await supabaseRequest("wallet_snapshots",{
+    method:"POST",
+    query:{
+      on_conflict:"user_id",
+      select:"user_id"
+    },
+    headers:{Prefer:"return=representation,resolution=merge-duplicates"},
+    body:{
+      user_id:userId,
+      username,
+      current_balance:Number(balance)||0
+    }
+  });
 }
 
 function normalizeUserName(userName){

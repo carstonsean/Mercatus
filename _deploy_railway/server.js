@@ -9,11 +9,12 @@ require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
 const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
-const {isSupabaseConfigured}=require("./lib/config");
+const {isSupabaseEnabled}=require("./lib/config");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
-const {ensureSupabaseSeedData,getSupabaseAvailableBalance}=require("./lib/supabase-market-sync");
+const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
 const {fetchSupabaseAppState}=require("./lib/supabase-state");
+const {fetchSupabaseRuntimeState,persistSupabaseRuntimeState}=require("./lib/supabase-runtime-state");
 
 const PORT=process.env.PORT?Number(process.env.PORT):8000;
 const STARTING_BANKROLL=200;
@@ -44,15 +45,32 @@ const PRIZE_POOL_POSITION_SLOTS=[
 ];
 const ENGINE_VERSION="hybrid-v2";
 const STATE_PATH=path.join(__dirname,"server-state.json");
-const USE_SUPABASE=false;
 const BOT_AUTOPLAY_INTERVAL_MS=3000;
 const SEEDED_MARKETS=buildRoundMarkets();
 const SEEDED_MARKETS_BY_ID=new Map(SEEDED_MARKETS.map((market)=>[market.id,market]));
-const CURRENT_ROUND_LABEL=roundGames[0]?.roundLabel||"Current round";
-const CURRENT_ROUND_NUMBER=parseRoundNumber(roundGames[0]?.roundLabel);
+const SEEDED_ROUND_NUMBERS=[...new Set(roundGames.map((game)=>parseRoundNumber(game.roundLabel)).filter(Number.isFinite))].sort((left,right)=>left-right);
+const CURRENT_ROUND_NUMBER=SEEDED_ROUND_NUMBERS[SEEDED_ROUND_NUMBERS.length-1]||1;
+const CURRENT_ROUND_LABEL=roundGames.find((game)=>parseRoundNumber(game.roundLabel)===CURRENT_ROUND_NUMBER)?.roundLabel||`Round ${CURRENT_ROUND_NUMBER}`;
+const DEFAULT_ACTIVE_ROUND_NUMBER=CURRENT_ROUND_NUMBER||1;
 const ROUND_NUMBER_BY_GAME_ID=new Map(roundGames.map((game)=>[game.id,parseRoundNumber(game.roundLabel)]));
+const AVAILABLE_ROUND_NUMBERS=[...new Set([
+  ...SEEDED_ROUND_NUMBERS,
+  ...((derivedData?.metadata?.roundsIncluded)||[]).map((round)=>Number(round)).filter(Number.isFinite)
+])].sort((left,right)=>left-right);
+const SUPABASE_STATE_SYNC_TTL_MS=30000;
+const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
+const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
+const SUPABASE_ENABLED=isSupabaseEnabled();
+
+let popularPlayersCache=null;
+let popularPlayersCacheTime=0;
+let popularPlayersFetchPromise=null;
 
 let state=loadState();
+let supabaseSeedReady=false;
+let lastSupabaseStateSyncAt=0;
+let lastSupabaseUnavailableAt=0;
+let supabaseStateSyncPromise=null;
 persistState();
 
 const MIME_TYPES={
@@ -65,7 +83,7 @@ const MIME_TYPES={
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url,`http://${req.headers.host}`);
-    if(url.pathname.startsWith("/api/")){
+    if(url.pathname==="/api"||url.pathname.startsWith("/api/")){
       await handleApi(req,res,url);
       return;
     }
@@ -78,8 +96,21 @@ const server=http.createServer(async (req,res)=>{
 
 server.listen(PORT,"0.0.0.0",()=>{
   console.log(`Mercatus server running on http://0.0.0.0:${PORT}`);
+  fetchPopularPlayers().catch((error)=>{
+    console.warn("Initial popular players fetch failed",error.message);
+  });
+  if(SUPABASE_ENABLED){
+    syncStateFromSupabase().catch((error)=>{
+      console.warn("Initial Supabase state sync failed",error.message);
+    });
+  }
 });
 setInterval(runAutonomousBots,BOT_AUTOPLAY_INTERVAL_MS);
+setInterval(()=>{
+  fetchPopularPlayers(true).catch((error)=>{
+    console.warn("Scheduled popular players fetch failed",error.message);
+  });
+},POPULAR_PLAYERS_REFRESH_MS);
 
 function serveStatic(res,pathname){
   const requestedPath=pathname==="/"?"/index.html":pathname;
@@ -111,44 +142,126 @@ function serveStatic(res,pathname){
 }
 
 async function handleApi(req,res,url){
-  if(req.method==="GET"&&url.pathname==="/api/bootstrap"){
+  const useSupabase=shouldUseSupabaseForRequest(req);
+  if(req.method==="GET"&&url.pathname==="/api/popular-players"){
+    const now=Date.now();
+    const cacheAge=now-popularPlayersCacheTime;
+    const usingCached=Array.isArray(popularPlayersCache)&&cacheAge<POPULAR_PLAYERS_REFRESH_MS;
+    const scrapedPlayers=usingCached?popularPlayersCache:await fetchPopularPlayers();
+    const players=buildPopularFeaturedPayload(scrapedPlayers,state);
+    return json(res,200,{players,cached:usingCached});
+  }
+  if(req.method==="GET"&&(url.pathname==="/api/bootstrap"||url.pathname==="/api")){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
-    if(USE_SUPABASE&&isSupabaseConfigured()){
-      await ensureSupabaseSeedData();
-      await syncStateFromSupabase();
+    if(useSupabase){
+      if(Array.isArray(state?.markets)&&state.markets.length){
+        syncStateFromSupabase().catch((error)=>{
+          console.warn("Bootstrap Supabase sync failed",error.message);
+        });
+      }else{
+        try{
+          await syncStateFromSupabase({force:true});
+        }catch(error){
+          console.warn("Bootstrap Supabase sync failed",error.message);
+        }
+      }
     }
-    const backendUser=await syncBackendUser(username);
-    const dashboard=await getBackendDashboard(username);
-    if(!(USE_SUPABASE&&isSupabaseConfigured())){
+    const backendUser=await syncBackendUser(username,useSupabase);
+    const dashboard=await getBackendDashboard(username,useSupabase);
+    if(!useSupabase){
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
-    return json(res,200,{state,roundGames,teamColors:TEAM_COLORS,userName:username,backend:buildBackendPayload(backendUser,dashboard),prizePool:buildPrizePoolClientPayload(username)});
+    return json(res,200,{state,roundGames,teamColors:TEAM_COLORS,userName:username,backend:buildBackendPayload(backendUser,dashboard,useSupabase),prizePool:buildPrizePoolClientPayload(username)});
   }
-  if(req.method==="POST"&&url.pathname==="/api/session"){
+  if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
-    if(USE_SUPABASE&&isSupabaseConfigured()){
-      await ensureSupabaseSeedData();
-      await syncStateFromSupabase();
-    }
-    const backendUser=await syncBackendUser(username);
-    const dashboard=await getBackendDashboard(username);
-    if(!(USE_SUPABASE&&isSupabaseConfigured())){
+    if(useSupabase){
+      if(Array.isArray(state?.markets)&&state.markets.length){
+        syncStateFromSupabase().catch((error)=>{
+          console.warn("Session Supabase sync failed",error.message);
+        });
+      }else{
+        try{
+          await syncStateFromSupabase({force:true});
+        }catch(error){
+          console.warn("Session Supabase sync failed",error.message);
+        }
+      }
+      syncBackendUser(username,useSupabase).catch((error)=>{
+        console.warn("Session user sync failed",error.message);
+      });
+    }else{
       syncDerivedBalances();
     }
-    persistState();
     syncPrizePoolState(state);
-    return json(res,200,{state,userName:username,backend:buildBackendPayload(backendUser,dashboard),prizePool:buildPrizePoolClientPayload(username)});
+    return json(res,200,{state,userName:username,backend:buildBackendPayload(null,null,useSupabase),prizePool:buildPrizePoolClientPayload(username)});
+  }
+  if(req.method==="POST"&&url.pathname==="/api/admin/active-round"){
+    const body=await parseJson(req);
+    const roundNumber=Number(body.roundNumber);
+    if(!AVAILABLE_ROUND_NUMBERS.includes(roundNumber)){
+      return json(res,400,{error:"That round is not available in the current dataset."});
+    }
+    state.activeRoundNumber=roundNumber;
+    state.activeRoundLabel=buildRoundLabel(roundNumber);
+    state.forceOpenGameIds=[];
+    syncPrizePoolState(state);
+    await persistStateSnapshot(useSupabase);
+    return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
+  }
+  if(req.method==="POST"&&url.pathname==="/api/wallet/deposit"){
+    const body=await parseJson(req);
+    const username=ensureUser(body.userName||"Demo Trader");
+    const amount=Number(body.amount);
+    if(!Number.isFinite(amount)||amount<=0){
+      return json(res,400,{error:"Enter a valid deposit amount."});
+    }
+    applyWalletDelta(username,amount,{
+      type:"DEPOSIT",
+      title:"Deposit completed",
+      subtitle:`Added ${formatCurrency(amount)} to your demo wallet`
+    });
+    await persistStateSnapshot(useSupabase);
+    syncPrizePoolState(state);
+    return json(res,200,{state,backend:null,prizePool:buildPrizePoolClientPayload(username),message:`${formatCurrency(amount)} added to your wallet.`});
+  }
+  if(req.method==="POST"&&url.pathname==="/api/wallet/withdraw"){
+    const body=await parseJson(req);
+    const username=ensureUser(body.userName||"Demo Trader");
+    const amount=Number(body.amount);
+    if(!Number.isFinite(amount)||amount<=0){
+      return json(res,400,{error:"Enter a valid withdrawal amount."});
+    }
+    recordWalletEvent(username,{
+      type:"WITHDRAWAL_REQUEST",
+      status:"REJECTED",
+      amount:0,
+      requestedAmount:amount,
+      title:"Withdrawal request",
+      subtitle:"Demo mode only. Withdrawals are not enabled."
+    });
+    await persistStateSnapshot(useSupabase);
+    syncPrizePoolState(state);
+    return json(res,200,{state,backend:null,prizePool:buildPrizePoolClientPayload(username),message:"Withdrawal requests stop here in demo mode."});
   }
   if(req.method==="POST"&&url.pathname==="/api/trades"){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
-    if(USE_SUPABASE&&isSupabaseConfigured()){
-      await ensureSupabaseSeedData();
-      await syncStateFromSupabase();
+    let canPersistToSupabase=useSupabase;
+    if(useSupabase&&lastSupabaseUnavailableAt&&(Date.now()-lastSupabaseUnavailableAt)<SUPABASE_UNAVAILABLE_BACKOFF_MS){
+      canPersistToSupabase=false;
+    }else if(useSupabase){
+      try{
+        await ensureSupabaseReady();
+      }catch(error){
+        canPersistToSupabase=false;
+        lastSupabaseUnavailableAt=Date.now();
+        console.warn("Supabase unavailable for trade request; using local runtime state",error.message);
+      }
     }
-    if(!(USE_SUPABASE&&isSupabaseConfigured())){
+    if(!canPersistToSupabase){
       syncDerivedBalances();
     }
     const market=findMarket(body.marketId);
@@ -160,13 +273,17 @@ async function handleApi(req,res,url){
     if(isMarketLocked(market)){
       return json(res,400,{error:"That market is locked."});
     }
-    const supabaseBalance=USE_SUPABASE&&isSupabaseConfigured()?await getSupabaseAvailableBalance(username):null;
-    const bankroll=supabaseBalance??getUserBankroll(username);
+    const bankroll=getUserBankroll(username);
     if(stake>bankroll){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
-    persistState();
+    if(canPersistToSupabase){
+      persistSupabaseMarketState(market,state).catch((error)=>console.warn("Supabase trade persist failed",error.message));
+      persistState();
+    }else{
+      await persistStateSnapshot(false);
+    }
     if(body.quickPick||body.quickTake){
       return json(res,200,{
         trade,
@@ -177,6 +294,15 @@ async function handleApi(req,res,url){
       });
     }
     syncPrizePoolState(state);
+    if(!canPersistToSupabase){
+      return json(res,200,{
+        trade,
+        balance:getUserBankroll(username),
+        market:buildTradeMarketPayload(market),
+        backend:null,
+        prizePool:buildPrizePoolClientPayload(username)
+      });
+    }
     return json(res,200,{state,trade,backend:null,prizePool:buildPrizePoolClientPayload(username)});
   }
   if(req.method==="POST"&&url.pathname==="/api/orders/cancel"){
@@ -187,7 +313,7 @@ async function handleApi(req,res,url){
       return json(res,400,{error:"No open order selected."});
     }
     cancelPendingOrders(username,orderIds);
-    persistState();
+    await persistStateSnapshot(useSupabase);
     syncPrizePoolState(state);
     return json(res,200,{state,backend:null,prizePool:buildPrizePoolClientPayload(username)});
   }
@@ -196,7 +322,7 @@ async function handleApi(req,res,url){
     const username=ensureUser(body.userName||"Demo Trader");
     syncPrizePoolState(state);
     startPrizePoolDraft(username);
-    persistState();
+    await persistStateSnapshot(useSupabase);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload(username)});
   }
   if(req.method==="POST"&&url.pathname==="/api/prize-pool/draft/pick"){
@@ -204,7 +330,7 @@ async function handleApi(req,res,url){
     const username=ensureUser(body.userName||"Demo Trader");
     syncPrizePoolState(state);
     confirmPrizePoolDraftPick(username,body.draftId,body.side);
-    persistState();
+    await persistStateSnapshot(useSupabase);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload(username)});
   }
   if(req.method==="POST"&&url.pathname==="/api/prize-pool/submit"){
@@ -212,7 +338,7 @@ async function handleApi(req,res,url){
     const username=ensureUser(body.userName||"Demo Trader");
     syncPrizePoolState(state);
     submitPrizePoolEntry(username,body.draftId);
-    persistState();
+    await persistStateSnapshot(useSupabase);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload(username)});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/lines"){
@@ -228,7 +354,7 @@ async function handleApi(req,res,url){
     market.manualAdjustmentSteps=Math.round((currentLine-openingLine)/LINE_STEP);
     market.manuallyLocked=false;
     updateMarketTotals(market);
-    persistState();
+    await persistStateSnapshot(useSupabase);
     syncPrizePoolState(state);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
   }
@@ -246,34 +372,36 @@ async function handleApi(req,res,url){
       mode:"single",
       label:`Manual settlement for ${market.playerName}`
     });
-    persistState();
+    await persistStateSnapshot(useSupabase);
     syncPrizePoolState(state);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/settle-round"){
+    const activeRoundNumber=getActiveRoundNumber(state);
+    const activeRoundLabel=getActiveRoundLabel(state);
     const candidates=state.markets
-      .filter((market)=>!market.settlement)
+      .filter((market)=>!market.settlement&&getRoundNumberForMarket(market)===activeRoundNumber)
       .map((market)=>{
-        const finalScore=getImportedRoundScoreForMarket(market,CURRENT_ROUND_NUMBER);
+        const finalScore=getImportedRoundScoreForMarket(market,activeRoundNumber);
         if(Number.isFinite(finalScore)){
           return {market,finalScore,settlementType:"SCORED"};
         }
         return {market,finalScore:null,settlementType:"VOID"};
       });
     if(!candidates.length){
-      return json(res,400,{error:`No imported ${roundGames[0]?.roundLabel||"round"} scores are available for open markets.`});
+      return json(res,400,{error:`No open ${activeRoundLabel} markets are available for imported-score settlement.`});
     }
     const scoredCount=candidates.filter((entry)=>entry.settlementType==="SCORED").length;
     const voidCount=candidates.filter((entry)=>entry.settlementType==="VOID").length;
     settleMarketsWithSnapshot(candidates,{
       mode:"round",
-      label:`Imported ${roundGames[0]?.roundLabel||`Round ${CURRENT_ROUND_NUMBER}`} settlement`,
-      roundNumber:CURRENT_ROUND_NUMBER,
+      label:`Imported ${activeRoundLabel} settlement`,
+      roundNumber:activeRoundNumber,
       settledCount:candidates.length,
       scoredCount,
       voidCount
     });
-    persistState();
+    await persistStateSnapshot(useSupabase);
     syncPrizePoolState(state);
     return json(res,200,{
       state,
@@ -281,7 +409,7 @@ async function handleApi(req,res,url){
         settledCount:candidates.length,
         scoredCount,
         voidCount,
-        roundNumber:CURRENT_ROUND_NUMBER,
+        roundNumber:activeRoundNumber,
         roundMetrics:state.lastSettlementBatch?.roundMetrics||null
       },
       prizePool:buildPrizePoolClientPayload()
@@ -292,16 +420,16 @@ async function handleApi(req,res,url){
       return json(res,400,{error:"There is no settlement batch to undo."});
     }
     const restoredCount=undoLastSettlementBatch();
-    persistState();
+    await persistStateSnapshot(useSupabase);
     syncPrizePoolState(state);
     return json(res,200,{state,restoredCount,prizePool:buildPrizePoolClientPayload()});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/reset"){
     state=buildFreshState();
-    if(!(USE_SUPABASE&&isSupabaseConfigured())){
+    if(!SUPABASE_ENABLED){
       syncDerivedBalances();
     }
-    persistState();
+    await persistStateSnapshot(useSupabase);
     syncPrizePoolState(state);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
   }
@@ -319,25 +447,35 @@ async function handleApi(req,res,url){
     });
     state.botSimulation.config=nextConfig;
     syncDerivedBalances();
-    persistState();
+    await persistStateSnapshot(useSupabase);
     return json(res,200,{state,botSimulation:state.botSimulation});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/create"){
     const body=await parseJson(req);
     state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+    state.botSimulation.config=normalizeSimulationConfig({
+      ...state.botSimulation.config,
+      enabled:true
+    });
     const mode=body.mode==="random-prob"?"random-prob":"default";
     const bot=mode==="random-prob"?createRandomProbBot(state.botSimulation.bots):createRandomBot(state.botSimulation.bots);
     state.botSimulation.bots=[...state.botSimulation.bots,bot];
     state.bankrolls[bot.userName]=bot.startingBankroll;
     syncDerivedBalances();
-    persistState();
+    syncPrizePoolState(state);
+    await persistStateSnapshot(useSupabase);
     return json(res,200,{state,bot});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/run"){
     const body=await parseJson(req);
     const ticks=Math.max(1,Math.min(100,Number(body.ticks)||1));
     const result=runBotTicks(ticks);
-    persistState();
+    if(useSupabase){
+      await persistSupabaseMarketsForEvents(result.events);
+      await persistStateSnapshot(true);
+    }else{
+      await persistStateSnapshot(false);
+    }
     return json(res,200,{state,botSimulation:state.botSimulation,events:result.events});
   }
   json(res,404,{error:"Not found"});
@@ -354,11 +492,24 @@ function loadState(){
   return buildFreshState();
 }
 
+function shouldUseSupabaseForRequest(req){
+  if(!SUPABASE_ENABLED){
+    return false;
+  }
+  const host=String(req?.headers?.host||"").toLowerCase();
+  return !(host.startsWith("127.0.0.1:")||host.startsWith("localhost:"));
+}
+
 function buildFreshState(){
   const botSimulation=normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG);
-  return {
+  const activeRoundNumber=DEFAULT_ACTIVE_ROUND_NUMBER;
+  const nextState={
     bankrolls:{},
     markets:buildRoundMarkets().map((market)=>({...market,initialLine:normalizeMidpoint(market.initialLine),currentLine:normalizeMidpoint(market.initialLine),spreadWidth:LINE_STEP,totalOverStake:0,totalUnderStake:0,netPressure:0,pressureBalance:0,trades:[],matchedPairs:[],settlement:null,manuallyLocked:false,manualAdjustmentSteps:0,engineVersion:ENGINE_VERSION})),
+    activeRoundNumber,
+    activeRoundLabel:buildRoundLabel(activeRoundNumber),
+    forceOpenGameIds:[],
+    walletTransactions:[],
     lastSettlementBatch:null,
     roundMetricsHistory:[],
     prizePool:buildFreshPrizePoolState(),
@@ -367,10 +518,33 @@ function buildFreshState(){
       bots:[]
     }
   };
+  return nextState;
 }
 
 function persistState(){
   fs.writeFileSync(STATE_PATH,JSON.stringify(state,null,2),"utf8");
+}
+
+async function persistStateSnapshot(useSupabase=SUPABASE_ENABLED){
+  persistState();
+  if(!useSupabase){
+    return;
+  }
+  try{
+    await persistSupabaseRuntimeState(state);
+  }catch(error){
+    console.warn("Supabase runtime snapshot failed",error.message);
+  }
+}
+
+function persistStateSnapshotDeferred(useSupabase=SUPABASE_ENABLED){
+  persistState();
+  if(!useSupabase){
+    return;
+  }
+  persistSupabaseRuntimeState(state).catch((error)=>{
+    console.warn("Supabase runtime snapshot failed",error.message);
+  });
 }
 
 function buildQuickTakeMarketPayload(market){
@@ -387,11 +561,16 @@ function buildQuickTakeMarketPayload(market){
   };
 }
 
+function buildTradeMarketPayload(market){
+  return {
+    ...buildQuickTakeMarketPayload(market),
+    trades:Array.isArray(market.trades)?market.trades.slice():[]
+  };
+}
+
 function ensureUser(userName){
   const normalized=(userName||"Demo Trader").trim()||"Demo Trader";
-  if(typeof state.bankrolls[normalized]!=="number"){
-    state.bankrolls[normalized]=STARTING_BANKROLL;
-  }
+  ensureWalletAccount(normalized);
   return normalized;
 }
 
@@ -410,8 +589,8 @@ function normalizePrizePoolState(rawPrizePool){
   const rounds=Object.fromEntries(Object.entries(source.rounds||{}).map(([roundKey,round])=>[
     String(roundKey),
     {
-      roundNumber:Number(round?.roundNumber)||CURRENT_ROUND_NUMBER,
-      roundLabel:round?.roundLabel||CURRENT_ROUND_LABEL,
+      roundNumber:Number(round?.roundNumber)||DEFAULT_ACTIVE_ROUND_NUMBER,
+      roundLabel:round?.roundLabel||buildRoundLabel(Number(round?.roundNumber)||DEFAULT_ACTIVE_ROUND_NUMBER),
       entries:Array.isArray(round?.entries)?round.entries.map((entry)=>normalizePrizePoolEntry(entry)):[]
     }
   ]));
@@ -442,7 +621,8 @@ function normalizePrizePoolEntry(entry){
     settledCount:Number(entry?.settledCount)||0,
     correctPct:Number(entry?.correctPct)||0,
     rank:Number(entry?.rank)||0,
-    payout:Number(entry?.payout)||0
+    payout:Number(entry?.payout)||0,
+    payoutPostedAt:entry?.payoutPostedAt||null
   };
 }
 
@@ -451,7 +631,7 @@ function normalizePrizePoolDraft(draft){
     id:draft?.id||randomUUID(),
     userName:String(draft?.userName||""),
     createdAt:draft?.createdAt||new Date().toISOString(),
-    roundNumber:Number(draft?.roundNumber)||CURRENT_ROUND_NUMBER,
+    roundNumber:Number(draft?.roundNumber)||DEFAULT_ACTIVE_ROUND_NUMBER,
     picks:Array.isArray(draft?.picks)?draft.picks.map((pick)=>normalizePrizePoolPick(pick)):[],
     assignmentIds:Array.isArray(draft?.assignmentIds)?draft.assignmentIds.map((id)=>String(id)):[],
     currentIndex:Number(draft?.currentIndex)||0
@@ -494,19 +674,30 @@ function kickoffTimestampForGame(game){
   return parseKickoffLabel(game.kickoff);
 }
 
-function isGameLocked(game,now=Date.now()){
+function isGameLocked(game,now=Date.now(),targetState=state){
+  if(isGameForceOpen(game,targetState)){
+    return false;
+  }
   const kickoffAt=kickoffTimestampForGame(game);
   return Number.isFinite(kickoffAt)?now>=kickoffAt:false;
 }
 
-function isMarketLocked(market,now=Date.now()){
+function isGameForceOpen(game,targetState=state){
+  if(!game){
+    return false;
+  }
+  const forceOpenGameIds=Array.isArray(targetState?.forceOpenGameIds)?targetState.forceOpenGameIds:[];
+  return forceOpenGameIds.includes(game.id);
+}
+
+function isMarketLocked(market,now=Date.now(),targetState=state){
   if(!market){
     return true;
   }
   if(market.settlement||market.manuallyLocked){
     return true;
   }
-  return isGameLocked(findGame(market.gameId),now);
+  return isGameLocked(findGame(market.gameId),now,targetState);
 }
 
 function calculateCurrentLine(market){
@@ -525,11 +716,16 @@ function linePairFor(market){
   return {underLine:roundToHalf(market.currentLine-HALF_POINT),overLine:roundToHalf(market.currentLine+HALF_POINT)};
 }
 
-function normalizeState(rawState){
+function normalizeState(rawState,options={}){
+  const skipWalletBootstrap=Boolean(options.skipWalletBootstrap);
+  const activeRoundNumber=normalizeRoundNumber(rawState.activeRoundNumber);
   const bankrolls=Object.fromEntries(Object.entries(rawState.bankrolls||{}).map(([userName,balance])=>[userName,Number(balance)||STARTING_BANKROLL]));
+  const walletTransactions=Array.isArray(rawState.walletTransactions)
+    ? rawState.walletTransactions.map((transaction)=>normalizeWalletTransaction(transaction,{bankrolls}))
+    : [];
   const botConfig=normalizeSimulationConfig(rawState.botSimulation?.config||DEFAULT_SIMULATION_CONFIG);
   const bots=(rawState.botSimulation?.bots||createBotRoster(botConfig))
-    .filter((bot)=>bot?.source==="custom")
+    .filter((bot)=>bot?.userName&&["custom","random-prob"].includes(bot?.source||"custom"))
     .map((bot)=>({
     ...bot,
     bankroll:Number.isFinite(Number(bot.bankroll))?Number(bot.bankroll):Number(bot.startingBankroll)||200,
@@ -537,24 +733,46 @@ function normalizeState(rawState){
     exposureByPlayer:{...(bot.exposureByPlayer||{})}
   }));
   const persistedMarkets=Array.isArray(rawState.markets)?rawState.markets:[];
-  const seededGameIds=new Set(SEEDED_MARKETS.map((market)=>market.gameId));
-  const persistedGameIds=new Set(persistedMarkets.map((market)=>market?.gameId).filter(Boolean));
-  const useSeededMarkets=!persistedMarkets.length
-    || seededGameIds.size!==persistedGameIds.size
-    || [...seededGameIds].some((gameId)=>!persistedGameIds.has(gameId));
-  const markets=(useSeededMarkets?SEEDED_MARKETS:persistedMarkets).map((market)=>{
-    const seededMarket=SEEDED_MARKETS_BY_ID.get(market.id)||{};
-    return {
+  const persistedMarketsById=new Map(persistedMarkets.filter((market)=>market?.id).map((market)=>[market.id,market]));
+  const mergedSeededMarkets=SEEDED_MARKETS.map((seededMarket)=>({
     ...seededMarket,
-    ...market,
-    initialLine: normalizeMidpoint(Number(market.initialLine)||0),
-    currentLine: normalizeMidpoint(Number(market.currentLine)||Number(market.initialLine)||0),
-    spreadWidth: Number(market.spreadWidth)||LINE_STEP,
-    netPressure: Number(market.netPressure)||0,
-    pressureBalance: Number(market.pressureBalance)||0,
-    engineVersion: market.engineVersion||null,
-    matchedPairs: (market.matchedPairs||[]).map((pair)=>({...pair})),
-    trades: (market.trades||[]).map((trade)=>({
+    ...(persistedMarketsById.get(seededMarket.id)||{})
+  }));
+  const legacyMarkets=persistedMarkets.filter((market)=>market?.id&&!SEEDED_MARKETS_BY_ID.has(market.id));
+  const markets=[...mergedSeededMarkets,...legacyMarkets].map((market)=>{
+    const seededMarket=SEEDED_MARKETS_BY_ID.get(market.id)||{};
+    const resolvedMarket={
+      ...seededMarket,
+      ...market,
+      opponent: preferSeededText(market.opponent,seededMarket.opponent),
+      position: preferSeededText(market.position,seededMarket.position),
+      fantasyPrice: preferSeededNumber(market.fantasyPrice,seededMarket.fantasyPrice,{min:1}),
+      priceImpliedProjection: preferSeededNumber(market.priceImpliedProjection,seededMarket.priceImpliedProjection),
+      seasonAverage: preferSeededNumber(market.seasonAverage,seededMarket.seasonAverage),
+      lastSeasonAverage: preferSeededNumber(market.lastSeasonAverage,seededMarket.lastSeasonAverage),
+      lastGameScore: preferSeededNumber(market.lastGameScore,seededMarket.lastGameScore),
+      last3Average: preferSeededNumber(market.last3Average,seededMarket.last3Average),
+      homeAverage: preferSeededNumber(market.homeAverage,seededMarket.homeAverage),
+      awayAverage: preferSeededNumber(market.awayAverage,seededMarket.awayAverage),
+      teamOdds: preferSeededNumber(market.teamOdds,seededMarket.teamOdds,{min:0}),
+      opponentOdds: preferSeededNumber(market.opponentOdds,seededMarket.opponentOdds,{min:0}),
+      impliedTeamWinProb: preferSeededNumber(market.impliedTeamWinProb,seededMarket.impliedTeamWinProb,{min:0}),
+      opponentPositionAverage: preferSeededNumber(market.opponentPositionAverage,seededMarket.opponentPositionAverage),
+      leaguePositionAverage: preferSeededNumber(market.leaguePositionAverage,seededMarket.leaguePositionAverage),
+      popularity: preferSeededNumber(market.popularity,seededMarket.popularity,{min:0}),
+      scoreVolatility: preferSeededNumber(market.scoreVolatility,seededMarket.scoreVolatility,{min:0}),
+      botInputs: market.botInputs&&typeof market.botInputs==="object"?market.botInputs:(seededMarket.botInputs||null)
+    };
+    return {
+    ...resolvedMarket,
+    initialLine: normalizeMidpoint(Number(resolvedMarket.initialLine)||0),
+    currentLine: normalizeMidpoint(Number(resolvedMarket.currentLine)||Number(resolvedMarket.initialLine)||0),
+    spreadWidth: Number(resolvedMarket.spreadWidth)||LINE_STEP,
+    netPressure: Number(resolvedMarket.netPressure)||0,
+    pressureBalance: Number(resolvedMarket.pressureBalance)||0,
+    engineVersion: resolvedMarket.engineVersion||null,
+    matchedPairs: (resolvedMarket.matchedPairs||[]).map((pair)=>({...pair})),
+    trades: (resolvedMarket.trades||[]).map((trade)=>({
       ...trade,
       entryLine: Number.isFinite(Number(trade.entryLine))?Number(trade.entryLine):HALF_POINT,
       entryUnderLine: Number.isFinite(Number(trade.entryUnderLine))?Number(trade.entryUnderLine):Number.isFinite(Number(trade.entryLine))?Number(trade.entryLine):HALF_POINT,
@@ -562,6 +780,7 @@ function normalizeState(rawState){
       unmatchedStake: Number.isFinite(Number(trade.unmatchedStake))?Number(trade.unmatchedStake):0,
       matchedStake: Number.isFinite(Number(trade.matchedStake))?Number(trade.matchedStake):Number(trade.stake)||0,
       refundedStake: Number.isFinite(Number(trade.refundedStake))?Number(trade.refundedStake):0,
+      chargedStake: currentChargedStake(trade),
       pairIds: Array.isArray(trade.pairIds)?trade.pairIds:[],
       status: trade.status||(trade.result?"SETTLED":"MATCHED")
     }))
@@ -569,14 +788,27 @@ function normalizeState(rawState){
   });
   markets.forEach((market)=>migrateLegacyMarket(market,bankrolls));
   markets.forEach((market)=>updateMarketTotals(market));
-  return syncDerivedBalances({
+  const normalizedState=syncDerivedBalances({
     bankrolls,
     markets,
+    activeRoundNumber,
+    activeRoundLabel:buildRoundLabel(activeRoundNumber),
+    forceOpenGameIds:[],
+    walletTransactions,
     lastSettlementBatch:rawState.lastSettlementBatch||null,
     roundMetricsHistory:Array.isArray(rawState.roundMetricsHistory)?cloneValue(rawState.roundMetricsHistory):[],
     prizePool:normalizePrizePoolState(rawState.prizePool),
     botSimulation:{config:botConfig,bots}
   });
+  if(!skipWalletBootstrap){
+    Object.keys(normalizedState.bankrolls||{}).forEach((userName)=>{
+      ensureWalletAccount(userName,normalizedState,{
+        title:"Opening balance snapshot",
+        subtitle:"Wallet history started from the current demo balance"
+      });
+    });
+  }
+  return normalizedState;
 }
 
 function syncDerivedBalances(targetState=state){
@@ -586,6 +818,7 @@ function syncDerivedBalances(targetState=state){
     if(typeof bankrolls[bot.userName]!=="number"){
       bankrolls[bot.userName]=Number(bot.startingBankroll)||Number(bot.bankroll)||STARTING_BANKROLL;
     }
+    bot.bankroll=bankrolls[bot.userName];
   });
   targetState.markets.forEach((market)=>{
     market.trades.forEach((trade)=>{
@@ -605,28 +838,113 @@ function getUserBankroll(userName,targetState=state){
   return typeof targetState.bankrolls?.[userName]==="number"?targetState.bankrolls[userName]:STARTING_BANKROLL;
 }
 
-function currentPrizePoolRoundKey(){
-  return String(CURRENT_ROUND_NUMBER||1);
+function normalizeWalletTransaction(transaction,targetState=state){
+  const amount=Number(transaction?.amount)||0;
+  const requestedAmount=Number.isFinite(Number(transaction?.requestedAmount))?Number(transaction.requestedAmount):null;
+  const balanceAfter=Number.isFinite(Number(transaction?.balanceAfter))
+    ? Number(transaction.balanceAfter)
+    : getUserBankroll(transaction?.userName,targetState);
+  return {
+    id:transaction?.id||randomUUID(),
+    userName:String(transaction?.userName||""),
+    type:String(transaction?.type||"UNKNOWN"),
+    status:String(transaction?.status||"COMPLETED"),
+    amount,
+    requestedAmount,
+    balanceAfter,
+    title:String(transaction?.title||"Wallet update"),
+    subtitle:transaction?.subtitle?String(transaction.subtitle):"",
+    marketId:transaction?.marketId||"",
+    tradeId:transaction?.tradeId||"",
+    pairId:transaction?.pairId||"",
+    entryId:transaction?.entryId||"",
+    createdAt:transaction?.createdAt||new Date().toISOString()
+  };
 }
 
-function ensurePrizePoolRound(targetState=state,roundKey=currentPrizePoolRoundKey()){
+function ensureWalletAccount(userName,targetState=state,options={}){
+  if(!userName){
+    return;
+  }
+  targetState.walletTransactions=Array.isArray(targetState.walletTransactions)?targetState.walletTransactions:[];
+  if(typeof targetState.bankrolls?.[userName]!=="number"){
+    targetState.bankrolls[userName]=STARTING_BANKROLL;
+  }
+  const hasHistory=targetState.walletTransactions.some((transaction)=>transaction.userName.toLowerCase()===userName.toLowerCase());
+  if(hasHistory){
+    return;
+  }
+  const openingBalance=Number(targetState.bankrolls[userName])||0;
+  targetState.walletTransactions.push(normalizeWalletTransaction({
+    userName,
+    type:options.type||"OPENING_BALANCE",
+    status:"COMPLETED",
+    amount:openingBalance,
+    balanceAfter:openingBalance,
+    title:options.title||"Opening balance",
+    subtitle:options.subtitle||"crowdIQ demo wallet opened",
+    createdAt:options.createdAt||new Date().toISOString()
+  },targetState));
+}
+
+function appendWalletTransaction(transaction,targetState=state){
+  targetState.walletTransactions=Array.isArray(targetState.walletTransactions)?targetState.walletTransactions:[];
+  const normalized=normalizeWalletTransaction(transaction,targetState);
+  targetState.walletTransactions.push(normalized);
+  return normalized;
+}
+
+function applyWalletDelta(userName,amount,transaction,targetState=state){
+  ensureWalletAccount(userName,targetState);
+  const nextBalance=Math.max(0,getUserBankroll(userName,targetState)+(Number(amount)||0));
+  targetState.bankrolls[userName]=nextBalance;
+  return appendWalletTransaction({
+    ...transaction,
+    userName,
+    amount:Number(amount)||0,
+    balanceAfter:nextBalance,
+    status:transaction?.status||"COMPLETED"
+  },targetState);
+}
+
+function recordWalletEvent(userName,transaction,targetState=state){
+  ensureWalletAccount(userName,targetState);
+  return appendWalletTransaction({
+    ...transaction,
+    userName,
+    amount:Number(transaction?.amount)||0,
+    balanceAfter:getUserBankroll(userName,targetState),
+    status:transaction?.status||"COMPLETED"
+  },targetState);
+}
+
+function currentPrizePoolRoundKey(){
+  return String(getActiveRoundNumber(state)||1);
+}
+
+function ensurePrizePoolRound(targetState=state,roundKey=String(getActiveRoundNumber(targetState)||1)){
   targetState.prizePool=targetState.prizePool||buildFreshPrizePoolState();
+  const roundNumber=Number(roundKey)||getActiveRoundNumber(targetState);
   if(!targetState.prizePool.rounds[roundKey]){
     targetState.prizePool.rounds[roundKey]={
-      roundNumber:Number(roundKey)||CURRENT_ROUND_NUMBER,
-      roundLabel:CURRENT_ROUND_LABEL,
+      roundNumber,
+      roundLabel:buildRoundLabel(roundNumber),
       entries:[]
     };
   }
+  targetState.prizePool.rounds[roundKey].roundNumber=roundNumber;
+  targetState.prizePool.rounds[roundKey].roundLabel=buildRoundLabel(roundNumber);
   return targetState.prizePool.rounds[roundKey];
 }
 
 function currentPrizePoolRound(targetState=state){
-  return ensurePrizePoolRound(targetState,currentPrizePoolRoundKey());
+  return ensurePrizePoolRound(targetState,String(getActiveRoundNumber(targetState)||1));
 }
 
-function prizePoolLatestKickoffTimestamp(){
-  return roundGames.reduce((latest,game)=>{
+function prizePoolLatestKickoffTimestamp(targetRoundNumber=getActiveRoundNumber(state)){
+  const relevantGames=roundGames.filter((game)=>parseRoundNumber(game.roundLabel)===Number(targetRoundNumber));
+  const sourceGames=relevantGames.length?relevantGames:roundGames;
+  return sourceGames.reduce((latest,game)=>{
     const kickoffAt=kickoffTimestampForGame(game);
     if(!Number.isFinite(kickoffAt)){
       return latest;
@@ -635,8 +953,8 @@ function prizePoolLatestKickoffTimestamp(){
   },0);
 }
 
-function prizePoolSettlementDeadline(now=Date.now()){
-  const latestKickoff=prizePoolLatestKickoffTimestamp();
+function prizePoolSettlementDeadline(now=Date.now(),targetState=state){
+  const latestKickoff=prizePoolLatestKickoffTimestamp(getActiveRoundNumber(targetState));
   const source=new Date(Number.isFinite(latestKickoff)&&latestKickoff>0?latestKickoff:now);
   const deadline=new Date(source);
   const currentDay=deadline.getDay();
@@ -646,14 +964,22 @@ function prizePoolSettlementDeadline(now=Date.now()){
   return deadline.getTime();
 }
 
-function prizePoolEntryWindowOpen(now=Date.now()){
-  return roundGames.some((game)=>!isGameLocked(game,now));
+function prizePoolEntryWindowOpen(now=Date.now(),targetState=state){
+  const relevantGames=roundGames.filter((game)=>parseRoundNumber(game.roundLabel)===getActiveRoundNumber(targetState));
+  const sourceGames=relevantGames.length?relevantGames:roundGames;
+  return sourceGames.some((game)=>!isGameLocked(game,now,targetState));
 }
 
-function openPrizePoolCandidatesForPosition(position,excludedMarketIds=[],now=Date.now()){
+function openPrizePoolCandidatesForPosition(position,excludedMarketIds=[],now=Date.now(),targetState=state){
   const excludedSet=new Set(excludedMarketIds);
-  return state.markets
-    .filter((market)=>(position==="INTERCHANGE"||market.position===position)&&!isMarketLocked(market,now)&&!excludedSet.has(market.id))
+  const activeRoundNumber=getActiveRoundNumber(targetState);
+  return targetState.markets
+    .filter((market)=>
+      getRoundNumberForMarket(market)===activeRoundNumber
+      &&(position==="INTERCHANGE"||market.position===position)
+      &&!isMarketLocked(market,now,targetState)
+      &&!excludedSet.has(market.id)
+    )
     .sort((left,right)=>left.id.localeCompare(right.id));
 }
 
@@ -677,8 +1003,8 @@ function prizePoolInterchangePicks(picks=[]){
   return picks.filter((pick)=>isInterchangeSlot(pick));
 }
 
-function prizePoolAvailableCountForSlot(slot,usedMarketIds=[],now=Date.now()){
-  return openPrizePoolCandidatesForPosition(slot.position,usedMarketIds,now).length;
+function prizePoolAvailableCountForSlot(slot,usedMarketIds=[],now=Date.now(),targetState=state){
+  return openPrizePoolCandidatesForPosition(slot.position,usedMarketIds,now,targetState).length;
 }
 
 function stableHash(value){
@@ -701,10 +1027,10 @@ function prizePoolFindEntry(userName,targetState=state){
   return currentPrizePoolRound(targetState).entries.find((entry)=>prizePoolUserKey(entry.userName)===userKey)||null;
 }
 
-function buildPrizePoolDraftAssignments(existingPicks=[],now=Date.now()){
+function buildPrizePoolDraftAssignments(existingPicks=[],now=Date.now(),targetState=state){
   const usedMarketIds=existingPicks.map((pick)=>pick.marketId).filter(Boolean);
   return PRIZE_POOL_POSITION_SLOTS.map((slot)=>{
-    const candidates=openPrizePoolCandidatesForPosition(slot.position,usedMarketIds,now);
+    const candidates=openPrizePoolCandidatesForPosition(slot.position,usedMarketIds,now,targetState);
     const nextMarket=pickRandomItem(candidates);
     if(nextMarket){
       usedMarketIds.push(nextMarket.id);
@@ -714,7 +1040,7 @@ function buildPrizePoolDraftAssignments(existingPicks=[],now=Date.now()){
   });
 }
 
-function refreshPrizePoolDraft(draft,now=Date.now()){
+function refreshPrizePoolDraft(draft,now=Date.now(),targetState=state){
   const picks=Array.isArray(draft?.picks)?draft.picks:[];
   const lockedIds=picks.map((pick)=>pick.marketId).filter(Boolean);
   const nextAssignments=Array.isArray(draft?.assignmentIds)?draft.assignmentIds.slice(0,PRIZE_POOL_POSITION_SLOTS.length):[];
@@ -724,11 +1050,11 @@ function refreshPrizePoolDraft(draft,now=Date.now()){
       continue;
     }
     const currentMarket=findMarket(nextAssignments[index]);
-    if(currentMarket&&!isMarketLocked(currentMarket,now)&&!lockedIds.includes(currentMarket.id)){
+    if(currentMarket&&!isMarketLocked(currentMarket,now,targetState)&&!lockedIds.includes(currentMarket.id)){
       lockedIds.push(currentMarket.id);
       continue;
     }
-    const replacement=pickRandomItem(openPrizePoolCandidatesForPosition(PRIZE_POOL_POSITION_SLOTS[index].position,lockedIds,now));
+    const replacement=pickRandomItem(openPrizePoolCandidatesForPosition(PRIZE_POOL_POSITION_SLOTS[index].position,lockedIds,now,targetState));
     nextAssignments[index]=replacement?.id||"";
     if(replacement){
       lockedIds.push(replacement.id);
@@ -743,14 +1069,14 @@ function startPrizePoolDraft(userName,now=Date.now()){
   if(prizePoolFindEntry(userName)){
     throw new Error("You have already submitted a Prize Pool team this round.");
   }
-  if(!prizePoolEntryWindowOpen(now)){
+  if(!prizePoolEntryWindowOpen(now,state)){
     throw new Error("Prize Pool entry is closed for this round.");
   }
   const existingDraft=state.prizePool?.drafts?.[userName];
   if(existingDraft){
-    return refreshPrizePoolDraft(existingDraft,now);
+    return refreshPrizePoolDraft(existingDraft,now,state);
   }
-  const assignmentIds=buildPrizePoolDraftAssignments([],now);
+  const assignmentIds=buildPrizePoolDraftAssignments([],now,state);
   if(assignmentIds.some((marketId)=>!marketId)){
     throw new Error("Not enough unlocked players remain to build a full Prize Pool team.");
   }
@@ -758,7 +1084,7 @@ function startPrizePoolDraft(userName,now=Date.now()){
     id:randomUUID(),
     userName,
     createdAt:new Date(now).toISOString(),
-    roundNumber:CURRENT_ROUND_NUMBER,
+    roundNumber:getActiveRoundNumber(state),
     picks:[],
     assignmentIds,
     currentIndex:0
@@ -779,14 +1105,14 @@ function confirmPrizePoolDraftPick(userName,draftId,side,now=Date.now()){
     delete state.prizePool.drafts[userName];
     throw new Error("You have already submitted a Prize Pool team this round.");
   }
-  if(!prizePoolEntryWindowOpen(now)){
+  if(!prizePoolEntryWindowOpen(now,state)){
     throw new Error("Prize Pool entry is closed for this round.");
   }
-  refreshPrizePoolDraft(draft,now);
+  refreshPrizePoolDraft(draft,now,state);
   const slot=PRIZE_POOL_POSITION_SLOTS[draft.currentIndex];
   const marketId=draft.assignmentIds[draft.currentIndex];
   const market=findMarket(marketId);
-  if(!slot||!market||isMarketLocked(market,now)){
+  if(!slot||!market||isMarketLocked(market,now,state)){
     throw new Error("That player is no longer available. Try again.");
   }
   draft.picks[draft.currentIndex]={
@@ -804,7 +1130,7 @@ function confirmPrizePoolDraftPick(userName,draftId,side,now=Date.now()){
     settledAt:null
   };
   draft.currentIndex+=1;
-  refreshPrizePoolDraft(draft,now);
+  refreshPrizePoolDraft(draft,now,state);
   return draft;
 }
 
@@ -831,15 +1157,85 @@ function submitPrizePoolEntry(userName,draftId,now=Date.now()){
     submittedAt:new Date(now).toISOString(),
     picks:draft.picks
   });
-  state.bankrolls[userName]=Math.max(getUserBankroll(userName)-PRIZE_POOL_ENTRY_FEE,0);
+  applyWalletDelta(userName,-PRIZE_POOL_ENTRY_FEE,{
+    type:"PRIZE_POOL_ENTRY",
+    title:"Prize Pool entry",
+    subtitle:`${getActiveRoundLabel(state)} entry fee`
+  });
   round.entries.push(entry);
   delete state.prizePool.drafts[userName];
   syncPrizePoolState(state,now);
   return entry;
 }
 
+function buildPrizePoolBotEntry(userName,targetState=state,now=Date.now()){
+  const assignmentIds=buildPrizePoolDraftAssignments([],now,targetState);
+  if(assignmentIds.some((marketId)=>!marketId)){
+    return null;
+  }
+  const picks=PRIZE_POOL_POSITION_SLOTS.map((slot,index)=>{
+    const market=findMarket(assignmentIds[index]);
+    if(!market){
+      return null;
+    }
+    const side=Math.random()<0.5?"OVER":"UNDER";
+    return normalizePrizePoolPick({
+      slotId:slot.slotId,
+      position:slot.position,
+      positionLabel:slot.label,
+      marketId:market.id,
+      playerName:market.playerName,
+      team:market.team,
+      gameId:market.gameId,
+      side,
+      line:Number(market.currentLine)||0,
+      actualScore:null,
+      resultStatus:"PENDING",
+      settledAt:null
+    });
+  }).filter(Boolean);
+  if(picks.length!==PRIZE_POOL_POSITION_SLOTS.length){
+    return null;
+  }
+  return normalizePrizePoolEntry({
+    id:randomUUID(),
+    userName,
+    submittedAt:new Date(now).toISOString(),
+    picks
+  });
+}
+
+function ensurePrizePoolBotEntries(targetState=state,now=Date.now()){
+  if(!prizePoolEntryWindowOpen(now,targetState)){
+    return;
+  }
+  const round=currentPrizePoolRound(targetState);
+  const bots=(targetState.botSimulation?.bots||[]).filter((bot)=>bot?.source==="random-prob");
+  bots.forEach((bot)=>{
+    const userName=bot.userName;
+    if(!userName||prizePoolFindEntry(userName,targetState)){
+      return;
+    }
+    ensureBankroll(userName,targetState);
+    if(getUserBankroll(userName,targetState)<PRIZE_POOL_ENTRY_FEE){
+      return;
+    }
+    const entry=buildPrizePoolBotEntry(userName,targetState,now);
+    if(!entry){
+      return;
+    }
+    applyWalletDelta(userName,-PRIZE_POOL_ENTRY_FEE,{
+      type:"PRIZE_POOL_ENTRY",
+      title:"Prize Pool entry",
+      subtitle:`${getActiveRoundLabel(targetState)} entry fee`,
+      createdAt:entry.submittedAt
+    },targetState);
+    round.entries.push(entry);
+  });
+}
+
 function prizePoolPickStatus(pick){
-  const score=getImportedRoundScoreForMarket({playerName:pick.playerName,team:pick.team},CURRENT_ROUND_NUMBER);
+  const score=getImportedRoundScoreForMarket({playerName:pick.playerName,team:pick.team},getActiveRoundNumber(state));
   if(!Number.isFinite(score)){
     return {actualScore:null,resultStatus:"PENDING",settledAt:null};
   }
@@ -854,7 +1250,8 @@ function prizePoolPickStatus(pick){
 function syncPrizePoolState(targetState=state,now=Date.now()){
   targetState.prizePool=normalizePrizePoolState(targetState.prizePool);
   const round=currentPrizePoolRound(targetState);
-  const finalizeAt=prizePoolSettlementDeadline(now);
+  ensurePrizePoolBotEntries(targetState,now);
+  const finalizeAt=prizePoolSettlementDeadline(now,targetState);
   round.entries.forEach((entry)=>{
     entry.picks=entry.picks.map((pick)=>{
       if(pick.resultStatus!=="PENDING"&&Number.isFinite(Number(pick.actualScore))){
@@ -886,6 +1283,15 @@ function syncPrizePoolState(targetState=state,now=Date.now()){
     entry.rank=index+1;
     if(isFinal&&index<targetState.prizePool.payoutSplits.length){
       entry.payout=prizePoolTotalAmount(targetState,round)*(targetState.prizePool.payoutSplits[index]||0);
+      if(entry.payout>0&&!entry.payoutPostedAt){
+        applyWalletDelta(entry.userName,entry.payout,{
+          type:"PRIZE_POOL_PAYOUT",
+          title:"Prize Pool payout",
+          subtitle:`${getActiveRoundLabel(targetState)} finished #${entry.rank}`,
+          entryId:entry.id
+        },targetState);
+        entry.payoutPostedAt=new Date(now).toISOString();
+      }
     }
   });
   round.entries=sortedEntries;
@@ -894,7 +1300,7 @@ function syncPrizePoolState(targetState=state,now=Date.now()){
       delete targetState.prizePool.drafts[userName];
       return;
     }
-    refreshPrizePoolDraft(targetState.prizePool.drafts[userName],now);
+    refreshPrizePoolDraft(targetState.prizePool.drafts[userName],now,targetState);
   });
   return targetState;
 }
@@ -903,7 +1309,7 @@ function buildPrizePoolClientPayload(userName="",targetState=state,now=Date.now(
   syncPrizePoolState(targetState,now);
   const round=currentPrizePoolRound(targetState);
   const entry=userName?prizePoolFindEntry(userName,targetState):null;
-  const draft=userName&&targetState.prizePool?.drafts?.[userName]?refreshPrizePoolDraft(targetState.prizePool.drafts[userName],now):null;
+  const draft=userName&&targetState.prizePool?.drafts?.[userName]?refreshPrizePoolDraft(targetState.prizePool.drafts[userName],now,targetState):null;
   const leaderboard=round.entries.map((item)=>({
     userName:item.userName,
     rank:item.rank,
@@ -921,11 +1327,11 @@ function buildPrizePoolClientPayload(userName="",targetState=state,now=Date.now(
   const currentMarket=draft?findMarket(draft.assignmentIds[currentSlotIndex]):null;
   const usedMarketIds=[];
   const canBuildFreshTeam=PRIZE_POOL_POSITION_SLOTS.every((slot)=>{
-    const availableCount=prizePoolAvailableCountForSlot(slot,usedMarketIds,now);
+    const availableCount=prizePoolAvailableCountForSlot(slot,usedMarketIds,now,targetState);
     if(availableCount<=0){
       return false;
     }
-    const candidates=openPrizePoolCandidatesForPosition(slot.position,usedMarketIds,now);
+    const candidates=openPrizePoolCandidatesForPosition(slot.position,usedMarketIds,now,targetState);
     if(candidates[0]){
       usedMarketIds.push(candidates[0].id);
     }
@@ -936,10 +1342,11 @@ function buildPrizePoolClientPayload(userName="",targetState=state,now=Date.now(
   const fallbackIncrementAmount=round.entries.length?targetState.prizePool.entryFee:targetState.prizePool.entryFee;
   const startingSlots=prizePoolStartingSlots();
   const interchangeSlots=prizePoolInterchangeSlots();
-  const canEnter=prizePoolEntryWindowOpen(now)&&canBuildFreshTeam;
+  const canEnter=prizePoolEntryWindowOpen(now,targetState)&&canBuildFreshTeam;
+  const activeRoundNumber=getActiveRoundNumber(targetState);
   return {
-    roundNumber:CURRENT_ROUND_NUMBER,
-    roundLabel:CURRENT_ROUND_LABEL,
+    roundNumber:activeRoundNumber,
+    roundLabel:getActiveRoundLabel(targetState),
     entryFee:targetState.prizePool.entryFee,
     seedAmount:targetState.prizePool.seedAmount,
     payoutSplits:targetState.prizePool.payoutSplits,
@@ -952,8 +1359,8 @@ function buildPrizePoolClientPayload(userName="",targetState=state,now=Date.now(
     startingSlotCount:startingSlots.length,
     interchangeSlotCount:interchangeSlots.length,
     canEnter,
-    isFinal:now>=prizePoolSettlementDeadline(now),
-    settlementAt:new Date(prizePoolSettlementDeadline(now)).toISOString(),
+    isFinal:now>=prizePoolSettlementDeadline(now,targetState),
+    settlementAt:new Date(prizePoolSettlementDeadline(now,targetState)).toISOString(),
     hasEntry:Boolean(entry),
     entry:entry?{
       ...entry,
@@ -983,18 +1390,34 @@ function buildPrizePoolClientPayload(userName="",targetState=state,now=Date.now(
   };
 }
 
-function isBotTrade(trade){
-  return trade?.userName?.startsWith("Bot ")||trade?.userName?.includes(" Bot ");
+function isKnownBotUser(userName,targetState=state){
+  if(!userName){
+    return false;
+  }
+  return (targetState?.botSimulation?.bots||[]).some((bot)=>bot?.userName===userName);
 }
 
-async function syncBackendUser(userName){
-  if(!(USE_SUPABASE&&isSupabaseConfigured())){
+function isBotTrade(trade){
+  return Boolean(
+    trade?.botId||
+    trade?.botSource||
+    trade?.archetype||
+    isKnownBotUser(trade?.userName)
+  );
+}
+
+async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
     return null;
   }
   try{
     const backendUser=await ensureSupabaseDemoUser(userName);
-    if(backendUser&&Number.isFinite(backendUser.balance)){
-      state.bankrolls[userName]=Math.min(state.bankrolls[userName]??STARTING_BANKROLL,backendUser.balance);
+    const tableBackedBalance=typeof state.bankrolls?.[userName]==="number"?state.bankrolls[userName]:null;
+    if(backendUser&&Number.isFinite(tableBackedBalance)){
+      backendUser.balance=tableBackedBalance;
+      state.bankrolls[userName]=tableBackedBalance;
+    }else if(backendUser&&Number.isFinite(backendUser.balance)){
+      state.bankrolls[userName]=backendUser.balance;
     }
     return backendUser;
   }catch(error){
@@ -1003,48 +1426,148 @@ async function syncBackendUser(userName){
   }
 }
 
-async function syncStateFromSupabase(){
-  if(!(USE_SUPABASE&&isSupabaseConfigured())){
+async function ensureSupabaseReady(){
+  if(!SUPABASE_ENABLED||supabaseSeedReady){
+    return;
+  }
+  await ensureSupabaseSeedData();
+  supabaseSeedReady=true;
+}
+
+async function syncStateFromSupabase({force=false}={}){
+  if(!SUPABASE_ENABLED){
     return state;
   }
-  try{
-    const supabaseState=await fetchSupabaseAppState();
-    if(supabaseState){
-      state=normalizeState({
-        ...buildFreshState(),
-        bankrolls:supabaseState.bankrolls||{},
-        markets:supabaseState.markets||[]
-      });
+  const now=Date.now();
+  if(!force&&lastSupabaseStateSyncAt&&now-lastSupabaseStateSyncAt<SUPABASE_STATE_SYNC_TTL_MS){
+    return state;
+  }
+  if(supabaseStateSyncPromise){
+    return supabaseStateSyncPromise;
+  }
+  supabaseStateSyncPromise=(async()=>{
+    try{
+      const [supabaseState,runtimeState]=await Promise.all([
+        fetchSupabaseAppState(),
+        fetchSupabaseRuntimeState().catch((error)=>{
+          console.warn("Supabase runtime overlay fetch failed",error.message);
+          return null;
+        })
+      ]);
+      if(supabaseState){
+        state=mergeSupabaseState(supabaseState,runtimeState,state);
+      }else if(runtimeState){
+        state=normalizeState({
+          ...buildFreshState(),
+          ...runtimeState
+        },{skipWalletBootstrap:true});
+      }
+      lastSupabaseStateSyncAt=Date.now();
+    }catch(error){
+      console.warn("Supabase state sync failed",error.message);
+      lastSupabaseUnavailableAt=Date.now();
+      lastSupabaseStateSyncAt=Date.now();
     }
-  }catch(error){
-    console.warn("Supabase state sync failed",error.message);
-  }
-  return state;
-}
-
-async function getBackendDashboard(userName){
-  if(!(USE_SUPABASE&&isSupabaseConfigured())){
-    return null;
-  }
+    return state;
+  })();
   try{
-    return await fetchSupabaseDashboard(userName);
-  }catch(error){
-    console.warn("Supabase dashboard fetch failed",error.message);
-    return null;
+    return await supabaseStateSyncPromise;
+  }finally{
+    supabaseStateSyncPromise=null;
   }
 }
 
-function buildBackendPayload(backendUser,dashboard=null){
+async function getBackendDashboard(userName,useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
+    return null;
+  }
+  void userName;
+  return null;
+}
+
+function buildBackendPayload(backendUser,dashboard=null,useSupabase=SUPABASE_ENABLED){
   return {
-    mode: USE_SUPABASE&&isSupabaseConfigured()?"supabase":"local",
+    mode: useSupabase?"supabase":"local",
     user: backendUser,
     dashboard
   };
 }
 
-function ensureBankroll(userName){
-  if(typeof state.bankrolls[userName]!=="number"){
-    state.bankrolls[userName]=STARTING_BANKROLL;
+function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
+  const overlay=runtimeState&&typeof runtimeState==="object"?runtimeState:{};
+  const bankrolls=computeHostedBankrolls(supabaseState,overlay,currentState);
+  return normalizeState({
+    ...buildFreshState(),
+    bankrolls,
+    markets:supabaseState?.markets||[],
+    activeRoundNumber:overlay.activeRoundNumber??currentState?.activeRoundNumber,
+    activeRoundLabel:overlay.activeRoundLabel??currentState?.activeRoundLabel,
+    forceOpenGameIds:Array.isArray(overlay.forceOpenGameIds)?overlay.forceOpenGameIds:(currentState?.forceOpenGameIds||[]),
+    walletTransactions:Array.isArray(overlay.walletTransactions)?overlay.walletTransactions:(currentState?.walletTransactions||[]),
+    lastSettlementBatch:overlay.lastSettlementBatch??currentState?.lastSettlementBatch??null,
+    roundMetricsHistory:Array.isArray(overlay.roundMetricsHistory)?overlay.roundMetricsHistory:(currentState?.roundMetricsHistory||[]),
+    prizePool:overlay.prizePool??currentState?.prizePool,
+    botSimulation:overlay.botSimulation??currentState?.botSimulation
+  },{skipWalletBootstrap:true});
+}
+
+function computeHostedBankrolls(supabaseState,runtimeOverlay={},currentState=state){
+  void currentState;
+  const userNames=new Set([
+    ...Object.keys(supabaseState?.bankrolls||{}),
+    ...((supabaseState?.userNames)||[]),
+    ...((runtimeOverlay?.botSimulation?.bots)||[]).map((bot)=>bot?.userName).filter(Boolean)
+  ]);
+  (supabaseState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(trade?.userName){
+        userNames.add(trade.userName);
+      }
+    });
+  });
+  Object.values(runtimeOverlay?.prizePool?.rounds||{}).forEach((round)=>{
+    (round?.entries||[]).forEach((entry)=>{
+      if(entry?.userName){
+        userNames.add(entry.userName);
+      }
+    });
+  });
+
+  const bankrolls=Object.fromEntries([...userNames].filter(Boolean).map((userName)=>[userName,STARTING_BANKROLL]));
+
+  (supabaseState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(!trade?.userName){
+        return;
+      }
+      bankrolls[trade.userName]=(Number(bankrolls[trade.userName])||STARTING_BANKROLL)-currentChargedStake(trade);
+      bankrolls[trade.userName]+=Number(trade.result?.payout)||0;
+    });
+  });
+
+  const entryFee=Number(runtimeOverlay?.prizePool?.entryFee)||PRIZE_POOL_ENTRY_FEE;
+  Object.values(runtimeOverlay?.prizePool?.rounds||{}).forEach((round)=>{
+    (round?.entries||[]).forEach((entry)=>{
+      if(!entry?.userName){
+        return;
+      }
+      bankrolls[entry.userName]=(Number(bankrolls[entry.userName])||STARTING_BANKROLL)-entryFee;
+      if(entry?.payoutPostedAt&&Number(entry?.payout)>0){
+        bankrolls[entry.userName]+=Number(entry.payout)||0;
+      }
+    });
+  });
+
+  Object.keys(bankrolls).forEach((userName)=>{
+    bankrolls[userName]=Math.max(0,Math.round(((Number(bankrolls[userName])||0)+Number.EPSILON)*100)/100);
+  });
+
+  return bankrolls;
+}
+
+function ensureBankroll(userName,targetState=state){
+  if(typeof targetState.bankrolls[userName]!=="number"){
+    targetState.bankrolls[userName]=STARTING_BANKROLL;
   }
 }
 
@@ -1055,6 +1578,63 @@ function updateMarketTotals(market){
   market.netPressure=calculateNetPressure(market);
 }
 
+function currentChargedStake(trade){
+  const explicitStake=Number(trade?.chargedStake);
+  if(Number.isFinite(explicitStake)){
+    return Math.max(0,explicitStake);
+  }
+  const matchedStake=Number(trade?.matchedStake)||0;
+  const rawStake=Number(trade?.stake)||0;
+  const refundedStake=Number(trade?.refundedStake)||0;
+  if(trade?.result){
+    return Math.max(0,matchedStake);
+  }
+  return Math.max(matchedStake,rawStake-refundedStake,0);
+}
+
+function availableChargedReserve(trade){
+  return Math.max(0,currentChargedStake(trade)-(Number(trade?.matchedStake)||0));
+}
+
+function ensureTradeStakeCharged(trade,targetStake,market,createdAt){
+  const requiredStake=Math.max(0,Number(targetStake)||0);
+  const chargedStake=currentChargedStake(trade);
+  const additionalStake=Math.max(0,requiredStake-chargedStake);
+  if(additionalStake<=0){
+    trade.chargedStake=chargedStake;
+    return 0;
+  }
+  applyWalletDelta(trade.userName,-additionalStake,{
+    type:"TRADE_STAKE",
+    title:"Trade matched",
+    subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)}`,
+    marketId:market.id,
+    tradeId:trade.id,
+    createdAt:createdAt||trade.timestamp||new Date().toISOString()
+  });
+  trade.chargedStake=chargedStake+additionalStake;
+  return additionalStake;
+}
+
+function refundReservedStake(trade,amount,market,details={}){
+  const refundableStake=Math.min(Math.max(0,Number(amount)||0),availableChargedReserve(trade));
+  trade.chargedStake=currentChargedStake(trade);
+  if(refundableStake<=0){
+    return 0;
+  }
+  applyWalletDelta(trade.userName,refundableStake,{
+    type:details.type||"TRADE_REFUND",
+    title:details.title||"Order cancelled",
+    subtitle:details.subtitle||`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
+    marketId:market.id,
+    tradeId:trade.id,
+    createdAt:details.createdAt||new Date().toISOString()
+  });
+  trade.chargedStake=Math.max(0,currentChargedStake(trade)-refundableStake);
+  trade.refundedStake=(Number(trade.refundedStake)||0)+refundableStake;
+  return refundableStake;
+}
+
 function activeOrderStatus(order){
   if(order.unmatchedStake>0&&order.matchedStake>0) return "PARTIALLY_MATCHED";
   if(order.unmatchedStake>0) return "PENDING";
@@ -1062,7 +1642,7 @@ function activeOrderStatus(order){
   return order.result?"SETTLED":"CANCELLED";
 }
 
-function executeProjectionTrade(market,{userName,side,stake}){
+function executeProjectionTrade(market,{userName,side,stake,botId=null,botSource="",archetype=""}){
   ensureBankroll(userName);
   const previousNetPressure=Number(market.netPressure)||0;
   const {underLine,overLine}=linePairFor(market);
@@ -1084,7 +1664,11 @@ function executeProjectionTrade(market,{userName,side,stake}){
     timestamp,
     result:null,
     status:"PENDING",
-    engineVersion:ENGINE_VERSION
+    chargedStake:0,
+    engineVersion:ENGINE_VERSION,
+    botId:botId||undefined,
+    botSource:botSource||undefined,
+    archetype:archetype||undefined
   };
   matchAgainstRestingOrders(market,trade);
   trade.status=activeOrderStatus(trade);
@@ -1102,6 +1686,7 @@ function cancelPendingOrders(userName,orderIds){
       if(trade.userName!==userName||!orderIds.includes(trade.id)||!(trade.unmatchedStake>0)){
         return;
       }
+      refundReservedStake(trade,trade.unmatchedStake,market);
       trade.unmatchedStake=0;
       trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
     });
@@ -1113,10 +1698,19 @@ function cancelPendingOrders(userName,orderIds){
 function settleProjectionMarket(market,finalScore,options={}){
   const settlementType=options.settlementType||"SCORED";
   const isVoid=settlementType==="VOID";
+  const settledAt=new Date().toISOString();
   market.settlement={finalScore:isVoid?null:finalScore,settledAt:new Date().toISOString(),settlementType};
   market.manuallyLocked=true;
   market.trades.forEach((trade)=>{
     if(trade.unmatchedStake>0){
+      refundReservedStake(trade,trade.unmatchedStake,market,{
+        type:"TRADE_REFUND",
+        title:"Open order released",
+        subtitle:`${market.playerName} ${trade.side.toLowerCase()} ${formatLine(trade.entryLine)} released`,
+        marketId:market.id,
+        tradeId:trade.id,
+        createdAt:settledAt
+      });
       trade.unmatchedStake=0;
     }
   });
@@ -1125,16 +1719,48 @@ function settleProjectionMarket(market,finalScore,options={}){
       return;
     }
     if(isVoid){
-      state.bankrolls[pair.overUserName]=(state.bankrolls[pair.overUserName]||STARTING_BANKROLL)+pair.stake;
-      state.bankrolls[pair.underUserName]=(state.bankrolls[pair.underUserName]||STARTING_BANKROLL)+pair.stake;
+      applyWalletDelta(pair.overUserName,pair.stake,{
+        type:"TRADE_REFUND",
+        title:"Entry refunded",
+        subtitle:`${market.playerName} ${formatLine(pair.overEntryLine)} voided`,
+        marketId:market.id,
+        tradeId:pair.overOrderId,
+        pairId:pair.id,
+        createdAt:settledAt
+      });
+      applyWalletDelta(pair.underUserName,pair.stake,{
+        type:"TRADE_REFUND",
+        title:"Entry refunded",
+        subtitle:`${market.playerName} ${formatLine(pair.underEntryLine)} voided`,
+        marketId:market.id,
+        tradeId:pair.underOrderId,
+        pairId:pair.id,
+        createdAt:settledAt
+      });
       pair.winnerUserName=null;
       pair.voided=true;
     }else if(finalScore>pair.overEntryLine){
       pair.winnerUserName=pair.overUserName;
-      state.bankrolls[pair.overUserName]=(state.bankrolls[pair.overUserName]||STARTING_BANKROLL)+(pair.stake*2);
+      applyWalletDelta(pair.overUserName,pair.stake*2,{
+        type:"TRADE_SETTLEMENT_WIN",
+        title:"Winnings paid",
+        subtitle:`${market.playerName} over ${formatLine(pair.overEntryLine)} won`,
+        marketId:market.id,
+        tradeId:pair.overOrderId,
+        pairId:pair.id,
+        createdAt:settledAt
+      });
     }else if(finalScore<pair.underEntryLine){
       pair.winnerUserName=pair.underUserName;
-      state.bankrolls[pair.underUserName]=(state.bankrolls[pair.underUserName]||STARTING_BANKROLL)+(pair.stake*2);
+      applyWalletDelta(pair.underUserName,pair.stake*2,{
+        type:"TRADE_SETTLEMENT_WIN",
+        title:"Winnings paid",
+        subtitle:`${market.playerName} under ${formatLine(pair.underEntryLine)} won`,
+        marketId:market.id,
+        tradeId:pair.underOrderId,
+        pairId:pair.id,
+        createdAt:settledAt
+      });
     }else{
       pair.platformRevenue=pair.stake*2;
     }
@@ -1174,6 +1800,7 @@ function settleMarketsWithSnapshot(entries,metadata={}){
     createdAt:new Date().toISOString(),
     metadata,
     bankrolls:cloneValue(state.bankrolls),
+    walletTransactions:cloneValue(state.walletTransactions||[]),
     markets:preSettlementMarkets,
     roundMetricsHistory:cloneValue(state.roundMetricsHistory||[])
   };
@@ -1199,6 +1826,7 @@ function undoLastSettlementBatch(){
     throw new Error("There is no settlement batch to undo.");
   }
   state.bankrolls=cloneValue(snapshot.bankrolls||{});
+  state.walletTransactions=cloneValue(snapshot.walletTransactions||[]);
   state.markets=state.markets.map((market)=>snapshotMarkets.has(market.id)?cloneValue(snapshotMarkets.get(market.id)):market);
   state.roundMetricsHistory=cloneValue(snapshot.roundMetricsHistory||[]);
   state.lastSettlementBatch=null;
@@ -1222,6 +1850,176 @@ function parseRoundNumber(label){
   return match?Number(match[1]):null;
 }
 
+function normalizeRoundNumber(value){
+  const roundNumber=Number(value);
+  return AVAILABLE_ROUND_NUMBERS.includes(roundNumber)?roundNumber:DEFAULT_ACTIVE_ROUND_NUMBER;
+}
+
+function buildRoundLabel(roundNumber){
+  const normalizedRoundNumber=normalizeRoundNumber(roundNumber);
+  return roundGames.find((game)=>parseRoundNumber(game.roundLabel)===normalizedRoundNumber)?.roundLabel||`Round ${normalizedRoundNumber}`;
+}
+
+function buildForceOpenGameIdsForRound(roundNumber){
+  const normalizedRoundNumber=normalizeRoundNumber(roundNumber);
+  return roundGames
+    .filter((game)=>parseRoundNumber(game.roundLabel)===normalizedRoundNumber)
+    .map((game)=>game.id);
+}
+
+function getActiveRoundNumber(targetState=state){
+  return normalizeRoundNumber(targetState?.activeRoundNumber);
+}
+
+function getActiveRoundLabel(targetState=state){
+  return buildRoundLabel(getActiveRoundNumber(targetState));
+}
+
+function normalizePopularInlineJson(value){
+  return String(value||"")
+    .replace(/\\u0022/g,'"')
+    .replace(/\\u0027/g,"'")
+    .replace(/\\u003C/g,"<")
+    .replace(/\\u003E/g,">")
+    .replace(/\\u0026/g,"&")
+    .replace(/\\\//g,"/");
+}
+
+function normalizePopularPlayer(player){
+  const firstName=String(player?.first_name||"").trim();
+  const lastName=String(player?.last_name||"").trim();
+  return {
+    name:`${firstName} ${lastName}`.trim(),
+    team:String(player?.team_name||"").trim(),
+    position:String(player?.positions||"").trim(),
+    viewsCount:Number(player?.views_count)||0
+  };
+}
+
+async function fetchPopularPlayers(force=false){
+  const cacheAge=Date.now()-popularPlayersCacheTime;
+  if(!force&&Array.isArray(popularPlayersCache)&&popularPlayersCache.length&&cacheAge<POPULAR_PLAYERS_REFRESH_MS){
+    return popularPlayersCache;
+  }
+  if(popularPlayersFetchPromise){
+    return popularPlayersFetchPromise;
+  }
+  popularPlayersFetchPromise=(async()=>{
+    try{
+      const response=await fetch("https://footystatistics.com/",{
+        headers:{
+          "User-Agent":"Mozilla/5.0 (compatible; crowdIQ/1.0)"
+        }
+      });
+      if(!response.ok){
+        throw new Error(`FootyStatistics responded ${response.status}`);
+      }
+      const html=await response.text();
+      const match=html.match(/popularPlayers:\s*JSON\.parse\('([\s\S]*?)'\)/);
+      if(!match){
+        throw new Error("Popular This Week payload not found in source HTML");
+      }
+      const decodedJson=normalizePopularInlineJson(match[1]);
+      const parsedPlayers=JSON.parse(decodedJson);
+      const players=Array.isArray(parsedPlayers)?parsedPlayers.map(normalizePopularPlayer).filter((player)=>player.name).slice(0,8):[];
+      if(!players.length){
+        throw new Error("Popular This Week payload was empty");
+      }
+      popularPlayersCache=players;
+      popularPlayersCacheTime=Date.now();
+      return players;
+    }catch(error){
+      console.error("Failed to fetch popular players:",error.message);
+      return Array.isArray(popularPlayersCache)?popularPlayersCache:null;
+    }finally{
+      popularPlayersFetchPromise=null;
+    }
+  })();
+  return popularPlayersFetchPromise;
+}
+
+function normalizeLookupValue(value){
+  return String(value||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+}
+
+function normalizePopularTeamName(value){
+  return String(value||"")
+    .toLowerCase()
+    .replace(/^(parramatta|newcastle|canterburybankstown|cronullasutherland|gold coast|manlywarringah|melbourne|north queensland|penrith|south sydney|st george illawarra|sydney)\s+/,"")
+    .replace(/[^a-z0-9]/g,"");
+}
+
+function matchPopularPlayerToMarket(popularPlayer,marketPlayers,usedMarketIds=new Set()){
+  const exactName=normalizeLookupValue(popularPlayer?.name);
+  const exactTeam=normalizePopularTeamName(popularPlayer?.team);
+  let candidates=marketPlayers.filter((market)=>!usedMarketIds.has(market.id));
+  let match=candidates.find((market)=>normalizeLookupValue(market.playerName)===exactName);
+  if(match&&exactTeam){
+    const teamAligned=normalizePopularTeamName(match.team)===exactTeam;
+    if(!teamAligned){
+      match=null;
+    }
+  }
+  if(!match){
+    const surname=normalizeLookupValue(String(popularPlayer?.name||"").split(" ").slice(-1)[0]);
+    const surnameMatches=candidates.filter((market)=>normalizeLookupValue(market.playerName).includes(surname));
+    match=surnameMatches.find((market)=>!exactTeam||normalizePopularTeamName(market.team)===exactTeam)||surnameMatches[0]||null;
+  }
+  return match||null;
+}
+
+function fallbackFeaturedMarkets(targetState=state,excludedMarketIds=new Set()){
+  return targetState.markets
+    .filter((market)=>getRoundNumberForMarket(market)===getActiveRoundNumber(targetState))
+    .filter((market)=>!excludedMarketIds.has(market.id))
+    .slice()
+    .sort((left,right)=>Number(right.currentLine||0)-Number(left.currentLine||0)||Number(right.seasonAverage||0)-Number(left.seasonAverage||0))
+    .slice(0,8);
+}
+
+function buildPopularFeaturedPayload(scrapedPlayers,targetState=state){
+  const activeMarkets=targetState.markets.filter((market)=>getRoundNumberForMarket(market)===getActiveRoundNumber(targetState));
+  const usedMarketIds=new Set();
+  const matchedMarkets=[];
+  for(const popularPlayer of Array.isArray(scrapedPlayers)?scrapedPlayers.slice(0,8):[]){
+    const matchedMarket=matchPopularPlayerToMarket(popularPlayer,activeMarkets,usedMarketIds);
+    if(!matchedMarket){
+      console.warn(`Popular player unmatched: ${popularPlayer?.name||"Unknown"} (${popularPlayer?.team||"Unknown team"})`);
+      continue;
+    }
+    usedMarketIds.add(matchedMarket.id);
+    matchedMarkets.push({
+      marketId:matchedMarket.id,
+      playerName:matchedMarket.playerName,
+      team:matchedMarket.team,
+      position:matchedMarket.position
+    });
+  }
+  if(matchedMarkets.length<3){
+    return fallbackFeaturedMarkets(targetState).map((market)=>({
+      marketId:market.id,
+      playerName:market.playerName,
+      team:market.team,
+      position:market.position
+    }));
+  }
+  const fallbackMarkets=fallbackFeaturedMarkets(targetState,usedMarketIds);
+  return [...matchedMarkets,...fallbackMarkets.map((market)=>({
+    marketId:market.id,
+    playerName:market.playerName,
+    team:market.team,
+    position:market.position
+  }))].slice(0,8);
+}
+
+function formatCurrency(value){
+  return `$${Math.abs(Number(value)||0).toFixed(0)}`;
+}
+
+function formatLine(value){
+  return `${Number(value||0).toFixed(1)} pts`;
+}
+
 function parseKickoffLabel(label){
   const match=String(label||"").match(/^[A-Za-z]{3}\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{1,2}):(\d{2})\s+(AM|PM)$/i);
   if(!match){
@@ -1240,7 +2038,13 @@ function parseKickoffLabel(label){
   if(period.toUpperCase()==="AM"&&hour===12){
     hour=0;
   }
-  return new Date(new Date().getFullYear(),month,Number(day),hour,Number(minuteLabel),0,0).getTime();
+  const now=Date.now();
+  let year=new Date().getFullYear();
+  let ts=new Date(year,month,Number(day),hour,Number(minuteLabel),0,0).getTime();
+  if(ts<now-180*24*60*60*1000){
+    ts=new Date(year+1,month,Number(day),hour,Number(minuteLabel),0,0).getTime();
+  }
+  return ts;
 }
 
 function getRoundNumberForMarket(market){
@@ -1290,6 +2094,29 @@ function normalizeTeamName(team){
   return team==="Tigers"?"Wests Tigers":String(team||"");
 }
 
+function preferSeededNumber(value,fallback,options={}){
+  const min=options.min??null;
+  const normalizedValue=Number(value);
+  if(Number.isFinite(normalizedValue)&&(min===null||normalizedValue>=min)){
+    return normalizedValue;
+  }
+  const normalizedFallback=Number(fallback);
+  if(Number.isFinite(normalizedFallback)&&(min===null||normalizedFallback>=min)){
+    return normalizedFallback;
+  }
+  return null;
+}
+
+function preferSeededText(value,fallback){
+  if(typeof value==="string"&&value.trim()){
+    return value;
+  }
+  if(typeof fallback==="string"&&fallback.trim()){
+    return fallback;
+  }
+  return "";
+}
+
 function cloneValue(value){
   return JSON.parse(JSON.stringify(value));
 }
@@ -1297,9 +2124,12 @@ function cloneValue(value){
 function runBotTicks(ticks){
   state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:createBotRoster(normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG))};
   let aggregatedEvents=[];
+  const eligibleMarkets=state.markets.filter((market)=>
+    getRoundNumberForMarket(market)===getActiveRoundNumber(state)&&!isMarketLocked(market)
+  );
   for(let tickIndex=0;tickIndex<ticks;tickIndex+=1){
     const tickResult=runSimulationTick({
-      state,
+      state:{...state,markets:eligibleMarkets},
       bots:state.botSimulation.bots,
       config:state.botSimulation.config,
       tick:state.botSimulation.config.tick||0
@@ -1316,8 +2146,15 @@ function runBotTicks(ticks){
       if(bankroll<1){
         return {...event,executed:false,reason:`${event.reason} Bot bankroll too low.`};
       }
-      const trade=executeProjectionTrade(market,{userName:event.botName,side:event.side,stake:1});
-      trade.archetype=event.archetype||"custom";
+      const bot=state.botSimulation.bots.find((entry)=>entry.id===event.botId)||state.botSimulation.bots.find((entry)=>entry.userName===event.botName)||null;
+      const trade=executeProjectionTrade(market,{
+        userName:event.botName,
+        side:event.side,
+        stake:1,
+        botId:event.botId||bot?.id||null,
+        botSource:bot?.source||"",
+        archetype:event.archetype||bot?.archetype||"custom"
+      });
       return {
         ...event,
         executed:true,
@@ -1346,6 +2183,9 @@ function runBotTicks(ticks){
 
 function runAutonomousBots(){
   try{
+    if(!state?.botSimulation?.config?.enabled){
+      return;
+    }
     if(!state?.botSimulation?.bots?.length){
       return;
     }
@@ -1355,10 +2195,29 @@ function runAutonomousBots(){
     }
     const result=runBotTicks(1);
     if(result.events.length){
-      persistState();
+      if(SUPABASE_ENABLED){
+        persistSupabaseMarketsForEvents(result.events)
+          .then(()=>persistStateSnapshot(true))
+          .catch((error)=>{
+            console.warn("Hosted bot persistence failed",error.message);
+          });
+      }else{
+        persistStateSnapshotDeferred();
+      }
     }
   }catch(error){
     console.warn("Bot autoplay failed",error);
+  }
+}
+
+async function persistSupabaseMarketsForEvents(events=[]){
+  const marketIds=[...new Set((events||[]).filter((event)=>event?.executed&&event?.marketId).map((event)=>event.marketId))];
+  for(const marketId of marketIds){
+    const market=findMarket(marketId);
+    if(!market){
+      continue;
+    }
+    await persistSupabaseMarketState(market,state);
   }
 }
 
@@ -1460,8 +2319,8 @@ function matchAgainstRestingOrders(market,incomingOrder){
     const affordableStake=Math.min(
       incomingOrder.unmatchedStake,
       restingOrder.unmatchedStake,
-      Math.max(getUserBankroll(incomingOrder.userName),0),
-      Math.max(getUserBankroll(restingOrder.userName),0)
+      Math.max(getUserBankroll(incomingOrder.userName)+availableChargedReserve(incomingOrder),0),
+      Math.max(getUserBankroll(restingOrder.userName)+availableChargedReserve(restingOrder),0)
     );
     if(affordableStake<=0){
       return;
@@ -1483,8 +2342,6 @@ function matchAgainstRestingOrders(market,incomingOrder){
       winnerUserName:null,
       platformRevenue:0
     };
-    state.bankrolls[incomingOrder.userName]=Math.max(getUserBankroll(incomingOrder.userName)-affordableStake,0);
-    state.bankrolls[restingOrder.userName]=Math.max(getUserBankroll(restingOrder.userName)-affordableStake,0);
     market.matchedPairs.push(pair);
     incomingOrder.unmatchedStake-=affordableStake;
     incomingOrder.matchedStake+=affordableStake;
@@ -1492,6 +2349,8 @@ function matchAgainstRestingOrders(market,incomingOrder){
     restingOrder.unmatchedStake-=affordableStake;
     restingOrder.matchedStake+=affordableStake;
     restingOrder.pairIds=(restingOrder.pairIds||[]).concat(pair.id);
+    ensureTradeStakeCharged(incomingOrder,incomingOrder.matchedStake,market,incomingOrder.timestamp);
+    ensureTradeStakeCharged(restingOrder,restingOrder.matchedStake,market,incomingOrder.timestamp);
     restingOrder.status=activeOrderStatus(restingOrder);
   });
 }

@@ -6,16 +6,25 @@ const STARTING_BANKROLL = 200;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
 const USER_NAME_KEY = "mercatus-user-name";
+const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
+const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 2500;
 const PRIZE_POOL_POLL_MS = 10000;
+const ONBOARDING_POPUP_DELAY_MS = 800;
 
 const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
 const roundGames = seed.roundGames;
 const TEAM_COLORS = seed.TEAM_COLORS;
-const CURRENT_ROUND_LABEL = roundGames[0]?.roundLabel || "Current round";
+const SEEDED_ROUND_NUMBERS = [...new Set(roundGames.map((game) => parseRoundNumberFromLabel(game.roundLabel)).filter(Number.isFinite))].sort((left, right) => left - right);
+const CURRENT_ROUND_NUMBER = SEEDED_ROUND_NUMBERS[SEEDED_ROUND_NUMBERS.length - 1] || 1;
+const CURRENT_ROUND_LABEL = roundGames.find((game) => parseRoundNumberFromLabel(game.roundLabel) === CURRENT_ROUND_NUMBER)?.roundLabel || `Round ${CURRENT_ROUND_NUMBER}`;
+const AVAILABLE_ROUND_NUMBERS = [...new Set([
+  ...SEEDED_ROUND_NUMBERS,
+  ...((derivedData.metadata?.roundsIncluded) || []).map((round) => Number(round)).filter(Number.isFinite)
+])].sort((left, right) => left - right);
 const BOT_BEHAVIOUR_PRESETS = {
   BALANCED: { crowdStyle: 50, liquidityStyle: 40, fadeStyle: 45, frequencyStyle: 50, edgeStyle: 50 },
   MOMENTUM: { crowdStyle: 84, liquidityStyle: 22, fadeStyle: 18, frequencyStyle: 70, edgeStyle: 38 },
@@ -24,7 +33,15 @@ const BOT_BEHAVIOUR_PRESETS = {
   PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
 };
 
-let state = { bankrolls: {}, markets: [] };
+const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
+
+let state = {
+  bankrolls: {},
+  markets: authPreviewMarkets,
+  walletTransactions: [],
+  activeRoundNumber: CURRENT_ROUND_NUMBER,
+  activeRoundLabel: CURRENT_ROUND_LABEL
+};
 let backendState = { mode: "local", user: null, dashboard: null };
 let prizePoolState = null;
 let toastTimer = null;
@@ -39,12 +56,19 @@ let prizePoolPollTimer = null;
 let prizePoolLastPolledAmount = null;
 let prizePoolJarSurging = false;
 let prizePoolJarSurgeTimer = null;
-const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
+let prizePoolShareFitFrame = null;
+let authFocusTimer = null;
+let onboardingPopupTimer = null;
+let popularFeaturedMarketIds = [];
+let popularFeaturedRoundNumber = null;
+let popularFeaturedRequest = null;
 
 const uiState = {
   activeScreen: "home",
-  activeHomePanel: "gainers",
+  activeHomePanel: "value",
   activeHomeFeaturedIndex: 0,
+  activeHomeGameIndex: 0,
+  activeHomeGameTouched: false,
   activeAccountView: "portfolio",
   currentGameId: "raiders-bulldogs",
   currentTeam: "Raiders",
@@ -57,8 +81,11 @@ const uiState = {
   adminOpen: false,
   portfolioFilter: "ALL",
   portfolioSort: "MOST_RECENT",
+  walletFilter: "ALL",
+  walletAmountDraft: "25",
   pendingTradeMarketId: "",
   leaderboardSort: "BALANCE",
+  leaderboardTimeFilter: "ALL_TIME",
   quickPickShuffleSeed: String(Date.now()),
   quickPickMarketIds: [],
   quickPickSeenMarketIds: [],
@@ -72,6 +99,7 @@ const uiState = {
   prizePoolSubmissionToastShown: false,
   prizePoolHowItWorksExpanded: false,
   prizePoolInterchangeRulesExpanded: false,
+  prizePoolShareOpen: false,
   prizePoolInterchangeDividerSeenDraftId: "",
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
@@ -88,6 +116,8 @@ const elements = {
   authLiveBadge: document.getElementById("auth-live-badge"),
   authHeroCtaCopy: document.getElementById("auth-hero-cta-copy"),
   authPhoneMockup: document.getElementById("auth-phone-mockup"),
+  onboardingOverlay: document.getElementById("onboarding-overlay"),
+  authClose: document.getElementById("auth-close"),
   authHeaderSignup: document.getElementById("auth-header-signup"),
   authHeroEntry: document.getElementById("auth-hero-entry"),
   appFrame: document.querySelector(".mobile-frame"),
@@ -99,35 +129,50 @@ const elements = {
   homeBiggestGainers: document.getElementById("home-biggest-gainers"),
   homeBiggestLosers: document.getElementById("home-biggest-losers"),
   homeBestValue: document.getElementById("home-best-value"),
+  homeMostOverpriced: document.getElementById("home-most-overpriced"),
   homeMostTraded: document.getElementById("home-most-traded"),
   homeUserLeaderboard: document.getElementById("home-user-leaderboard"),
   homeLeaderboardLink: document.getElementById("home-leaderboard-link"),
   homeCarousel: document.getElementById("home-carousel"),
   homeCarouselNav: document.getElementById("home-carousel-nav"),
   homeCarouselMeta: document.getElementById("home-carousel-meta"),
+  homeGuestHero: document.getElementById("home-guest-hero"),
   homeFeaturedSlate: document.getElementById("home-featured-slate"),
   homePrizePoolBanner: document.getElementById("home-prize-pool-banner"),
+  homeGamesStrip: document.getElementById("home-games-strip"),
+  homeUnauthBottom: document.getElementById("home-unauth-bottom"),
   searchInput: document.getElementById("search-input"),
   searchResults: document.getElementById("search-results"),
   marketsScreenScroll: document.getElementById("markets-screen-scroll"),
   teamToggle: document.getElementById("team-toggle"),
   selectedMarketPanel: document.getElementById("selected-market-panel"),
   marketsList: document.getElementById("markets-list"),
+  leaderboardScreenScroll: document.getElementById("leaderboard-screen-scroll"),
   leaderboardSummary: document.getElementById("leaderboard-summary"),
-  leaderboardBalancePill: document.getElementById("leaderboard-balance-pill"),
   leaderboardSortChips: document.getElementById("leaderboard-sort-chips"),
+  leaderboardTimeChips: document.getElementById("leaderboard-time-chips"),
   leaderboardList: document.getElementById("leaderboard-list"),
+  leaderboardBackButton: document.getElementById("leaderboard-back-button"),
   portfolioPageSubtitle: document.getElementById("portfolio-page-subtitle"),
   accountViewSwitch: document.getElementById("account-view-switch"),
   accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
   accountPortfolioView: document.getElementById("account-portfolio-view"),
-  accountLeaderboardView: document.getElementById("account-leaderboard-view"),
+  accountWalletView: document.getElementById("account-wallet-view"),
   prizePoolView: document.getElementById("prize-pool-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
+  portfolioPrizePoolCard: document.getElementById("portfolio-prize-pool-card"),
   portfolioFilters: document.getElementById("portfolio-filters"),
   portfolioSortButton: document.getElementById("portfolio-sort-button"),
   portfolioList: document.getElementById("portfolio-list"),
+  walletSummary: document.getElementById("wallet-summary"),
+  walletAmountInput: document.getElementById("wallet-amount-input"),
+  walletAmountPresets: document.getElementById("wallet-amount-presets"),
+  walletDepositButton: document.getElementById("wallet-deposit-button"),
+  walletWithdrawButton: document.getElementById("wallet-withdraw-button"),
+  walletFeedback: document.getElementById("wallet-feedback"),
+  walletFilters: document.getElementById("wallet-filters"),
+  walletTransactionList: document.getElementById("wallet-transaction-list"),
   quickPickDeck: document.getElementById("quick-take-deck"),
   prizePoolShell: document.getElementById("prize-pool-shell"),
   userName: document.getElementById("user-name"),
@@ -136,6 +181,10 @@ const elements = {
   openAdminButton: document.getElementById("open-admin-button"),
   adminShell: document.getElementById("admin-shell"),
   closeAdminButton: document.getElementById("close-admin-button"),
+  adminRoundForm: document.getElementById("admin-round-form"),
+  adminRoundSelect: document.getElementById("admin-round-select"),
+  adminRoundSummary: document.getElementById("admin-round-summary"),
+  adminRoundFeedback: document.getElementById("admin-round-feedback"),
   openingMarket: document.getElementById("opening-market"),
   openingLineInput: document.getElementById("opening-line-input"),
   currentLineInput: document.getElementById("current-line-input"),
@@ -185,28 +234,71 @@ const elements = {
   toast: document.getElementById("toast")
 };
 
+const onboardingModal = typeof window.createCrowdIQOnboardingModal === "function"
+  ? window.createCrowdIQOnboardingModal({
+      host: elements.onboardingOverlay,
+      onSkip: handleOnboardingSkip,
+      onComplete: handleOnboardingComplete,
+      onLogin: handleOnboardingLogin
+    })
+  : null;
+
 init();
 
 async function init() {
   bindEvents();
-  renderAuthPreview();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
-  if (!savedUserName) {
-    renderAuthGate(false);
-    return;
+  if (savedUserName) {
+    elements.userName.value = savedUserName;
+    elements.authUsername.value = savedUserName;
   }
-  elements.userName.value = savedUserName;
-  elements.authUsername.value = savedUserName;
-  await completeLogin(savedUserName);
+  // Render immediately so the app is never a blank screen while waiting for the server
+  renderAll();
+  scheduleOnboardingPopup();
+  renderAuthPreview();
+  syncPopularFeaturedPlayers();
+  // Sync session without touching credentials on failure — completeLogin() would
+  // clear the saved username if syncSession() throws, which logs the user out silently.
+  try {
+    await syncSession();
+  } catch (error) {
+    console.warn("Startup session sync failed", error.message);
+  }
+  normalizeNavigationState();
+  syncSelectedMarket();
+  renderAll();
+  if (savedUserName) {
+    renderAuthGate(false);
+    dismissGuestHero();
+  }
+  startLiveSync();
 }
 
 function bindEvents() {
+  window.addEventListener("pageshow", () => {
+    handlePageResume();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      handlePageResume();
+    }
+  });
   [elements.authHeaderSignup, elements.authHeroEntry].forEach((button) =>
     button?.addEventListener("click", () => {
       elements.authUsername?.scrollIntoView({ behavior: "smooth", block: "center" });
       window.setTimeout(() => elements.authUsername?.focus(), 120);
     })
   );
+
+  elements.authClose?.addEventListener("click", () => {
+    renderAuthGate(false);
+  });
+
+  elements.authGate?.addEventListener("click", (event) => {
+    if (event.target === elements.authGate) {
+      renderAuthGate(false);
+    }
+  });
 
   elements.navButtons.forEach((button) =>
     button.addEventListener("click", () => {
@@ -233,18 +325,43 @@ function bindEvents() {
     await completeLogin(userName);
   });
 
-  elements.logoutButton.addEventListener("click", () => {
+  elements.logoutButton.addEventListener("click", async () => {
     stopLiveSync();
     stopPrizePoolPolling();
     stopKickoffTimer();
     randomizeQuickPickOrder();
     uiState.prizePoolSubmissionToastShown = false;
+    uiState.prizePoolShareOpen = false;
+    renderPrizePoolShareOverlay();
     localStorage.removeItem(USER_NAME_KEY);
     backendState = { mode: "local", user: null, dashboard: null };
     elements.authUsername.value = "";
     elements.authFeedback.textContent = "";
     elements.userName.value = "";
+    uiState.activeScreen = "home";
+    uiState.activeAccountView = "portfolio";
     renderAuthGate(false);
+    state = {
+      ...state,
+      bankrolls: {},
+      markets: authPreviewMarkets,
+      walletTransactions: [],
+      activeRoundNumber: CURRENT_ROUND_NUMBER,
+      activeRoundLabel: CURRENT_ROUND_LABEL
+    };
+    prizePoolState = null;
+    normalizeNavigationState();
+    syncSelectedMarket();
+    renderAll();
+    try {
+      await syncSession();
+      normalizeNavigationState();
+      syncSelectedMarket();
+      renderAll();
+    } catch (error) {
+      console.warn("Logout guest sync failed", error.message);
+    }
+    startLiveSync();
   });
 
   elements.portfolioSortButton.addEventListener("click", () => {
@@ -260,6 +377,12 @@ function bindEvents() {
     uiState.leaderboardSort = chip.dataset.leaderboardSort;
     renderLeaderboard();
   });
+  elements.leaderboardTimeChips?.addEventListener("click", (event) => {
+    const chip = event.target.closest("[data-leaderboard-time-filter]");
+    if (!chip) return;
+    uiState.leaderboardTimeFilter = chip.dataset.leaderboardTimeFilter;
+    renderLeaderboard();
+  });
   elements.accountViewSwitch?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-view]");
     if (!button) return;
@@ -267,13 +390,38 @@ function bindEvents() {
     renderScreens();
   });
   elements.headerBalance?.addEventListener("click", () => {
+    if (!isAuthenticated()) {
+      openAuthPrompt("signup");
+      return;
+    }
     uiState.activeScreen = "account";
-    uiState.activeAccountView = "portfolio";
+    uiState.activeAccountView = "wallet";
     renderAll();
+  });
+  elements.walletAmountInput?.addEventListener("input", () => {
+    uiState.walletAmountDraft = elements.walletAmountInput.value;
+  });
+  elements.walletAmountPresets?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-wallet-amount]");
+    if (!button) return;
+    uiState.walletAmountDraft = button.dataset.walletAmount || "";
+    if (elements.walletAmountInput) {
+      elements.walletAmountInput.value = uiState.walletAmountDraft;
+    }
+  });
+  elements.walletDepositButton?.addEventListener("click", async () => {
+    await submitWalletDeposit();
+  });
+  elements.walletWithdrawButton?.addEventListener("click", async () => {
+    await submitWalletWithdrawal();
   });
 
   elements.homeLeaderboardLink?.addEventListener("click", () => {
     openFullLeaderboard();
+  });
+  elements.leaderboardBackButton?.addEventListener("click", () => {
+    uiState.activeScreen = "home";
+    renderAll();
   });
   elements.homeCarousel?.addEventListener("scroll", handleHomeCarouselScroll, { passive: true });
   elements.homeCarouselNav?.addEventListener("click", (event) => {
@@ -293,6 +441,10 @@ function bindEvents() {
     renderAdminShell();
   });
 
+  elements.adminRoundForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveActiveRound();
+  });
   elements.openingMarket.addEventListener("change", syncOpeningForm);
   elements.openingLineForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -378,6 +530,7 @@ function bindEvents() {
     if (document.hidden) return;
     refreshSharedState();
   });
+  window.addEventListener("resize", schedulePrizePoolShareFit);
 
   document.addEventListener("click", (event) => {
     const infoButton = event.target.closest(".market-confidence-info");
@@ -449,7 +602,22 @@ function requestAdminAccess() {
 }
 
 function applySharedSnapshot(response) {
-  state = response.state;
+  const nextState = response.state && typeof response.state === "object" ? response.state : {};
+  const hasMarketPayload = Array.isArray(nextState.markets) && nextState.markets.length > 0;
+  const preservedMarkets = hasMarketPayload
+    ? nextState.markets
+    : (Array.isArray(state.markets) && state.markets.length ? state.markets : authPreviewMarkets);
+  const nextActiveRoundNumber = Number.isFinite(Number(nextState.activeRoundNumber))
+    ? Number(nextState.activeRoundNumber)
+    : activeRoundNumber();
+  state = {
+    ...state,
+    ...nextState,
+    markets: preservedMarkets,
+    walletTransactions: Array.isArray(nextState.walletTransactions) ? nextState.walletTransactions : (state.walletTransactions || []),
+    activeRoundNumber: nextActiveRoundNumber,
+    activeRoundLabel: nextState.activeRoundLabel || roundLabelForNumber(nextActiveRoundNumber)
+  };
   backendState = response.backend || { mode: "local", user: null, dashboard: null };
   prizePoolState = response.prizePool || null;
 }
@@ -457,6 +625,10 @@ function applySharedSnapshot(response) {
 async function syncSession() {
   const response = await api("/api/session", { userName: currentUserName() });
   applySharedSnapshot(response);
+  if (popularFeaturedRoundNumber !== activeRoundNumber()) {
+    popularFeaturedMarketIds = [];
+  }
+  syncPopularFeaturedPlayers();
 }
 
 async function completeLogin(userName) {
@@ -469,11 +641,13 @@ async function completeLogin(userName) {
   try {
     elements.userName.value = userName;
     localStorage.setItem(USER_NAME_KEY, userName);
+    localStorage.setItem(HAS_AUTHENTICATED_KEY, "true");
     randomizeQuickPickOrder();
     await syncSession();
     syncSelectedMarket();
     renderAll();
-    renderAuthGate(true);
+    renderAuthGate(false);
+    dismissGuestHero();
     startLiveSync();
     elements.authFeedback.textContent = "";
   } catch (error) {
@@ -484,17 +658,190 @@ async function completeLogin(userName) {
   }
 }
 
-function renderAuthGate(isAuthenticated) {
-  elements.authGate.classList.toggle("is-hidden", isAuthenticated);
-  elements.appFrame.classList.toggle("is-authenticated", isAuthenticated);
+function isAuthenticated() {
+  return Boolean(localStorage.getItem(USER_NAME_KEY)?.trim());
+}
+
+function hasSeenOnboarding() {
+  return localStorage.getItem(HAS_SEEN_ONBOARDING_KEY) != null;
+}
+
+function shouldShowOnboardingPopup() {
+  return Boolean(onboardingModal)
+    && !isAuthenticated()
+    && !hasSeenOnboarding()
+    && uiState.activeScreen === "home";
+}
+
+function scheduleOnboardingPopup() {
+  if (onboardingPopupTimer || !shouldShowOnboardingPopup()) {
+    return;
+  }
+  onboardingPopupTimer = window.setTimeout(() => {
+    onboardingPopupTimer = null;
+    if (!shouldShowOnboardingPopup()) {
+      return;
+    }
+    onboardingModal.show();
+  }, ONBOARDING_POPUP_DELAY_MS);
+}
+
+function dismissOnboardingPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  onboardingModal?.hide();
+}
+
+function markOnboardingSeen() {
+  localStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
+}
+
+function handleOnboardingSkip() {
+  markOnboardingSeen();
+  dismissOnboardingPopup();
+}
+
+async function handleOnboardingComplete(userName) {
+  const trimmedUserName = String(userName || "").trim();
+  if (!trimmedUserName) {
+    return { ok: false, message: "Enter a username to continue." };
+  }
+  await completeLogin(trimmedUserName);
+  if (!isAuthenticated()) {
+    return { ok: false, message: elements.authFeedback?.textContent || "Something went wrong." };
+  }
+  markOnboardingSeen();
+  dismissOnboardingPopup();
+  return { ok: true };
+}
+
+function handleOnboardingLogin() {
+  markOnboardingSeen();
+  dismissOnboardingPopup();
+  openAuthPrompt("login");
+}
+
+function hasAuthenticatedBefore() {
+  return localStorage.getItem(HAS_AUTHENTICATED_KEY) === "true";
+}
+
+function openAuthPrompt(mode = "signup") {
+  // If home screen is active, scroll to the inline form instead of opening overlay
+  if (uiState.activeScreen === "home") {
+    const inlineInput = document.getElementById("inline-auth-username");
+    if (inlineInput) {
+      inlineInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => inlineInput.focus(), 120);
+      return;
+    }
+  }
+  elements.authFeedback.textContent = "";
+  renderAuthGate(true);
+}
+
+function renderAuthGate(isOpen) {
+  window.clearTimeout(authFocusTimer);
+  elements.authGate.classList.toggle("is-hidden", !isOpen);
+  elements.authGate.setAttribute("aria-hidden", String(!isOpen));
+  document.body.classList.toggle("auth-prompt-open", Boolean(isOpen));
+  if (isOpen) {
+    authFocusTimer = window.setTimeout(() => {
+      elements.authUsername?.focus();
+      elements.authUsername?.select();
+    }, 140);
+  }
+}
+
+function renderGuestHero() {
+  const hero = elements.homeGuestHero;
+  if (!hero) return;
+  if (isAuthenticated()) {
+    hero.innerHTML = "";
+    hero.classList.add("is-hidden");
+    return;
+  }
+  hero.classList.remove("is-hidden");
+  hero.innerHTML = `
+    <div class="auth-hero-inline">
+      <section class="auth-copy auth-hero">
+        <p class="eyebrow">crowdIQ Live</p>
+        <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
+        <p class="auth-hero-subtitle">Browse live NRL fantasy player projections before you sign up to trade.</p>
+        <div class="auth-live-signal">
+          <span class="auth-live-dot" aria-hidden="true"></span>
+          <span>Market live &middot; ${activeRoundLabel()}</span>
+        </div>
+      </section>
+    </div>
+    <div class="guest-hero-divider"></div>
+  `;
+}
+
+function renderGuestUnauthBottom() {
+  const container = elements.homeUnauthBottom;
+  if (!container) return;
+
+  if (isAuthenticated()) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
+
+  container.innerHTML = conversionCtaHTML;
+
+  const form = container.querySelector("#inline-auth-form");
+  const input = container.querySelector("#inline-auth-username");
+  const feedback = container.querySelector("#inline-auth-feedback");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const userName = input?.value.trim();
+    if (!userName) {
+      if (feedback) feedback.textContent = "Enter a username to continue.";
+      return;
+    }
+    if (feedback) feedback.textContent = "Entering crowdIQ...";
+    if (input) input.disabled = true;
+    if (elements.authUsername) elements.authUsername.value = userName;
+    await completeLogin(userName);
+    if (!isAuthenticated() && feedback) {
+      feedback.textContent = elements.authFeedback?.textContent || "Something went wrong.";
+    }
+    if (input) input.disabled = false;
+  });
+}
+
+function dismissGuestHero() {
+  const hero = elements.homeGuestHero;
+  if (!hero || hero.classList.contains("is-hidden")) return;
+  hero.classList.add("is-dismissing");
+  window.setTimeout(() => {
+    hero.innerHTML = "";
+    hero.classList.remove("is-dismissing");
+    hero.classList.add("is-hidden");
+  }, 300);
+}
+
+function ensureSeededMarketState() {
+  if (Array.isArray(state.markets) && state.markets.length) {
+    return;
+  }
+  state = {
+    ...state,
+    markets: authPreviewMarkets,
+    activeRoundNumber: state.activeRoundNumber || CURRENT_ROUND_NUMBER,
+    activeRoundLabel: state.activeRoundLabel || CURRENT_ROUND_LABEL
+  };
 }
 
 function renderAuthPreview() {
-  const markets = state.markets?.length ? state.markets : authPreviewMarkets;
-  const roundLabel = CURRENT_ROUND_LABEL || "Round 3";
-  const liveTradeCount = state.markets?.length
-    ? state.markets.reduce((total, market) => total + tradeCountFor(market), 0)
-    : 127;
+  const markets = state.markets?.length
+    ? getActiveRoundMarkets()
+    : authPreviewMarkets.filter((market) => marketRoundNumber(market) === activeRoundNumber());
+  const roundLabel = activeRoundLabel();
+  const liveTradeCount = markets.length
+    ? markets.reduce((total, market) => total + tradeCountFor(market), 0)
+    : 0;
   const tickerSegment = `${roundLabel} now open &middot; ${liveTradeCount} trades placed &middot; Live projections moving &middot; Markets close at kick-off`;
   const featuredMarkets = markets
     .slice()
@@ -531,11 +878,11 @@ function renderAuthPreview() {
         },
         {
           playerName: "Daly Cherry-Evans",
-          team: "Sea Eagles",
-          position: "Halfback",
-          line: "49.5 pts",
-          movementLabel: "↓ 1.0 today",
-          movementClassName: "is-down"
+          team: "Roosters",
+          position: "Five-Eighth",
+          line: "43.0 pts",
+          movementLabel: "↑ 0.5 today",
+          movementClassName: "is-up"
         }
       ];
 
@@ -584,6 +931,9 @@ function renderAuthPreview() {
 
 function startLiveSync() {
   stopLiveSync();
+  if (backendState.mode === "local") {
+    return;
+  }
   syncTimer = window.setInterval(() => {
     refreshSharedState();
   }, LIVE_SYNC_MS);
@@ -617,31 +967,55 @@ async function refreshSharedState() {
   }
 }
 
+async function handlePageResume() {
+  if (syncInFlight) {
+    return;
+  }
+  ensureSeededMarketState();
+  try {
+    await syncSession();
+  } catch (error) {
+    console.warn("Resume session sync failed", error.message);
+    ensureSeededMarketState();
+  }
+  startLiveSync();
+  applyLiveStateRender();
+}
+
 function renderAll() {
-  renderHeaderBalance();
-  renderScreens();
-  renderTeamToggle();
-  renderSelectors();
-  renderHome();
-  renderSearchResults();
-  renderSelectedMarket();
-  renderMarketsList();
-  renderPortfolio();
-  renderQuickTake();
-  renderPrizePool();
-  renderLeaderboard();
-  renderProfileSummary();
-  renderAdminShell();
-  renderAdminDashboard();
-  renderAdminMarkets();
-  renderBotSimulation();
-  renderAdminTable();
-  syncOpeningForm();
-  scheduleKickoffRefresh();
-  syncPrizePoolPolling();
+  normalizeNavigationState();
+  safelyRender("header balance", renderHeaderBalance);
+  safelyRender("guest hero", renderGuestHero);
+  safelyRender("screens", renderScreens);
+  safelyRender("team toggle", renderTeamToggle);
+  safelyRender("selectors", renderSelectors);
+  safelyRender("home", renderHome);
+  safelyRender("search results", renderSearchResults);
+  safelyRender("selected market", renderSelectedMarket);
+  safelyRender("markets list", renderMarketsList);
+  safelyRender("portfolio", renderPortfolio);
+  safelyRender("wallet", renderWallet);
+  safelyRender("quick take", renderQuickTake);
+  safelyRender("prize pool", renderPrizePool);
+  safelyRender("prize pool share overlay", renderPrizePoolShareOverlay);
+  safelyRender("leaderboard", renderLeaderboard);
+  safelyRender("profile summary", renderProfileSummary);
+  safelyRender("admin shell", renderAdminShell);
+  safelyRender("admin dashboard", renderAdminDashboard);
+  safelyRender("admin markets", renderAdminMarkets);
+  safelyRender("bot simulation", renderBotSimulation);
+  safelyRender("admin table", renderAdminTable);
+  safelyRender("opening form", syncOpeningForm);
+  safelyRender("kickoff refresh", scheduleKickoffRefresh);
+  safelyRender("prize pool polling", syncPrizePoolPolling);
 }
 
 function renderHeaderBalance() {
+  if (!elements.headerBalance) return;
+  if (!isAuthenticated()) {
+    elements.headerBalance.innerHTML = `<button class="header-signup-button" type="button">Sign Up Now to Trade</button>`;
+    return;
+  }
   const bankroll = getDisplayedCash(currentUserName());
   elements.headerBalance.innerHTML = `<i class="ph-fill ph-wallet header-balance-icon" aria-hidden="true"></i><span class="header-balance-label">Wallet</span><strong>${formatStake(bankroll)}</strong>`;
 }
@@ -657,7 +1031,7 @@ function renderScreens() {
     button.classList.toggle("active", button.dataset.accountView === uiState.activeAccountView)
   );
   elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
-  elements.accountLeaderboardView?.classList.toggle("active", uiState.activeAccountView === "leaderboard");
+  elements.accountWalletView?.classList.toggle("active", uiState.activeAccountView === "wallet");
   elements.toast?.classList.toggle("toast-low", ["quickpick", "prizepool"].includes(uiState.activeScreen));
 }
 
@@ -683,11 +1057,12 @@ function renderTeamToggle() {
 }
 
 function renderSelectors() {
-  const options = state.markets
+  const adminMarkets = getAdminRoundMarkets();
+  const options = adminMarkets
     .map((market) => `<option value="${market.id}">${market.playerName} (${formatLine(market.currentLine)})</option>`)
     .join("");
   elements.openingMarket.innerHTML = options;
-  elements.settlementMarket.innerHTML = state.markets
+  elements.settlementMarket.innerHTML = adminMarkets
     .map((market) => `<option value="${market.id}">${market.playerName}${market.settlement ? " (resolved)" : ""}</option>`)
     .join("");
 }
@@ -711,23 +1086,28 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
   markets.forEach((market) => {
     const row = template.content.firstElementChild.cloneNode(true);
     const movement = getMovementText(market);
-    const comparisonWidth = comparisonPercent(market.currentLine, market.seasonAverage);
     const metrics = getMarketTradeMetrics(market);
     const isExpanded = expandable && market.id === uiState.expandedMarketId;
     const status = getMarketStatus(market);
+    const teamColors = TEAM_COLORS[market.team] ?? TEAM_COLORS[normalizeTeamName(market.team)] ?? { primary: "#101722", secondary: "#ffffff" };
     row.dataset.marketId = market.id;
     row.classList.toggle("is-selected", market.id === uiState.selectedMarketId);
     row.classList.toggle("is-expanded", isExpanded);
     row.classList.toggle("is-locked", status.className === "status-locked");
     row.querySelector(".player-name").textContent = market.playerName;
     row.querySelector(".player-meta").textContent = `${market.position} | Avg ${market.seasonAverage.toFixed(1)}`;
-    row.querySelector(".season-average").textContent = "";
+    const teamPill = row.querySelector(".match-centre-team-pill");
+    if (teamPill) {
+      teamPill.textContent = homeTeamAbbreviation(market.team);
+      teamPill.style.background = teamColors.primary;
+      teamPill.style.color = teamColors.secondary || "#ffffff";
+      teamPill.style.border = "none";
+      teamPill.style.boxShadow = "none";
+    }
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
     row.querySelector(".projection-move").className = `projection-move ${movement.className}`;
     row.querySelector(".market-confidence-slot").innerHTML = `<span class="status-chip ${status.className}">${status.label}</span>`;
-    row.querySelector(".projection-average").textContent = "";
-    row.querySelector(".comparison-fill").style.width = `${comparisonWidth}%`;
     row.addEventListener("click", () => {
       uiState.currentGameId = market.gameId;
       uiState.currentTeam = market.team;
@@ -737,11 +1117,10 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
       uiState.activeScreen = "markets";
       renderAll();
     });
-    container.appendChild(row);
-
     if (isExpanded) {
       const panel = document.createElement("article");
-      panel.className = "inline-market-panel";
+      panel.className = "inline-market-panel is-expanded-card match-expanded-card";
+      panel.dataset.marketId = market.id;
       panel.innerHTML = marketDetailMarkup(market);
       container.appendChild(panel);
       bindTradeSheetEvents(panel, market.id);
@@ -753,7 +1132,9 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
           stakeInput?.select();
         });
       }
+      return;
     }
+    container.appendChild(row);
   });
 }
 
@@ -774,7 +1155,7 @@ function renderSelectedMarket() {
 }
 
 function renderLeaderboard() {
-  const rows = getLeaderboardRows();
+  const rows = getLeaderboardRows({ sort: uiState.leaderboardSort, timeFilter: uiState.leaderboardTimeFilter });
   const leaders = rows.slice(0, 3);
   elements.leaderboardSummary.innerHTML = [
     leaderboardMetricCard("Leader", leaders[0] ? leaders[0].userName : "No users yet"),
@@ -787,24 +1168,35 @@ function renderLeaderboard() {
     elements.leaderboardList.innerHTML = `<div class="portfolio-empty-state"><strong>No rankings yet</strong><span>No traders have placed a position yet.</span></div>`;
     return;
   }
+  const activeUser = currentUserName().toLowerCase();
   elements.leaderboardList.innerHTML = rows
     .map(
       (row, index) =>
-        `<article class="leaderboard-card ${index < 3 ? "is-top-rank" : ""}"><div class="leaderboard-rank">${index + 1}</div><div class="leaderboard-copy"><strong>${row.userName}</strong><span class="leaderboard-meta">${row.tradesCount} trades | ${row.winRate}% win rate</span><span class="leaderboard-position">${row.largestOpen ? `${row.largestOpen.playerName ?? findMarket(row.largestOpen.marketId)?.playerName ?? "Unknown"} ${row.largestOpen.side} ${row.largestOpen.entryLine.toFixed(1)} | ${formatStake(row.largestOpen.stake)}` : "No open position"}</span></div><div class="leaderboard-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : ""}">${formatSignedStake(row.realized)}</span></div></article>`
+        leaderboardRowMarkup(row, index, row.userName.toLowerCase() === activeUser)
     )
     .join("");
 }
 
 function renderLeaderboardControls() {
-  const options = [
+  const sortOptions = [
     ["BALANCE", "Top balance"],
     ["WIN_RATE", "Win rate"],
     ["TRADES", "Most trades"]
   ];
-  elements.leaderboardSortChips.innerHTML = options
+  const timeOptions = [
+    ["THIS_ROUND", "This Round"],
+    ["ALL_TIME", "All Time"]
+  ];
+  elements.leaderboardSortChips.innerHTML = sortOptions
     .map(
       ([value, label]) =>
         `<button class="portfolio-chip ${uiState.leaderboardSort === value ? "active" : ""}" type="button" data-leaderboard-sort="${value}">${label}</button>`
+    )
+    .join("");
+  elements.leaderboardTimeChips.innerHTML = timeOptions
+    .map(
+      ([value, label]) =>
+        `<button class="portfolio-chip ${uiState.leaderboardTimeFilter === value ? "active" : ""}" type="button" data-leaderboard-time-filter="${value}">${label}</button>`
     )
     .join("");
 }
@@ -828,21 +1220,48 @@ function marketDetailMarkup(market) {
   const stakeDraft = uiState.stakeDrafts[market.id] ?? 10;
   const isPending = uiState.pendingTradeMarketId === market.id;
   const isLocked = isMarketLocked(market);
+  const isGuest = !isAuthenticated();
   const currentPair = linePairForMarket(market);
   const side = getMarketTradeSide(market.id);
   const status = getMarketStatus(market);
   const movement = getMovementText(market);
   const nextLine = calculateNextLine(market, side, 10);
   const metrics = getMarketTradeMetrics(market);
-  return `<div class="trade-ticket"><div class="hero-head trade-ticket-head"><div><div class="hero-player">${market.playerName}</div><div class="hero-meta">${market.team} | ${market.position}</div></div><div class="trade-ticket-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="hero-price trade-ticket-price"><div class="hero-price-value">${market.currentLine.toFixed(1)}</div><div class="hero-delta ${movement.className}">${movement.arrow} ${movement.label}</div></div><div class="hero-comparison trade-spread-inline"><div class="trade-spread-grid"><div class="trade-spread-row"><span class="trade-label">Projection</span><strong>Under ${currentPair.underLine.toFixed(1)} <span class="trade-divider">|</span> Over ${currentPair.overLine.toFixed(1)}</strong></div><div class="trade-spread-row"><span class="trade-label">Next midpoint</span><strong>${nextLine.toFixed(1)}</strong></div></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${isLocked ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${isPending || isLocked ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${isPending || isLocked ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${isPending || isLocked ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${isPending || isLocked ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${isPending || isLocked ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${isPending || isLocked ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><span class="trade-note-copy">${isLocked ? "Trading closed at kickoff for this match." : "Fills against waiting orders first, then shifts the projection if needed"}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : ""}</p></form></div>`;
+  const performance = quickPickPerformanceSummary(market);
+  const matchup = matchupContext(market);
+  const teamColors = TEAM_COLORS[market.team] ?? TEAM_COLORS[normalizeTeamName(market.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
+  const controlsDisabled = isPending || isLocked || isGuest;
+  const executionCopy = isGuest
+    ? "Browse the live projection and sign up when you're ready to place a position."
+    : isLocked
+      ? "Trading closed at kickoff for this match."
+      : "Fills against waiting orders first, then shifts the projection if needed.";
+  return `<div class="trade-ticket trade-ticket-compact trade-ticket-quick quick-take-card player-card-shell ${controlsDisabled ? "is-locked" : ""}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(market)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Match Centre</span></div><div class="quick-take-header"><div><h3>${market.playerName}</h3><p>${market.team} | ${market.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence, true)}</div></div><div class="trade-ticket-metric-row"><div class="trade-ticket-projection-block"><div class="quick-take-line trade-ticket-projection">${market.currentLine.toFixed(1)}</div><span class="quick-take-move trade-ticket-projection-delta ${movement.className}">${movement.arrow} ${movement.label}</span></div><div class="trade-ticket-metric-meta"><span class="trade-ticket-next-mid">Next mid ${nextLine.toFixed(1)}</span></div></div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : isGuest ? `<span>Read-only until you sign up</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${controlsDisabled ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${controlsDisabled ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${controlsDisabled ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${controlsDisabled ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${controlsDisabled ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${controlsDisabled ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><button type="button" class="trade-note-button" data-trade-note-toggle aria-label="Explain execution">ⓘ</button><span class="trade-note-popover" role="note">${executionCopy}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : isGuest ? "Sign up to trade" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : isGuest ? "Browse every player market now. Sign up to place a position." : ""}</p></form></div>`;
 }
 
 function bindTradeSheetEvents(panel, marketId) {
   const tradeForm = panel.querySelector("#trade-form");
   const stakeInput = panel.querySelector("#stake-input");
   const stakeReturn = panel.querySelector("#stake-return");
+  const tradeNoteToggle = panel.querySelector("[data-trade-note-toggle]");
+  const tradeNotePopover = panel.querySelector(".trade-note-popover");
+  if (tradeNoteToggle && tradeNotePopover) {
+    tradeNoteToggle.addEventListener("click", () => {
+      tradeNotePopover.classList.toggle("is-visible");
+    });
+  }
+
   const market = findMarket(marketId);
+  tradeForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitTrade(marketId, Number(stakeInput?.value) || 0, panel);
+  });
+
   if (isMarketLocked(market)) {
+    return;
+  }
+
+  if (!isAuthenticated()) {
     return;
   }
 
@@ -869,11 +1288,6 @@ function bindTradeSheetEvents(panel, marketId) {
   stakeInput.addEventListener("input", () => {
     uiState.stakeDrafts[marketId] = Number(stakeInput.value) || 0;
     stakeReturn.textContent = formatStake((Number(stakeInput.value) || 0) * 2);
-  });
-
-  tradeForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await submitTrade(marketId, Number(stakeInput.value) || 0, panel);
   });
 
   if (isMarketLocked(market)) {
@@ -908,6 +1322,11 @@ function applyLiveStateRender() {
 
 async function submitTrade(marketId, stake, panel) {
   const feedback = panel.querySelector("#trade-feedback");
+  if (!isAuthenticated()) {
+    if (feedback) feedback.textContent = "Sign in to place a position.";
+    openAuthPrompt("signup");
+    return;
+  }
   const tradeSide = getMarketTradeSide(marketId);
   const market = findMarket(marketId);
   if (isMarketLocked(market)) {
@@ -922,7 +1341,11 @@ async function submitTrade(marketId, stake, panel) {
   renderAll();
   try {
     const response = await executeTrade(marketId, stake, tradeSide);
-    applySharedSnapshot({ ...response, backend: response.backend || backendState, prizePool: response.prizePool || prizePoolState });
+    if (response.state) {
+      applySharedSnapshot({ ...response, backend: response.backend || backendState, prizePool: response.prizePool || prizePoolState });
+    } else {
+      applyIncrementalTradeResponse(response, marketId);
+    }
     const submittedTrade = response.trade;
     delete uiState.stakeDrafts[marketId];
     uiState.pendingTradeMarketId = "";
@@ -935,7 +1358,9 @@ async function submitTrade(marketId, stake, panel) {
         ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
         : `Posted ${formatStake(submittedTrade?.unmatchedStake || stake)} on ${tradeSide}`;
     showToast("Position submitted", toastMessage);
-    refreshSharedState();
+    if (backendState.mode !== "local") {
+      refreshSharedState();
+    }
   } catch (error) {
     uiState.pendingTradeMarketId = "";
     uiState.focusStakeMarketId = marketId;
@@ -955,6 +1380,83 @@ function executeTrade(marketId, stake, side) {
     side,
     stake
   });
+}
+
+async function submitWalletDeposit() {
+  const amount = Number(uiState.walletAmountDraft || elements.walletAmountInput?.value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = "Enter a valid deposit amount.";
+    }
+    return;
+  }
+  if (elements.walletFeedback) {
+    elements.walletFeedback.textContent = "Depositing...";
+  }
+  try {
+    const response = await api("/api/wallet/deposit", {
+      userName: currentUserName(),
+      amount
+    });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool || prizePoolState });
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = response.message || "Deposit completed.";
+    }
+    triggerBalanceFlash();
+    renderAll();
+  } catch (error) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = error.message;
+    }
+  }
+}
+
+async function submitWalletWithdrawal() {
+  const amount = Number(uiState.walletAmountDraft || elements.walletAmountInput?.value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = "Enter a valid withdrawal amount.";
+    }
+    return;
+  }
+  if (elements.walletFeedback) {
+    elements.walletFeedback.textContent = "Submitting withdrawal request...";
+  }
+  try {
+    const response = await api("/api/wallet/withdraw", {
+      userName: currentUserName(),
+      amount
+    });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool || prizePoolState });
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = response.message || "Withdrawal request recorded.";
+    }
+    renderAll();
+  } catch (error) {
+    if (elements.walletFeedback) {
+      elements.walletFeedback.textContent = error.message;
+    }
+  }
+}
+
+function applyIncrementalTradeResponse(response, marketId) {
+  if (response.prizePool) {
+    prizePoolState = response.prizePool;
+  }
+  if (response.backend) {
+    backendState = response.backend;
+  }
+  if (Number.isFinite(Number(response.balance))) {
+    state.bankrolls[currentUserName()] = Number(response.balance);
+  }
+  const market = findMarket(marketId);
+  if (!market) return;
+  if (response.market) {
+    Object.assign(market, response.market);
+  }
+  if (response.trade && !market.trades.some((trade) => trade.id === response.trade.id)) {
+    market.trades.push(response.trade);
+  }
 }
 
 function executeQuickTakeTrade(marketId, side) {
@@ -991,8 +1493,53 @@ function renderPortfolio() {
     matchedBalance,
     unmatchedBalance
   });
+  renderPortfolioPrizePoolCard();
   renderPortfolioFilters();
   renderPortfolioPositionCards(elements.portfolioList, positions, "No positions match that filter yet.");
+}
+
+function renderPortfolioPrizePoolCard() {
+  if (!elements.portfolioPrizePoolCard) return;
+  const view = prizePoolState;
+  if (!view) {
+    elements.portfolioPrizePoolCard.innerHTML = "";
+    return;
+  }
+  if (view.hasEntry && view.entry) {
+    const hasLivePrizePoolResults = view.isFinal || (Number(view.entry.startingSettledCount) || 0) > 0;
+    const correctPct = Math.round((Number(view.entry.correctPct) || 0) * 100);
+    const progress = hasLivePrizePoolResults ? Math.max(0, Math.min(100, correctPct)) : 0;
+    elements.portfolioPrizePoolCard.innerHTML = `
+      <button class="profile-prize-pool-card is-entered" type="button" data-open-prize-pool="lineup">
+        <div class="profile-prize-pool-topline">
+          <span class="profile-prize-pool-kicker">PRIZE POOL · ROUND ${view.roundNumber}</span>
+          <span class="profile-prize-pool-status">Entered</span>
+        </div>
+        <div class="profile-prize-pool-stats">
+          <span><em>Stake</em><strong>${formatStake(view.entryFee || 10)}</strong></span>
+          <span><em>Correct %</em><strong>${prizePoolPercentLabel(view.entry.correctPct, { settledCount: view.entry.startingSettledCount, isFinal: view.isFinal })}</strong></span>
+          <span><em>Rank</em><strong class="is-rank">${view.entry.rank ? `#${view.entry.rank}` : "—"}</strong></span>
+        </div>
+        <div class="portfolio-performance-progress profile-prize-pool-progress"><span style="width:${progress}%"></span></div>
+      </button>
+    `;
+    elements.portfolioPrizePoolCard.querySelector("[data-open-prize-pool]")?.addEventListener("click", () => {
+      uiState.activeScreen = "prizepool";
+      renderAll();
+    });
+    return;
+  }
+  elements.portfolioPrizePoolCard.innerHTML = `
+    <article class="profile-prize-pool-card is-empty">
+      <p class="profile-prize-pool-empty-copy">You haven't entered this week's Prize Pool</p>
+      <button class="profile-prize-pool-enter-button" type="button" data-enter-prize-pool>Enter for ${formatStake(view.entryFee || 10)}</button>
+    </article>
+  `;
+  elements.portfolioPrizePoolCard.querySelector("[data-enter-prize-pool]")?.addEventListener("click", async () => {
+    uiState.activeScreen = "prizepool";
+    renderAll();
+    await startPrizePoolDraft();
+  });
 }
 
 function renderPositionCards(container, trades, emptyMessage) {
@@ -1091,6 +1638,150 @@ function renderPortfolioFilters() {
     })
   );
   elements.portfolioSortButton.innerHTML = `<span>Sort</span><strong>${portfolioSortLabel(uiState.portfolioSort)}</strong>`;
+}
+
+function renderWallet() {
+  if (!elements.walletSummary || !elements.walletTransactionList) return;
+  const wallet = getWalletData();
+  const selectedAmount = uiState.walletAmountDraft || "25";
+  if (elements.walletAmountInput && elements.walletAmountInput.value !== selectedAmount) {
+    elements.walletAmountInput.value = selectedAmount;
+  }
+  elements.walletSummary.innerHTML = [
+    summaryStat("Available", formatStake(wallet.availableBalance)),
+    summaryStat("In Play", formatStake(wallet.inPlay)),
+    summaryStat("Deposits", formatStake(wallet.totalDeposits)),
+    summaryStat("Winnings", formatStake(wallet.totalWinnings), wallet.totalWinnings > 0 ? 1 : 0)
+  ].join("");
+  renderWalletFilters();
+  renderWalletTransactions(wallet.transactions);
+}
+
+function renderWalletFilters() {
+  if (!elements.walletFilters) return;
+  const filters = [
+    ["ALL", "All"],
+    ["FUNDS", "Funds"],
+    ["ENTRIES", "Entries"],
+    ["WINNINGS", "Winnings"],
+    ["PRIZEPOOL", "Prize Pool"],
+    ["WITHDRAWALS", "Withdrawals"]
+  ];
+  elements.walletFilters.innerHTML = filters
+    .map(([value, label]) => `<button class="portfolio-chip ${uiState.walletFilter === value ? "active" : ""}" type="button" data-wallet-filter="${value}">${label}</button>`)
+    .join("");
+  elements.walletFilters.querySelectorAll("[data-wallet-filter]").forEach((button) =>
+    button.addEventListener("click", () => {
+      uiState.walletFilter = button.dataset.walletFilter;
+      renderWallet();
+    })
+  );
+}
+
+function renderWalletTransactions(transactions) {
+  if (!elements.walletTransactionList) return;
+  if (!transactions.length) {
+    elements.walletTransactionList.innerHTML = `<div class="portfolio-empty-state"><strong>No wallet transactions yet</strong><span>Your deposits, entries, winnings, refunds, and withdrawal requests will appear here.</span></div>`;
+    return;
+  }
+  elements.walletTransactionList.innerHTML = transactions
+    .map((transaction) => {
+      const view = walletTransactionView(transaction);
+      return `
+        <article class="wallet-transaction-card">
+          <div class="wallet-transaction-main">
+            <div class="wallet-transaction-copy">
+              <div class="wallet-transaction-topline">
+                <span class="wallet-transaction-title">${view.title}</span>
+                <span class="wallet-transaction-pill ${view.pillClassName}">${view.pillLabel}</span>
+              </div>
+              <p class="wallet-transaction-subtitle">${view.subtitle}</p>
+              <div class="wallet-transaction-meta">
+                <span>${formatTimestamp(transaction.createdAt)}</span>
+                <span>Balance ${formatStake(transaction.balanceAfter)}</span>
+              </div>
+            </div>
+            <div class="wallet-transaction-amount ${view.amountClassName}">${view.amountLabel}</div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function getWalletData() {
+  const userName = currentUserName();
+  const transactions = filterWalletTransactions(getUserWalletTransactions(userName));
+  const allTransactions = getUserWalletTransactions(userName);
+  const openPositions = getPortfolioData().openPositions || [];
+  const inPlay = openPositions.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0);
+  const totalDeposits = allTransactions
+    .filter((transaction) => ["OPENING_BALANCE", "DEPOSIT"].includes(transaction.type))
+    .reduce((sum, transaction) => sum + Math.max(0, Number(transaction.amount) || 0), 0);
+  const totalWinnings = allTransactions
+    .filter((transaction) => ["TRADE_SETTLEMENT_WIN", "TRADE_REFUND", "PRIZE_POOL_PAYOUT"].includes(transaction.type))
+    .reduce((sum, transaction) => sum + Math.max(0, Number(transaction.amount) || 0), 0);
+  return {
+    availableBalance: getDisplayedCash(userName),
+    inPlay,
+    totalDeposits,
+    totalWinnings,
+    transactions
+  };
+}
+
+function getUserWalletTransactions(userName) {
+  if (!userName) return [];
+  return (state.walletTransactions || [])
+    .filter((transaction) => transaction.userName?.toLowerCase?.() === userName.toLowerCase())
+    .slice()
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+}
+
+function filterWalletTransactions(transactions) {
+  return transactions.filter((transaction) => {
+    if (uiState.walletFilter === "ALL") return true;
+    if (uiState.walletFilter === "FUNDS") return ["OPENING_BALANCE", "DEPOSIT"].includes(transaction.type);
+    if (uiState.walletFilter === "ENTRIES") return ["TRADE_MATCH", "TRADE_REFUND"].includes(transaction.type);
+    if (uiState.walletFilter === "WINNINGS") return ["TRADE_SETTLEMENT_WIN", "PRIZE_POOL_PAYOUT"].includes(transaction.type);
+    if (uiState.walletFilter === "PRIZEPOOL") return ["PRIZE_POOL_ENTRY", "PRIZE_POOL_PAYOUT"].includes(transaction.type);
+    if (uiState.walletFilter === "WITHDRAWALS") return transaction.type === "WITHDRAWAL_REQUEST";
+    return true;
+  });
+}
+
+function walletTransactionView(transaction) {
+  const requestedAmount = Number(transaction.requestedAmount) || 0;
+  const amount = Number(transaction.amount) || 0;
+  const baseView = {
+    title: transaction.title || "Wallet update",
+    subtitle: transaction.subtitle || "Account activity",
+    pillLabel: transaction.status === "REJECTED" ? "Demo only" : "Completed",
+    pillClassName: transaction.status === "REJECTED" ? "is-muted" : "is-completed",
+    amountClassName: amount > 0 ? "positive" : amount < 0 ? "negative" : "neutral",
+    amountLabel: amount === 0 && requestedAmount > 0 ? `${formatStake(requestedAmount)} requested` : formatSignedStake(amount)
+  };
+  if (transaction.type === "WITHDRAWAL_REQUEST") {
+    return {
+      ...baseView,
+      pillLabel: transaction.status === "REJECTED" ? "Rejected" : baseView.pillLabel,
+      pillClassName: transaction.status === "REJECTED" ? "is-rejected" : baseView.pillClassName,
+      amountClassName: "neutral"
+    };
+  }
+  if (transaction.type === "TRADE_MATCH" || transaction.type === "PRIZE_POOL_ENTRY") {
+    return { ...baseView, pillLabel: "Entry", pillClassName: "is-entry" };
+  }
+  if (transaction.type === "TRADE_SETTLEMENT_WIN" || transaction.type === "PRIZE_POOL_PAYOUT") {
+    return { ...baseView, pillLabel: "Win", pillClassName: "is-win" };
+  }
+  if (transaction.type === "TRADE_REFUND") {
+    return { ...baseView, pillLabel: "Refund", pillClassName: "is-refund" };
+  }
+  if (transaction.type === "DEPOSIT" || transaction.type === "OPENING_BALANCE") {
+    return { ...baseView, pillLabel: "Funds", pillClassName: "is-funds" };
+  }
+  return baseView;
 }
 
 function buildPortfolioItems(openTrades, settledTrades) {
@@ -1227,9 +1918,11 @@ async function submitQuickTake(marketId, side, card) {
         ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
         : `Posted ${formatStake(submittedTrade?.unmatchedStake || 1)} on ${side}`;
     showToast("Quick Pick submitted", toastMessage);
-    window.setTimeout(() => {
-      refreshSharedState();
-    }, 150);
+    if (backendState.mode !== "local") {
+      window.setTimeout(() => {
+        refreshSharedState();
+      }, 150);
+    }
   } catch (error) {
     if (uiState.quickPickPendingRequestId !== requestId) return;
     uiState.quickPickPendingCardId = "";
@@ -1455,6 +2148,7 @@ function renderPrizePoolEntryState(view) {
   const entry = view.entry;
   const split = splitPrizePoolPicks(entry.picks || []);
   const summaryPct = Number(entry.correctPct) || 0;
+  const hasLivePrizePoolResults = view.isFinal || (Number(entry.startingSettledCount) || 0) > 0;
   const payoutCards = view.isFinal
     ? `<div class="prize-pool-final-banner"><strong>Final rank #${entry.rank}</strong><span>${entry.payout ? `Payout ${formatStake(entry.payout)}` : "No payout this week"}</span></div>`
     : "";
@@ -1473,11 +2167,12 @@ function renderPrizePoolEntryState(view) {
       <div class="prize-pool-inline-stats-card">
         <div class="prize-pool-inline-stats">
           <span><em>Starting</em><strong>${entry.startingCorrectCount || 0}/${split.starting.length || Number(view.startingSlotCount) || 13}</strong></span>
-          <span><em>Correct %</em><strong>${prizePoolPercentLabel(summaryPct)}</strong></span>
+          <span><em>Correct %</em><strong>${prizePoolPercentLabel(summaryPct, { settledCount: entry.startingSettledCount, isFinal: view.isFinal })}</strong></span>
           <span><em>Rank</em><strong>#${entry.rank || "—"}</strong></span>
         </div>
-        <div class="prize-pool-progress"><span style="width:${Math.max(0, Math.min(100, summaryPct * 100))}%"></span></div>
+        <div class="prize-pool-progress"><span style="width:${hasLivePrizePoolResults ? Math.max(0, Math.min(100, summaryPct * 100)) : 0}%"></span></div>
       </div>
+      <button id="prize-pool-share-lineup" class="prize-pool-share-trigger" type="button"><i class="ph-fill ph-share-network" aria-hidden="true"></i><span>Share Lineup</span></button>
       ${payoutCards}
     </section>
     <section class="section-block prize-pool-summary-block">
@@ -1508,6 +2203,9 @@ function renderPrizePoolEntryState(view) {
     uiState.prizePoolInterchangeRulesExpanded = !uiState.prizePoolInterchangeRulesExpanded;
     renderPrizePool();
   });
+  elements.prizePoolShell.querySelector("#prize-pool-share-lineup")?.addEventListener("click", () => {
+    openPrizePoolShareOverlay();
+  });
 }
 
 function renderPrizePoolLeaderboard(view, heading) {
@@ -1515,8 +2213,9 @@ function renderPrizePoolLeaderboard(view, heading) {
   const rows = (view.leaderboard || []).length
     ? view.leaderboard.map((row) => {
       const tone = row.rank === 1 ? "is-first" : row.rank === 2 ? "is-second" : row.rank === 3 ? "is-third" : "";
-      const width = Math.max(0, Math.min(100, (Number(row.correctPct) || 0) * 100));
-      return `<article class="prize-pool-leader-card ${row.userName.toLowerCase() === currentUser ? "is-current-user" : ""}"><div class="prize-pool-rank-badge ${tone}">${row.rank}</div><div class="prize-pool-leader-copy"><div class="prize-pool-leader-top"><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct)}</span></div><div class="prize-pool-progress"><span style="width:${width}%"></span></div><div class="prize-pool-leader-foot">${row.startingCorrectCount || 0} starting correct · ${row.interchangeCorrectCount || 0} interchange${view.isFinal && row.payout ? ` | ${formatStake(row.payout)}` : ""}</div></div></article>`;
+      const hasLivePrizePoolResults = view.isFinal || (Number(row.startingSettledCount) || 0) > 0;
+      const width = hasLivePrizePoolResults ? Math.max(0, Math.min(100, (Number(row.correctPct) || 0) * 100)) : 0;
+      return `<article class="prize-pool-leader-card ${row.userName.toLowerCase() === currentUser ? "is-current-user" : ""}"><div class="prize-pool-rank-badge ${tone}">${row.rank}</div><div class="prize-pool-leader-copy"><div class="prize-pool-leader-top"><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct, { settledCount: row.startingSettledCount, isFinal: view.isFinal })}</span></div><div class="prize-pool-progress"><span style="width:${width}%"></span></div><div class="prize-pool-leader-foot">${row.startingCorrectCount || 0} starting correct · ${row.interchangeCorrectCount || 0} interchange${view.isFinal && row.payout ? ` | ${formatStake(row.payout)}` : ""}</div></div></article>`;
     }).join("")
     : `<div class="portfolio-empty-state"><strong>No entrants yet</strong><span>The pool amount updates as users submit teams.</span></div>`;
   return `
@@ -1539,7 +2238,7 @@ function prizePoolPickRowMarkup(pick, index, includeResult = false) {
 }
 
 function prizePoolCompactStandingsRow(row) {
-  return `<article class="prize-pool-compact-row"><span class="prize-pool-compact-rank">#${row.rank}</span><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct)}</span><small>${row.interchangeCorrectCount || 0} INT</small></article>`;
+  return `<article class="prize-pool-compact-row"><span class="prize-pool-compact-rank">#${row.rank}</span><strong>${row.userName}</strong><span>${prizePoolPercentLabel(row.correctPct, { settledCount: row.startingSettledCount, isFinal: false })}</span><small>${row.interchangeCorrectCount || 0} INT</small></article>`;
 }
 
 function prizePoolPayoutRows(view) {
@@ -1557,13 +2256,209 @@ function prizePoolDisplayAmount(view) {
   return Math.max(Number(view?.poolAmount) || 0, Number(view?.seedAmount) || 100);
 }
 
-function prizePoolPercentLabel(value) {
+function prizePoolPercentLabel(value, options = {}) {
+  if (!options.isFinal && (Number(options.settledCount) || 0) <= 0) {
+    return "Pending";
+  }
   return `${((Number(value) || 0) * 100).toFixed(0)}%`;
 }
 
 function formatPrizePoolSettlement(timestamp) {
   if (!timestamp) return "Monday";
   return new Date(timestamp).toLocaleString([], { weekday: "short", month: "short", day: "numeric" });
+}
+
+const PRIZE_POOL_SHARE_ROW_ORDER = [
+  { key: "HOK", slots: ["HK"], align: "center" },
+  { key: "MID", slots: ["P1", "LK", "P2"], align: "spread" },
+  { key: "EDG", slots: ["SR1", "SR2"], align: "spread" },
+  { key: "HLF", slots: ["HB", "FE"], align: "spread" },
+  { key: "CTR", slots: ["C1", "C2"], align: "spread" },
+  { key: "WFB", slots: ["W1", "FB", "W2"], align: "spread" }
+];
+
+const PRIZE_POOL_SHARE_POSITION_TO_SLOT = {
+  FULLBACK: ["FB"],
+  WINGER: ["W1", "W2"],
+  CENTRE: ["C1", "C2"],
+  "FIVE-EIGHTH": ["FE"],
+  HALFBACK: ["HB"],
+  HOOKER: ["HK"],
+  PROP: ["P1", "P2"],
+  "2ND ROW": ["SR1", "SR2"],
+  LOCK: ["LK"]
+};
+
+function openPrizePoolShareOverlay() {
+  if (!prizePoolState?.entry) return;
+  uiState.prizePoolShareOpen = true;
+  renderPrizePoolShareOverlay();
+}
+
+function closePrizePoolShareOverlay() {
+  if (!uiState.prizePoolShareOpen) return;
+  uiState.prizePoolShareOpen = false;
+  renderPrizePoolShareOverlay();
+}
+
+function ensurePrizePoolShareOverlay() {
+  let overlay = document.getElementById("prize-pool-share-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "prize-pool-share-overlay";
+    overlay.className = "prize-pool-share-overlay";
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+
+function renderPrizePoolShareOverlay() {
+  const overlay = document.getElementById("prize-pool-share-overlay");
+  if (!uiState.prizePoolShareOpen || !prizePoolState?.entry) {
+    if (overlay) overlay.remove();
+    document.body.classList.remove("prize-pool-share-open");
+    if (prizePoolShareFitFrame) {
+      window.cancelAnimationFrame(prizePoolShareFitFrame);
+      prizePoolShareFitFrame = null;
+    }
+    return;
+  }
+  const view = prizePoolState;
+  const entry = view.entry;
+  const split = splitPrizePoolPicks(entry.picks || []);
+  const shareOverlay = ensurePrizePoolShareOverlay();
+  const formation = buildPrizePoolShareFormation(split.starting);
+  shareOverlay.innerHTML = `
+    <div class="prize-pool-share-backdrop">
+      <button class="prize-pool-share-close" type="button" aria-label="Close share lineup view">✕ Close</button>
+      <div class="prize-pool-share-card">
+        <div class="prize-pool-share-topbar">
+          <h1 class="brand-wordmark prize-pool-share-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
+          <span class="prize-pool-share-round">ROUND ${view.roundNumber || currentRoundNumber() || "—"}</span>
+        </div>
+        <section class="prize-pool-share-hero">
+          <h2>${currentUserName()}'s Lineup</h2>
+          <p>Rank #${entry.rank || "—"} · Settles ${formatPrizePoolShareSettlement(view.settlementAt)}</p>
+          <div class="prize-pool-share-pool-lockup">
+            <span>PRIZE POOL</span>
+            <strong>${formatStake(prizePoolDisplayAmount(view))}</strong>
+          </div>
+        </section>
+        <section class="prize-pool-share-formation-shell">
+          <div class="prize-pool-share-formation-scale" data-prize-pool-share-scale>
+            ${formation}
+          </div>
+        </section>
+        <footer class="prize-pool-share-footer">
+          <span>crowdiq.app</span>
+          <em>Hold to save · Share your lineup</em>
+        </footer>
+      </div>
+    </div>
+  `;
+  shareOverlay.querySelector(".prize-pool-share-close")?.addEventListener("click", () => {
+    closePrizePoolShareOverlay();
+  });
+  document.body.classList.add("prize-pool-share-open");
+  schedulePrizePoolShareFit();
+}
+
+function buildPrizePoolShareFormation(picks = []) {
+  const slotMap = assignPrizePoolShareSlots(picks);
+  return PRIZE_POOL_SHARE_ROW_ORDER
+    .map((row, rowIndex) => {
+      const cards = row.slots.map((slotId) => {
+        const pick = slotMap.get(slotId);
+        return pick ? prizePoolSharePlayerCardMarkup(pick) : `<div class="prize-pool-share-player-card is-empty" aria-hidden="true"></div>`;
+      }).join("");
+      return `
+        <div class="prize-pool-share-row ${row.align === "center" ? "is-center" : ""}">
+          <span class="prize-pool-share-row-label">${row.key}</span>
+          <div class="prize-pool-share-row-cards prize-pool-share-row-cards-${row.slots.length}">
+            ${cards}
+          </div>
+        </div>
+        ${rowIndex < PRIZE_POOL_SHARE_ROW_ORDER.length - 1 ? `<div class="prize-pool-share-row-divider"></div>` : ""}
+      `;
+    })
+    .join("");
+}
+
+function assignPrizePoolShareSlots(picks = []) {
+  const remaining = [...picks];
+  const assigned = new Map();
+  PRIZE_POOL_SHARE_ROW_ORDER.flatMap((row) => row.slots).forEach((slotId) => {
+    const exactIndex = remaining.findIndex((pick) => String(pick?.slotId || "").toUpperCase() === slotId);
+    if (exactIndex >= 0) {
+      assigned.set(slotId, remaining.splice(exactIndex, 1)[0]);
+    }
+  });
+  remaining.splice(0).forEach((pick) => {
+    const candidateSlots = prizePoolShareSlotCandidates(pick);
+    const openSlot = candidateSlots.find((slotId) => !assigned.has(slotId));
+    if (openSlot) {
+      assigned.set(openSlot, pick);
+      return;
+    }
+    const fallbackSlot = PRIZE_POOL_SHARE_ROW_ORDER.flatMap((row) => row.slots).find((slotId) => !assigned.has(slotId));
+    if (fallbackSlot) assigned.set(fallbackSlot, pick);
+  });
+  return assigned;
+}
+
+function prizePoolShareSlotCandidates(pick) {
+  const rawPosition = String(pick?.position || pick?.positionLabel || "").toUpperCase();
+  const normalized = rawPosition
+    .replace(/\bSECOND\b/g, "2ND")
+    .replace(/\bROW\b/g, "ROW")
+    .replace(/\s+/g, " ")
+    .trim();
+  return PRIZE_POOL_SHARE_POSITION_TO_SLOT[normalized] || [];
+}
+
+function prizePoolSharePlayerCardMarkup(pick) {
+  const isSettled = pick.resultStatus && pick.resultStatus !== "PENDING" && Number.isFinite(Number(pick.actualScore));
+  const surname = prizePoolShareSurname(pick.playerName);
+  return `
+    <article class="prize-pool-share-player-card">
+      <strong class="prize-pool-share-player-name" title="${pick.playerName}">${surname}</strong>
+      <span class="prize-pool-share-call-pill ${pick.side === "OVER" ? "is-over" : "is-under"}">${pick.side}</span>
+      <span class="prize-pool-share-line ${isSettled ? `is-${pick.resultStatus === "CORRECT" ? "correct" : "incorrect"}` : ""}">${isSettled ? `${Number(pick.actualScore).toFixed(1)} ${pick.resultStatus === "CORRECT" ? "✅" : "❌"}` : Number(pick.line).toFixed(1)}</span>
+    </article>
+  `;
+}
+
+function prizePoolShareSurname(playerName) {
+  const parts = String(playerName || "").trim().split(/\s+/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "Player";
+}
+
+function formatPrizePoolShareSettlement(timestamp) {
+  if (!timestamp) return "Mon 00 Mar";
+  return new Date(timestamp).toLocaleDateString("en-NZ", { weekday: "short", day: "2-digit", month: "short" }).replace(",", "");
+}
+
+function schedulePrizePoolShareFit() {
+  if (!uiState.prizePoolShareOpen) return;
+  if (prizePoolShareFitFrame) {
+    window.cancelAnimationFrame(prizePoolShareFitFrame);
+  }
+  prizePoolShareFitFrame = window.requestAnimationFrame(() => {
+    prizePoolShareFitFrame = null;
+    fitPrizePoolShareFormation();
+  });
+}
+
+function fitPrizePoolShareFormation() {
+  const shell = document.querySelector(".prize-pool-share-formation-shell");
+  const scaleNode = document.querySelector("[data-prize-pool-share-scale]");
+  if (!shell || !scaleNode) return;
+  scaleNode.style.transform = "scale(1)";
+  const availableHeight = shell.clientHeight;
+  const naturalHeight = scaleNode.scrollHeight;
+  if (!availableHeight || !naturalHeight) return;
+  const scale = Math.max(0.74, Math.min(1, availableHeight / naturalHeight));
+  scaleNode.style.transform = `scale(${scale})`;
 }
 
 function renderPrizePoolTipJar(view) {
@@ -1646,6 +2541,10 @@ async function submitPrizePoolDraftPick(side, card) {
 }
 
 async function submitPrizePoolEntry() {
+  if (!isAuthenticated()) {
+    openAuthPrompt("signup");
+    return;
+  }
   if (!prizePoolState?.draft?.id) return;
   uiState.prizePoolPendingAction = "submit";
   renderPrizePool();
@@ -1693,8 +2592,18 @@ function renderProfileSummary() {
 function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
+  if (elements.adminRoundSelect) {
+    elements.adminRoundSelect.innerHTML = getAvailableRoundOptions()
+      .map((roundNumber) => `<option value="${roundNumber}">${roundLabelForNumber(roundNumber)}</option>`)
+      .join("");
+    elements.adminRoundSelect.value = String(activeRoundNumber());
+  }
+  if (elements.adminRoundSummary) {
+    const marketCount = state.markets.filter((market) => marketRoundNumber(market) === activeRoundNumber()).length;
+    elements.adminRoundSummary.textContent = `${activeRoundLabel()} is active. ${marketCount} seeded markets belong to this round.`;
+  }
   if (elements.settleRoundButton) {
-    elements.settleRoundButton.textContent = `Settle ${CURRENT_ROUND_LABEL} from imported scores`;
+    elements.settleRoundButton.textContent = `Settle ${activeRoundLabel()} from imported scores`;
   }
   if (elements.undoSettlementButton) {
     elements.undoSettlementButton.disabled = !state.lastSettlementBatch;
@@ -1703,7 +2612,7 @@ function renderAdminShell() {
 
 function renderAdminMarkets() {
   const filteredMarkets = getAdminMarkets();
-  const totalMarkets = state.markets.length;
+  const totalMarkets = getAdminRoundMarkets().length;
   elements.adminMarketControls.innerHTML = `<div><p class="panel-label">Visible markets</p><p class="section-meta">Showing ${filteredMarkets.length} of ${totalMarkets} markets. Defaults focus on open or moved markets to keep admin fast.</p></div><div class="portfolio-chip-row">${[
     ["ACTIVE", "Open only"],
     ["MOVED", "Moved"],
@@ -1824,7 +2733,7 @@ function renderBotSimulation() {
 
 function renderAdminTable() {
   const trades = getAdminTrades();
-  const allTradesCount = state.markets.reduce((sum, market) => sum + market.trades.length, 0);
+  const allTradesCount = getAdminRoundMarkets().reduce((sum, market) => sum + market.trades.length, 0);
   elements.adminTradeControls.innerHTML = `<div><p class="panel-label">Visible trades</p><p class="section-meta">Showing ${trades.length} of ${allTradesCount} trades. Default view prioritizes open and recent activity.</p></div><div class="portfolio-chip-row">${[
     ["OPEN", "Open"],
     ["BOTS", "Bots"],
@@ -1857,7 +2766,7 @@ function renderAdminTable() {
 }
 
 function getAdminMarkets() {
-  const sortedMarkets = state.markets
+  const sortedMarkets = getAdminRoundMarkets()
     .slice()
     .sort((left, right) => adminMarketRank(right) - adminMarketRank(left));
   const filteredMarkets = sortedMarkets.filter((market) => {
@@ -1879,7 +2788,7 @@ function adminMarketRank(market) {
 }
 
 function getAdminTrades() {
-  const trades = state.markets.flatMap((market) =>
+  const trades = getAdminRoundMarkets().flatMap((market) =>
     market.trades.map((trade) => ({ trade, market }))
   );
   const filteredTrades = trades
@@ -1897,11 +2806,14 @@ function getAdminTrades() {
 }
 
 function isBotTrade(trade) {
-  return trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
+  if (!trade) return false;
+  if (trade.botId || trade.botSource || trade.archetype) return true;
+  return getBotRosterMap().has(trade.userName) || trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
 }
 
 function getAdminDashboardSummary() {
-  const allTrades = state.markets.flatMap((market) => market.trades || []);
+  const adminRoundMarkets = getAdminRoundMarkets();
+  const allTrades = adminRoundMarkets.flatMap((market) => market.trades || []);
   const latestRoundMetrics = getLatestRoundMetrics();
   const totalTradedValue = allTrades.reduce((sum, trade) => sum + (Number(trade.stake) || 0), 0);
   const openTrades = allTrades.filter((trade) => !trade.result);
@@ -1909,13 +2821,13 @@ function getAdminDashboardSummary() {
   const availableLiquidity = openTrades.reduce((sum, trade) => sum + (Number(trade.unmatchedStake) || 0), 0);
   const matchedOpenTrades = openTrades.filter((trade) => (Number(trade.matchedStake) || 0) > 0).length;
   const pendingTrades = openTrades.filter((trade) => (Number(trade.unmatchedStake) || 0) > 0).length;
-  const overPressure = state.markets.reduce((sum, market) => sum + Math.max(0, Number(market.netPressure) || 0), 0);
-  const underPressure = state.markets.reduce((sum, market) => sum + Math.max(0, -(Number(market.netPressure) || 0)), 0);
+  const overPressure = adminRoundMarkets.reduce((sum, market) => sum + Math.max(0, Number(market.netPressure) || 0), 0);
+  const underPressure = adminRoundMarkets.reduce((sum, market) => sum + Math.max(0, -(Number(market.netPressure) || 0)), 0);
   const netPressure = overPressure - underPressure;
   const botTrades = allTrades.filter((trade) => isBotTrade(trade)).length;
-  const activeMarkets = state.markets.filter((market) => !market.settlement).length;
-  const resolvedMarkets = state.markets.length - activeMarkets;
-  const marketsNeedingAction = state.markets.filter((market) => adminMarketRank(market) >= 300).length;
+  const activeMarkets = adminRoundMarkets.filter((market) => !market.settlement).length;
+  const resolvedMarkets = adminRoundMarkets.length - activeMarkets;
+  const marketsNeedingAction = adminRoundMarkets.filter((market) => adminMarketRank(market) >= 300).length;
   const botShare = allTrades.length ? Math.round((botTrades / allTrades.length) * 100) : 0;
 
   return {
@@ -2087,6 +2999,23 @@ function adminDashboardCard(label, value, meta) {
   return `<article class="admin-dashboard-card"><p class="panel-label">${label}</p><strong>${value}</strong><p class="section-meta">${meta}</p></article>`;
 }
 
+async function saveActiveRound() {
+  try {
+    const roundNumber = Number(elements.adminRoundSelect?.value);
+    const response = await api("/api/admin/active-round", { roundNumber });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
+    renderAll();
+    if (elements.adminRoundFeedback) {
+      elements.adminRoundFeedback.textContent = `${activeRoundLabel()} is now active in admin tools.`;
+    }
+    refreshSharedState();
+  } catch (error) {
+    if (elements.adminRoundFeedback) {
+      elements.adminRoundFeedback.textContent = error.message;
+    }
+  }
+}
+
 async function saveLines() {
   try {
     const response = await api("/api/admin/lines", {
@@ -2130,8 +3059,8 @@ async function settleCurrentRoundFromImportedScores() {
     const voidCount = response.settlementBatch?.voidCount ?? 0;
     const roundMetrics = response.settlementBatch?.roundMetrics;
     const baseMessage = voidCount
-      ? `${CURRENT_ROUND_LABEL} settled for ${settledCount} markets. ${scoredCount} used official scores and ${voidCount} were voided with stake refunds.`
-      : `${CURRENT_ROUND_LABEL} settled for ${settledCount} markets.`;
+      ? `${activeRoundLabel()} settled for ${settledCount} markets. ${scoredCount} used official scores and ${voidCount} were voided with stake refunds.`
+      : `${activeRoundLabel()} settled for ${settledCount} markets.`;
     elements.settlementFeedback.textContent = roundMetrics
       ? `${baseMessage} Profit ${formatStake(roundMetrics.roundProfit)} | matched ${formatStake(roundMetrics.totalMatchedVolume)} | users ${roundMetrics.participatingUsers} | avg spend ${formatStake(roundMetrics.averageSpendPerUser)} | unmatched ${formatStake(roundMetrics.unmatchedVolume)}.`
       : baseMessage;
@@ -2262,8 +3191,12 @@ function renderBotBehaviourSummary() {
 }
 
 function syncOpeningForm() {
-  const market = findMarket(elements.openingMarket.value || uiState.selectedMarketId);
-  if (!market) return;
+  const market = findMarket(elements.openingMarket.value || uiState.selectedMarketId || getAdminRoundMarkets()[0]?.id);
+  if (!market) {
+    elements.openingLineInput.value = "";
+    elements.currentLineInput.value = "";
+    return;
+  }
   elements.openingMarket.value = market.id;
   elements.openingLineInput.value = market.initialLine.toFixed(1);
   elements.currentLineInput.value = market.currentLine.toFixed(1);
@@ -2291,6 +3224,7 @@ function focusPreferredMatchCentreGame(force = false) {
 }
 
 function syncSelectedMarket() {
+  normalizeNavigationState();
   const visibleMarkets = getVisibleMarkets();
   if (!visibleMarkets.some((market) => market.id === uiState.selectedMarketId)) {
     uiState.selectedMarketId = visibleMarkets[0]?.id ?? getGameMarkets(uiState.currentGameId)[0]?.id ?? "";
@@ -2301,8 +3235,43 @@ function syncSelectedMarket() {
   syncQuickTakeQueue();
 }
 
+function safelyRender(label, callback) {
+  try {
+    return callback();
+  } catch (error) {
+    console.error(`Render failed: ${label}`, error);
+    return null;
+  }
+}
+
+function safelyCompute(label, callback, fallbackValue) {
+  try {
+    return callback();
+  } catch (error) {
+    console.error(`Compute failed: ${label}`, error);
+    return fallbackValue;
+  }
+}
+
+function normalizeNavigationState() {
+  const activeGames = getActiveRoundGames();
+  const fallbackGame = activeGames[0] || roundGames[0] || null;
+  if (!fallbackGame) return;
+  if (!activeGames.some((game) => game.id === uiState.currentGameId)) {
+    uiState.currentGameId = fallbackGame.id;
+  }
+  const resolvedGame = activeGames.find((game) => game.id === uiState.currentGameId) || fallbackGame;
+  if (![resolvedGame.homeTeam, resolvedGame.awayTeam].includes(uiState.currentTeam)) {
+    uiState.currentTeam = resolvedGame.homeTeam;
+  }
+  if (!isAuthenticated() && uiState.activeScreen === "account") {
+    uiState.activeScreen = "home";
+    uiState.activeAccountView = "portfolio";
+  }
+}
+
 function currentGame() {
-  return roundGames.find((game) => game.id === uiState.currentGameId) ?? roundGames[0];
+  return getActiveRoundGames().find((game) => game.id === uiState.currentGameId) ?? getActiveRoundGames()[0] ?? roundGames[0];
 }
 
 function findGame(gameId) {
@@ -2429,63 +3398,71 @@ function getPortfolioData() {
   };
 }
 
-function getLeaderboardRows() {
-  if (backendState.mode === "supabase" && backendState.dashboard?.leaderboard?.length) {
-    return sortLeaderboardRows(backendState.dashboard.leaderboard);
+function getLeaderboardRows(options = {}) {
+  const timeFilter = options.timeFilter || uiState.leaderboardTimeFilter;
+  const sort = options.sort || uiState.leaderboardSort;
+  if (timeFilter === "ALL_TIME" && backendState.mode === "supabase" && backendState.dashboard?.leaderboard?.length) {
+    return sortLeaderboardRows(backendState.dashboard.leaderboard, sort);
   }
-  return sortLeaderboardRows(buildLeaderboardRows());
+  return sortLeaderboardRows(buildLeaderboardRows(timeFilter), sort);
 }
 
 function renderHome() {
-  const topProjected = state.markets
+  const homeMarkets = getActiveRoundMarkets();
+  const topProjected = homeMarkets
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine)
     .slice(0, 20);
-  const biggestGainers = state.markets
+  const biggestGainers = homeMarkets
     .slice()
     .filter((market) => getMovementValue(market) > 0)
     .sort((left, right) => getMovementValue(right) - getMovementValue(left) || right.currentLine - left.currentLine)
     .slice(0, 20);
-  const biggestLosers = state.markets
+  const biggestLosers = homeMarkets
     .slice()
     .filter((market) => getMovementValue(market) < 0)
     .sort((left, right) => getMovementValue(left) - getMovementValue(right) || left.currentLine - right.currentLine)
     .slice(0, 20);
-  const fallbackMovers = state.markets
+  const fallbackMovers = homeMarkets
     .slice()
     .sort((left, right) => right.currentLine - left.currentLine || right.seasonAverage - left.seasonAverage)
     .slice(0, 20);
-  const projectionComparisons = state.markets
-    .map((market) => {
-      const impliedScore = priceImpliedProjectionForMarket(market);
-      return {
-        market,
-        impliedScore,
-        value: roundToHalf(market.currentLine - impliedScore)
-      };
-    })
-    .filter((entry) => Number.isFinite(entry.impliedScore))
-    .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine)
+  const projectionComparisons = safelyCompute("home projection comparisons", () =>
+    homeMarkets
+      .map((market) => {
+        const impliedScore = priceImpliedProjectionForMarket(market);
+        return {
+          market,
+          impliedScore,
+          value: roundToHalf(market.currentLine - impliedScore)
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.impliedScore))
+      .sort((left, right) => Math.abs(right.value) - Math.abs(left.value) || right.market.currentLine - left.market.currentLine),
+  []);
+  const bestValue = projectionComparisons
+    .filter((entry) => entry.value > 0)
+    .sort((left, right) => right.value - left.value || right.market.currentLine - left.market.currentLine)
     .slice(0, 20);
-  const mostTraded = state.markets
+  const mostOverpriced = projectionComparisons
+    .filter((entry) => entry.value < 0)
+    .sort((left, right) => left.value - right.value || left.market.currentLine - right.market.currentLine)
+    .slice(0, 20);
+  const mostConfident = homeMarkets
     .slice()
-    .sort((left, right) => tradeCountFor(right) - tradeCountFor(left) || tradeVolumeFor(right) - tradeVolumeFor(left))
+    .sort((left, right) => getMarketTradeMetrics(right).confidence - getMarketTradeMetrics(left).confidence || projectionValue(right) - projectionValue(left))
     .slice(0, 20);
-  const roundStarted = isRoundStarted();
-  const leaderboardRows = getLeaderboardRows();
-  const topLeaderboardRows = (roundStarted
-    ? leaderboardRows
-    : leaderboardRows.slice().sort((a, b) => {
-        if (b.balance !== a.balance) return b.balance - a.balance;
-        if (b.realized !== a.realized) return b.realized - a.realized;
-        return b.tradesCount - a.tradesCount;
-      })).slice(0, 20);
+  const leaderboardRows = safelyCompute("home leaderboard rows", () => getLeaderboardRows({ sort: "BALANCE", timeFilter: "ALL_TIME" }), []);
 
-  renderHomeCarouselControls();
-  renderHomeFeaturedSlate((topProjected.length ? topProjected : fallbackMovers).slice(0, 5));
-  renderHomePrizePoolBanner(prizePoolState);
+  const fallbackFeaturedMarkets = (topProjected.length ? topProjected : fallbackMovers).slice(0, 8);
+  const popularFeaturedMarkets = resolvePopularFeaturedMarkets(homeMarkets);
+  safelyRender("home carousel controls", renderHomeCarouselControls);
+  safelyRender("home featured slate", () => renderHomeFeaturedSlate(popularFeaturedMarkets.length ? popularFeaturedMarkets : fallbackFeaturedMarkets));
+  safelyRender("home prize pool banner", () => renderHomePrizePoolBanner(prizePoolState));
+  safelyRender("home games strip", renderHomeGamesStrip);
+  safelyRender("home unauth bottom", renderGuestUnauthBottom);
 
-  renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
+  safelyRender("home gainers", () => renderHomeMarketLeaderboard(elements.homeBiggestGainers, biggestGainers.length ? biggestGainers : fallbackMovers.slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
     return {
       badge: homeTeamAbbreviation(market.team),
@@ -2502,9 +3479,9 @@ function renderHome() {
   }, {
     variant: "compact-list-group",
     headingTitle: "Gainers"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeBiggestLosers, biggestLosers.length ? biggestLosers : fallbackMovers.slice().reverse().slice(0, 20), ({ market }) => {
+  safelyRender("home losers", () => renderHomeMarketLeaderboard(elements.homeBiggestLosers, biggestLosers.length ? biggestLosers : fallbackMovers.slice().reverse().slice(0, 20), ({ market }) => {
     const movement = getMovementText(market);
     return {
       badge: homeTeamAbbreviation(market.team),
@@ -2521,41 +3498,25 @@ function renderHome() {
   }, {
     variant: "compact-list-group",
     headingTitle: "Losers"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeMostTraded, mostTraded, ({ market }) => {
-    const movement = getMovementText(market);
+  safelyRender("home market confidence", () => renderHomeMarketLeaderboard(elements.homeMostTraded, mostConfident, ({ market }) => {
+    const metrics = getMarketTradeMetrics(market);
     return {
       title: market.playerName,
       badge: homeTeamAbbreviation(market.team),
       meta: market.team,
       detail: market.position,
-      statPrimary: formatHomeMovementValue(movement.value),
-      statSecondary: ""
+      statPrimary: `${metrics.confidence}%`,
+      statSecondary: `${market.currentLine.toFixed(1)} pts`,
+      confidence: metrics.confidence
     };
   }, {
     variant: "featured-market-confidence",
-    headingTitle: "Most Traded",
-    skipFirstListItem: Boolean(mostTraded[0]),
-    summaryItems: mostTraded[0]
-      ? [
-          {
-            label: "Most active",
-            value: mostTraded[0].playerName
-          },
-          ...(getMarketTradeMetrics(mostTraded[0]).volume > 0
-            ? [
-                {
-                  label: "Top volume",
-                  value: tradeVolumeFor(mostTraded[0])
-                }
-              ]
-            : [])
-        ]
-      : []
-  });
+    headingTitle: "Market Confidence"
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
+  safelyRender("home projected", () => renderHomeMarketLeaderboard(elements.homeTopProjected, topProjected, ({ market }) => ({
     badge: homeTeamAbbreviation(market.team),
     badgeTone: "",
     title: market.playerName,
@@ -2565,27 +3526,41 @@ function renderHome() {
   }), {
     variant: "compact-projection-group",
     headingTitle: "Projected"
-  });
+  }));
 
-  renderHomeMarketLeaderboard(elements.homeBestValue, projectionComparisons, ({ market, impliedScore, value }) => ({
+  safelyRender("home value", () => renderHomeMarketLeaderboard(elements.homeBestValue, bestValue, ({ market, impliedScore, value }) => ({
     badge: homeTeamAbbreviation(market.team),
     badgeTone: value > 0 ? "move-up" : value < 0 ? "move-down" : "move-flat",
+    cardClassName: "home-comparison-subcard",
     title: market.playerName,
     meta: market.team,
     detail: market.position,
     statPrimary: formatSignedLine(value),
-    note: `${market.currentLine.toFixed(1)} pts`
+    statSecondary: `Price ${impliedScore.toFixed(1)} • Proj ${market.currentLine.toFixed(1)}`,
+    statSecondaryClass: "home-comparison-metric"
   }), {
     variant: "compact-list-group",
     headingTitle: "Value",
     emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
-  });
+  }));
 
-  renderHomeUserLeaderboard(elements.homeUserLeaderboard, topLeaderboardRows, {
-    headingEyebrow: "Leaderboard",
-    headingTitle: "Community snapshot",
-    roundStarted
-  });
+  safelyRender("home overpriced", () => renderHomeMarketLeaderboard(elements.homeMostOverpriced, mostOverpriced, ({ market, impliedScore, value }) => ({
+    badge: homeTeamAbbreviation(market.team),
+    badgeTone: "move-down",
+    cardClassName: "home-comparison-subcard",
+    title: market.playerName,
+    meta: market.team,
+    detail: market.position,
+    statPrimary: formatSignedLine(value),
+    statSecondary: `Price ${impliedScore.toFixed(1)} • Proj ${market.currentLine.toFixed(1)}`,
+    statSecondaryClass: "home-comparison-metric"
+  }), {
+    variant: "compact-list-group",
+    headingTitle: "Overpriced",
+    emptyMessage: "Overpriced players will appear here once official Fantasy prices are available."
+  }));
+
+  safelyRender("home user leaderboard", () => renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows));
 
   window.requestAnimationFrame(() => {
     syncHomeCarouselPosition();
@@ -2594,7 +3569,7 @@ function renderHome() {
 
 function renderHomeFeaturedSlate(featuredMarkets) {
   if (!elements.homeFeaturedSlate) return;
-  const items = Array.isArray(featuredMarkets) ? featuredMarkets.filter(Boolean).slice(0, 5) : [];
+  const items = Array.isArray(featuredMarkets) ? featuredMarkets.filter(Boolean).slice(0, 8) : [];
   if (!items.length) {
     elements.homeFeaturedSlate.innerHTML = "";
     return;
@@ -2629,6 +3604,119 @@ function renderHomePrizePoolBanner(view) {
     renderAll();
   });
   animateHomePrizePoolAmount(poolAmount);
+}
+
+function renderHomeGamesStrip() {
+  if (!elements.homeGamesStrip) return;
+  const games = getActiveRoundGames()
+    .slice()
+    .sort((left, right) => kickoffTimestampForGame(left) - kickoffTimestampForGame(right));
+  if (!games.length) {
+    elements.homeGamesStrip.innerHTML = "";
+    return;
+  }
+  const openPositions = getPortfolioData().openPositions || [];
+  const positionCountsByGameId = openPositions.reduce((counts, position) => {
+    const market = findMarket(position.marketId);
+    if (!market?.gameId) return counts;
+    counts.set(market.gameId, (counts.get(market.gameId) || 0) + 1);
+    return counts;
+  }, new Map());
+  const nextUpcomingIndex = games.findIndex((game) => !isGameLocked(game));
+  if (!uiState.activeHomeGameTouched) {
+    uiState.activeHomeGameIndex = nextUpcomingIndex >= 0 ? nextUpcomingIndex : 0;
+  } else {
+    uiState.activeHomeGameIndex = ((uiState.activeHomeGameIndex % games.length) + games.length) % games.length;
+  }
+  elements.homeGamesStrip.innerHTML = `
+    <div class="games-carousel">
+      <div class="games-carousel-viewport">
+        ${homeGameCardMarkup(games[uiState.activeHomeGameIndex], positionCountsByGameId.get(games[uiState.activeHomeGameIndex].id) || 0)}
+      </div>
+      <div class="home-featured-dots games-carousel-dots">
+        ${games.map((game, index) => `<button class="home-featured-dot ${index === uiState.activeHomeGameIndex ? "active" : ""}" type="button" data-home-game-index="${index}" aria-label="Show game ${index + 1}: ${homeTeamAbbreviation(game.homeTeam)} vs ${homeTeamAbbreviation(game.awayTeam)}"></button>`).join("")}
+      </div>
+    </div>
+  `;
+  elements.homeGamesStrip.querySelectorAll("[data-home-game-id]").forEach((card) =>
+    card.addEventListener("click", () => {
+      openMatchCentreGame(card.dataset.homeGameId);
+    })
+  );
+  elements.homeGamesStrip.querySelectorAll("[data-home-game-index]").forEach((dot) =>
+    dot.addEventListener("click", () => {
+      uiState.activeHomeGameTouched = true;
+      uiState.activeHomeGameIndex = Number(dot.dataset.homeGameIndex) || 0;
+      renderHomeGamesStrip();
+    })
+  );
+  bindHomeGamesSwipe(games);
+}
+
+function homeGameCardMarkup(game, openPositionCount = 0) {
+  const status = homeGameStatus(game);
+  const topMarkets = getActiveRoundMarkets()
+    .filter((m) => m.gameId === game.id)
+    .sort((a, b) => b.currentLine - a.currentLine)
+    .slice(0, 3);
+  const projHTML = topMarkets.length
+    ? `<div class="game-card-proj-list">${topMarkets.map((m, i) => `<div class="game-card-proj-row"><span class="game-card-proj-rank">${i + 1}</span><span class="home-team-badge game-card-proj-badge" style="${homeTeamPillStyle(m.team)}">${homeTeamAbbreviation(m.team)}</span><span class="game-card-proj-name">${m.playerName}</span><span class="game-card-proj-pts">${m.currentLine.toFixed(1)}</span></div>`).join("")}</div>`
+    : "";
+  const positionsHTML = openPositionCount > 0
+    ? `<div class="game-card-positions"><span class="game-card-positions-copy"><span class="game-card-positions-dot" aria-hidden="true"></span><span>${openPositionCount} position${openPositionCount === 1 ? "" : "s"}</span></span></div>`
+    : "";
+  return `<button class="game-card${openPositionCount > 0 ? " has-positions" : ""}${topMarkets.length > 0 ? " has-projections" : ""}" type="button" data-home-game-id="${game.id}" style="--match-primary:${teamPrimary(game.homeTeam)}CC;--match-secondary:${teamPrimary(game.awayTeam)}CC;"><div class="game-card-copy"><div class="game-card-topline"><span class="game-card-status ${status.className}">${status.label}</span><span class="game-card-kickoff">${formatHomeGameKickoffTime(game)}</span></div><div class="game-card-teams">${game.title || `${homeTeamAbbreviation(game.homeTeam)} vs ${homeTeamAbbreviation(game.awayTeam)}`}</div><div class="game-card-meta">${game.venue || ""}</div>${projHTML}</div>${positionsHTML}</button>`;
+}
+
+function homeGameStatus(game) {
+  if (!isGameLocked(game)) {
+    return { label: "OPEN", className: "is-open" };
+  }
+  return { label: "LOCKED", className: "is-locked" };
+}
+
+function formatHomeGameKickoffTime(game) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return game?.kickoff || "";
+  return new Date(kickoffAt).toLocaleString([], {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function openMatchCentreGame(gameId) {
+  const game = findGame(gameId);
+  if (!game) return;
+  uiState.activeScreen = "markets";
+  uiState.currentGameId = game.id;
+  uiState.currentTeam = game.homeTeam;
+  uiState.expandedMarketId = "";
+  syncSelectedMarket();
+  renderAll();
+}
+
+function bindHomeGamesSwipe(items) {
+  const viewport = elements.homeGamesStrip?.querySelector(".games-carousel-viewport");
+  if (!viewport || !items.length) return;
+  let touchStartX = 0;
+  let touchEndX = 0;
+  viewport.addEventListener("touchstart", (event) => {
+    touchStartX = event.changedTouches?.[0]?.screenX || 0;
+  }, { passive: true });
+  viewport.addEventListener("touchend", (event) => {
+    touchEndX = event.changedTouches?.[0]?.screenX || 0;
+    if (touchStartX - touchEndX > 50) {
+      uiState.activeHomeGameTouched = true;
+      uiState.activeHomeGameIndex = (uiState.activeHomeGameIndex + 1) % items.length;
+      renderHomeGamesStrip();
+    }
+    if (touchEndX - touchStartX > 50) {
+      uiState.activeHomeGameTouched = true;
+      uiState.activeHomeGameIndex = (uiState.activeHomeGameIndex - 1 + items.length) % items.length;
+      renderHomeGamesStrip();
+    }
+  }, { passive: true });
 }
 
 function animateHomePrizePoolAmount(targetAmount) {
@@ -2677,6 +3765,47 @@ function bindHomeFeaturedSwipe(items) {
     }
     renderHomeFeaturedSlate(items);
   }, { passive: true });
+}
+
+function resolvePopularFeaturedMarkets(homeMarkets) {
+  if (!Array.isArray(popularFeaturedMarketIds) || !popularFeaturedMarketIds.length) {
+    return [];
+  }
+  const marketsById = new Map((homeMarkets || []).map((market) => [market.id, market]));
+  return popularFeaturedMarketIds.map((marketId) => marketsById.get(marketId)).filter(Boolean);
+}
+
+async function syncPopularFeaturedPlayers(force = false) {
+  const roundNumber = activeRoundNumber();
+  if (!force && popularFeaturedRoundNumber === roundNumber && popularFeaturedMarketIds.length) {
+    return popularFeaturedMarketIds;
+  }
+  if (popularFeaturedRequest) {
+    return popularFeaturedRequest;
+  }
+  popularFeaturedRequest = (async () => {
+    try {
+      const response = await fetch("/api/popular-players", { method: "GET" });
+      if (!response.ok) {
+        throw new Error(`Popular players request failed with ${response.status}`);
+      }
+      const data = await response.json();
+      popularFeaturedMarketIds = Array.isArray(data.players)
+        ? data.players.map((player) => player.marketId).filter(Boolean)
+        : [];
+      popularFeaturedRoundNumber = roundNumber;
+      if (uiState.activeScreen === "home") {
+        renderHome();
+      }
+      return popularFeaturedMarketIds;
+    } catch (error) {
+      console.warn("Popular featured players unavailable", error.message);
+      return [];
+    } finally {
+      popularFeaturedRequest = null;
+    }
+  })();
+  return popularFeaturedRequest;
 }
 
 function homeTeamAbbreviation(team) {
@@ -2746,18 +3875,18 @@ function renderHomeMetricMarkup(view = {}, fallbackTone = "") {
 }
 
 function isRoundStarted() {
-  return roundGames.some((game) => isGameLocked(game));
+  return getActiveRoundGames().some((game) => isGameLocked(game));
 }
 
 function renderHomeCarouselControls() {
   if (!elements.homeCarouselNav || !elements.homeCarouselMeta) return;
   const panels = [
+    { key: "value", label: "Value", detail: "Best projection gaps vs price" },
+    { key: "overpriced", label: "Overpriced", detail: "Weakest projection gaps vs price" },
     { key: "gainers", label: "Gainers", detail: "Biggest gainers" },
     { key: "losers", label: "Losers", detail: "Biggest losers" },
-    { key: "activity", label: "Most Traded", detail: "Crowd-backed activity" },
-    { key: "projected", label: "Projected", detail: "Top current lines" },
-    { key: "value", label: "Value", detail: "Gaps vs NRL price" },
-    { key: "leaderboard", label: "Leaderboard", detail: "Community standings" }
+    { key: "activity", label: "Market Confidence", detail: "Highest-confidence lines" },
+    { key: "projected", label: "Projected", detail: "Top current lines" }
   ];
   if (!panels.some((panel) => panel.key === uiState.activeHomePanel)) {
     uiState.activeHomePanel = panels[0].key;
@@ -2785,14 +3914,14 @@ function syncHomeCarouselPosition() {
   }
 }
 
-function sortLeaderboardRows(rows) {
+function sortLeaderboardRows(rows, sort = uiState.leaderboardSort) {
   return rows.slice().sort((a, b) => {
-    if (uiState.leaderboardSort === "WIN_RATE") {
+    if (sort === "WIN_RATE") {
       if (b.winRate !== a.winRate) return b.winRate - a.winRate;
       if (b.balance !== a.balance) return b.balance - a.balance;
       return b.tradesCount - a.tradesCount;
     }
-    if (uiState.leaderboardSort === "TRADES") {
+    if (sort === "TRADES") {
       if (b.tradesCount !== a.tradesCount) return b.tradesCount - a.tradesCount;
       if (b.balance !== a.balance) return b.balance - a.balance;
       return b.winRate - a.winRate;
@@ -2807,17 +3936,18 @@ function leaderboardMetricCard(label, value) {
   return `<article class="leaderboard-metric-card"><span>${label}</span><strong>${value}</strong></article>`;
 }
 
-function buildLeaderboardRows() {
-  return [...new Set([...Object.keys(state.bankrolls), ...state.markets.flatMap((market) => market.trades.map((trade) => trade.userName))])]
+function buildLeaderboardRows(timeFilter = "ALL_TIME") {
+  const scopedMarkets = timeFilter === "THIS_ROUND" ? getActiveRoundMarkets() : state.markets;
+  return [...new Set([...Object.keys(state.bankrolls), ...scopedMarkets.flatMap((market) => market.trades.map((trade) => trade.userName))])]
     .map((userName) => {
-      const trades = getUserTrades(userName);
+      const trades = scopedMarkets.flatMap((market) => (market.trades || []).filter((trade) => trade.userName === userName));
       const settled = trades.filter((trade) => trade.result);
       const wins = settled.filter((trade) => trade.result?.outcome === "WIN").length;
       const realized = settled.reduce((sum, trade) => sum + trade.result.profit, 0);
       const largestOpen = aggregateOpenPositions(trades.filter((trade) => trade.status !== "SETTLED" && trade.status !== "CANCELLED")).sort((a, b) => (b.activeStake ?? b.stake) - (a.activeStake ?? a.stake))[0];
       return {
         userName,
-        balance: getUserCash(userName),
+        balance: timeFilter === "THIS_ROUND" ? trades.reduce((sum, trade) => sum + (Number(trade.matchedStake) || 0), 0) + realized : getUserCash(userName),
         tradesCount: trades.length,
         winRate: settled.length ? Math.round((wins / settled.length) * 100) : 0,
         realized,
@@ -2871,7 +4001,7 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
         const view = presenter({ market, ...row }, index);
         const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
         const isHeroCard = index === 0 && (options.headingTitle === "Gainers" || options.headingTitle === "Losers");
-        return `<button class="home-projection-subcard home-list-subcard ${isHeroCard ? "is-rank-hero" : ""}" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}</div>${renderHomeMetricMarkup({ ...view, metricHero: isHeroCard }, view.badgeTone)}</button>`;
+        return `<button class="home-projection-subcard home-list-subcard ${view.cardClassName || ""} ${isHeroCard ? "is-rank-hero" : ""}" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}</div>${renderHomeMetricMarkup({ ...view, metricHero: isHeroCard }, view.badgeTone)}</button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -2886,9 +4016,10 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
-        const movement = getMovementText(market);
         const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
-        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy home-confidence-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail || matchupContext(market).label}</span></div>${note}</div><div class="home-projection-metric home-confidence-metric-block"><strong class="${movement.className}">${view.statPrimary}</strong></div></button>`;
+        const confidence = Number(view.confidence) || 0;
+        const confidenceClassName = confidence >= 71 ? "is-high" : confidence >= 41 ? "is-mid" : "is-low";
+        return `<button class="home-projection-subcard home-list-subcard home-confidence-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-confidence-row"><div class="home-confidence-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail || matchupContext(market).label}</span></div>${note}</div><div class="home-confidence-metric-block"><div class="home-confidence-primary">${createHomeConfidenceGauge(confidence)}<span class="home-confidence-percent ${confidenceClassName}">${view.statPrimary || `${confidence}%`}</span></div><strong class="home-confidence-projection">${view.statSecondary || `${market.currentLine.toFixed(1)} pts`}</strong></div></div></button>`;
       })
       .join("")}</div></article>`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
@@ -2913,29 +4044,43 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
   );
 }
 
-function renderHomeUserLeaderboard(container, rows, options = {}) {
+function renderHomeUserLeaderboard(container, rows) {
   if (!container) return;
   if (!rows.length) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No leaderboard yet</strong><span>Community rankings will appear once users place trades.</span></div>`;
     return;
   }
-  const activeUser = currentUserName();
-  container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head has-action"><div><p class="eyebrow">${options.headingEyebrow || ""}</p><h3>${options.headingTitle || ""}</h3></div><button id="home-inline-leaderboard-link" class="secondary-button inline-section-button" type="button">View full board</button></div><div class="home-group-card-body" data-scroll-key="${container.id || "home-leaderboard"}">${rows
-    .map((row, index) => {
-      const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
-      const secondaryMetric = row.realized === 0 ? "—" : formatSignedStake(row.realized);
-      const accentClass = row.userName === activeUser ? "is-current-user" : homeRankTone(index);
-      return `<button class="home-projection-subcard home-list-subcard home-user-subcard ${accentClass}" type="button" data-open-leaderboard="true">${homeRankMarkup(index)}<div class="home-projection-copy"><strong>${row.userName}</strong><span>${metaLabel}</span></div><div class="home-projection-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : "is-muted"}">${options.roundStarted ? secondaryMetric : "Wallet balance"}</span></div></button>`;
-    })
-    .join("")}</div></article>`;
-  container.querySelector("#home-inline-leaderboard-link")?.addEventListener("click", () => {
-    openFullLeaderboard();
-  });
+  const activeUser = currentUserName().toLowerCase();
+  const topRows = rows.slice(0, 3);
+  const currentUserRow = rows.find((row) => row.userName.toLowerCase() === activeUser) || null;
+  const showCurrentUserRow = currentUserRow && !topRows.some((row) => row.userName.toLowerCase() === activeUser);
+  container.innerHTML = `<article class="home-leaderboard-snapshot-card"><div class="home-leaderboard-snapshot-head"><div><p class="eyebrow">Leaderboard</p></div><button class="home-leaderboard-snapshot-link" type="button" data-open-leaderboard="true">View full leaderboard →</button></div><div class="home-leaderboard-snapshot-body">${topRows
+    .map((row, index) => homeLeaderboardSnapshotRowMarkup(row, index, row.userName.toLowerCase() === activeUser))
+    .join("")}${showCurrentUserRow ? `<div class="home-leaderboard-current-divider">— #${rows.findIndex((row) => row.userName.toLowerCase() === activeUser) + 1} You —</div>${homeLeaderboardSnapshotRowMarkup(currentUserRow, rows.findIndex((row) => row.userName.toLowerCase() === activeUser), true)}` : ""}</div><button class="home-leaderboard-snapshot-footer" type="button" data-open-leaderboard="true">View full leaderboard →</button></article>`;
   container.querySelectorAll("[data-open-leaderboard]").forEach((button) =>
     button.addEventListener("click", () => {
       openFullLeaderboard();
     })
   );
+}
+
+function homeLeaderboardSnapshotRowMarkup(row, index, isCurrentUser = false) {
+  const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
+  return `<button class="home-leaderboard-snapshot-row ${isCurrentUser ? "is-current-user" : ""}" type="button" data-open-leaderboard="true"><div class="leaderboard-rank ${homeRankTone(index)}">${index + 1}</div><div class="home-leaderboard-snapshot-copy"><strong>${row.userName}</strong><span>${metaLabel}</span></div><div class="home-leaderboard-snapshot-balance">${formatStake(row.balance)}</div></button>`;
+}
+
+function leaderboardRowMarkup(row, index, isCurrentUser = false) {
+  const metaLabel = row.tradesCount === 0 && row.winRate === 0 ? "—" : `${row.tradesCount} trades | ${row.winRate}% win rate`;
+  const openPositionLabel = row.largestOpen ? `${row.largestOpen.playerName ?? findMarket(row.largestOpen.marketId)?.playerName ?? "Unknown"} ${row.largestOpen.side} ${row.largestOpen.entryLine.toFixed(1)} | ${formatStake(row.largestOpen.stake)}` : "No open position";
+  return `<article class="leaderboard-card ${index < 3 ? "is-top-rank" : ""} ${isCurrentUser ? "is-current-user" : ""}"><div class="leaderboard-rank ${homeRankTone(index)}">${index + 1}</div><div class="leaderboard-copy"><strong>${row.userName}</strong><span class="leaderboard-meta">${metaLabel}</span><span class="leaderboard-position">${openPositionLabel}</span></div><div class="leaderboard-metric"><strong>${formatStake(row.balance)}</strong><span class="${row.realized > 0 ? "positive" : row.realized < 0 ? "negative" : ""}">${formatSignedStake(row.realized)}</span></div></article>`;
+}
+
+function openFullLeaderboard() {
+  uiState.activeScreen = "leaderboard";
+  renderAll();
+  window.requestAnimationFrame(() => {
+    elements.leaderboardScreenScroll?.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
 function filterMarkets(term) {
@@ -2953,15 +4098,6 @@ function openMarketFromHome(marketId) {
   uiState.expandedMarketId = market.id;
   renderAll();
   scrollExpandedMarketIntoView(market.id);
-}
-
-function openFullLeaderboard() {
-  uiState.activeScreen = "account";
-  uiState.activeAccountView = "leaderboard";
-  renderAll();
-  window.requestAnimationFrame(() => {
-    elements.accountLeaderboardView?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
 }
 
 function renderHomeSplitMarketLeaderboard(container, options = {}) {
@@ -3030,10 +4166,10 @@ function quickPickPerformanceSummary(market) {
   const playerKey = normalizePlayerKey(market.playerName);
   const seasonScores = (derivedData.roundScoresByPlayer?.[playerKey] || [])
     .filter((entry) => Number.isFinite(Number(entry?.score)))
-    .sort((left, right) => Number(right.round) - Number(left.round));
+    .sort((left, right) => Number(left.round) - Number(right.round));
   const recentSeasonScores = seasonScores
     .filter((entry) => !Number.isFinite(roundNumber) || Number(entry.round) < roundNumber)
-    .slice(0, 5)
+    .slice(-5)
     .map((entry) => ({
       label: `Round ${entry.round}`,
       value: String(Math.round(Number(entry.score))),
@@ -3189,13 +4325,59 @@ function fantasyPlayerStatsFor(market) {
   return derivedData.playerStatsByName?.[normalizePlayerKey(market.playerName)] || null;
 }
 
-function currentRoundNumber() {
-  const match = String(CURRENT_ROUND_LABEL).match(/(\d+)/);
+function parseRoundNumberFromLabel(label) {
+  const match = String(label || "").match(/(\d+)/);
   return match ? Number(match[1]) : null;
+}
+
+function roundLabelForNumber(roundNumber) {
+  return roundGames.find((game) => parseRoundNumberFromLabel(game.roundLabel) === Number(roundNumber))?.roundLabel || `Round ${roundNumber}`;
+}
+
+function getAvailableRoundOptions() {
+  return AVAILABLE_ROUND_NUMBERS.length ? AVAILABLE_ROUND_NUMBERS : [3];
+}
+
+function activeRoundNumber() {
+  const roundNumber = Number(state.activeRoundNumber ?? prizePoolState?.roundNumber);
+  return Number.isFinite(roundNumber) ? roundNumber : (parseRoundNumberFromLabel(CURRENT_ROUND_LABEL) || 3);
+}
+
+function activeRoundLabel() {
+  const roundLabel = state.activeRoundLabel ?? prizePoolState?.roundLabel;
+  return roundLabel || roundLabelForNumber(activeRoundNumber());
+}
+
+function marketRoundNumber(market) {
+  return parseRoundNumberFromLabel(roundGames.find((game) => game.id === market?.gameId)?.roundLabel);
+}
+
+function getActiveRoundGames() {
+  return roundGames.filter((game) => parseRoundNumberFromLabel(game.roundLabel) === activeRoundNumber());
+}
+
+function getActiveRoundMarkets() {
+  return state.markets.filter((market) => marketRoundNumber(market) === activeRoundNumber());
+}
+
+function getAdminRoundMarkets() {
+  return getActiveRoundMarkets();
+}
+
+function currentRoundNumber() {
+  return activeRoundNumber();
+}
+
+function pricedAtProjectionFromPrice(price) {
+  const normalizedPrice = Number(price);
+  if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) return null;
+  return Math.round((normalizedPrice / 12800) * 10) / 10;
 }
 
 function priceImpliedProjectionForMarket(market) {
   const stats = fantasyPlayerStatsFor(market);
+  const pricedAtProjection = pricedAtProjectionFromPrice(stats?.currentPrice ?? market?.fantasyPrice);
+  if (pricedAtProjection !== null) return pricedAtProjection;
   return Number(stats?.priceImpliedProjection ?? market.priceImpliedProjection ?? 0) || null;
 }
 
@@ -3386,6 +4568,20 @@ function roundToHalf(value) {
   return Math.round(value * 2) / 2;
 }
 
+function createHomeConfidenceGauge(percentage) {
+  const radius = 16;
+  const circumference = Math.PI * radius;
+  const fillLength = (Math.max(0, Math.min(100, Number(percentage) || 0)) / 100) * circumference;
+  const gapLength = circumference - fillLength;
+  const colour = percentage >= 71 ? "#00C853" : percentage >= 41 ? "#F59E0B" : "#FF3D3D";
+  return `
+    <svg class="home-confidence-gauge" width="36" height="20" viewBox="0 0 36 20" aria-hidden="true">
+      <path d="M 2 18 A 16 16 0 0 1 34 18" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" stroke-linecap="round"></path>
+      <path d="M 2 18 A 16 16 0 0 1 34 18" fill="none" stroke="${colour}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${fillLength} ${gapLength}" class="gauge-fill"></path>
+    </svg>
+  `;
+}
+
 function isMarketOpen(market) {
   return !isMarketLocked(market);
 }
@@ -3408,14 +4604,15 @@ function scheduleKickoffRefresh() {
 }
 
 function nextScheduledKickoff() {
-  return roundGames.find((game) => {
+  return getActiveRoundGames().find((game) => {
     const kickoffAt = kickoffTimestampForGame(game);
     return Number.isFinite(kickoffAt) && kickoffAt > Date.now();
   }) || null;
 }
 
 function nextGameToLock() {
-  return roundGames.find((game) => !isGameLocked(game)) || roundGames[roundGames.length - 1] || null;
+  const activeRoundGames = getActiveRoundGames();
+  return activeRoundGames.find((game) => !isGameLocked(game)) || activeRoundGames[activeRoundGames.length - 1] || null;
 }
 
 function kickoffTimestampForGame(game) {
@@ -3436,12 +4633,25 @@ function parseKickoffLabel(label) {
   let hour = Number(hourLabel);
   if (period.toUpperCase() === "PM" && hour !== 12) hour += 12;
   if (period.toUpperCase() === "AM" && hour === 12) hour = 0;
-  return new Date(new Date().getFullYear(), month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+  const now = Date.now();
+  let year = new Date().getFullYear();
+  let ts = new Date(year, month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+  if (ts < now - 180 * 24 * 60 * 60 * 1000) {
+    ts = new Date(year + 1, month, Number(day), hour, Number(minuteLabel), 0, 0).getTime();
+  }
+  return ts;
 }
 
 function isGameLocked(game, now = Date.now()) {
+  if (isGameForceOpen(game)) return false;
   const kickoffAt = kickoffTimestampForGame(game);
   return Number.isFinite(kickoffAt) ? now >= kickoffAt : false;
+}
+
+function isGameForceOpen(game) {
+  if (!game) return false;
+  const forceOpenGameIds = Array.isArray(state.forceOpenGameIds) ? state.forceOpenGameIds : [];
+  return forceOpenGameIds.includes(game.id);
 }
 
 function isMarketLocked(market, now = Date.now()) {
@@ -3717,8 +4927,8 @@ function adjacentGame(direction) {
 
 function scrollExpandedMarketIntoView(marketId) {
   window.requestAnimationFrame(() => {
-    const expandedCard = elements.marketsList.querySelector(".market-row.is-expanded");
-    if (!expandedCard || expandedCard.dataset.marketId !== marketId) {
+    const expandedCard = elements.marketsList.querySelector(`.inline-market-panel.is-expanded-card[data-market-id="${marketId}"], .market-row.is-expanded[data-market-id="${marketId}"]`);
+    if (!expandedCard) {
       return;
     }
     expandedCard.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3851,16 +5061,28 @@ function showToast(title, meta) {
 }
 
 async function api(url, payload) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || "Request failed");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Request failed");
+    }
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError" || String(error.message).toLowerCase().includes("aborted")) {
+      throw new Error("Request timed out — please try again");
+    }
+    throw error;
   }
-  return data;
 }
 
 

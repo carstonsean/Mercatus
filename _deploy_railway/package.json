@@ -8,7 +8,9 @@
     "start": "node server.js",
     "dev": "node server.js",
     "check": "node -c server.js && node -c app.js",
-    "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2"
+    "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2",
+    "migrate:supabase": "node scripts/migrate-state-to-supabase.js",
+    "sync:supabase-runtime": "node scripts/sync-runtime-to-supabase.js"
   },
   "engines": {
     "node": ">=20"
