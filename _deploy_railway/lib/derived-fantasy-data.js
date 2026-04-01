@@ -10,200 +10,262 @@
     "source": "public-nrl-fantasy-api",
     "playersUrl": "https://fantasy.nrl.com/data/nrl/players.json",
     "roundsUrl": "https://fantasy.nrl.com/data/nrl/rounds.json",
-    "generatedAt": "2026-03-17T05:36:04.134Z",
+    "generatedAt": "2026-03-31T08:06:36.226Z",
     "season": 2026,
     "roundsIncluded": [
       1,
-      2
+      2,
+      3,
+      4
     ],
-    "players": 310
+    "players": 352
   },
   "playerStatsByName": {
     "PAYNEHAAS": {
       "playerName": "Payne Haas",
       "key": "PAYNEHAAS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 65.5,
-      "last3Average": 65.5,
-      "lastGameScore": 75,
-      "scoreVolatility": 9.5,
+      "gamesPlayed": 3,
+      "currentPrice": 906000,
+      "priceImpliedProjection": 70.8,
+      "seasonAverage": 66,
+      "last3Average": 66,
+      "lastGameScore": 67,
+      "scoreVolatility": 7.8,
       "homeAverage": 65.5,
-      "awayAverage": 65.5
+      "awayAverage": 67
     },
     "TERRELLMAY": {
       "playerName": "Terrell May",
       "key": "TERRELLMAY",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 62,
-      "last3Average": 62,
-      "lastGameScore": 62,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 862000,
+      "priceImpliedProjection": 67.3,
+      "seasonAverage": 58,
+      "last3Average": 58,
+      "lastGameScore": 51,
+      "scoreVolatility": 5,
       "homeAverage": 62,
-      "awayAverage": 62
+      "awayAverage": 56
+    },
+    "JOERODDY": {
+      "playerName": "Joe Roddy",
+      "key": "JOERODDY",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 1,
+      "currentPrice": 251000,
+      "priceImpliedProjection": 19.6,
+      "seasonAverage": 21,
+      "last3Average": 21,
+      "lastGameScore": 21,
+      "scoreVolatility": 0,
+      "homeAverage": 21,
+      "awayAverage": 21
     },
     "NATHANCLEARY": {
       "playerName": "Nathan Cleary",
       "key": "NATHANCLEARY",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 74.5,
-      "last3Average": 74.5,
-      "lastGameScore": 92,
-      "scoreVolatility": 17.5,
-      "homeAverage": 92,
-      "awayAverage": 57
+      "gamesPlayed": 4,
+      "currentPrice": 903000,
+      "priceImpliedProjection": 70.5,
+      "seasonAverage": 71,
+      "last3Average": 75.7,
+      "lastGameScore": 75,
+      "scoreVolatility": 13.9,
+      "homeAverage": 83.5,
+      "awayAverage": 58.5
     },
     "HERBIEFARNWORTH": {
       "playerName": "Herbie Farnworth",
       "key": "HERBIEFARNWORTH",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 60.5,
-      "last3Average": 60.5,
+      "gamesPlayed": 4,
+      "currentPrice": 787000,
+      "priceImpliedProjection": 61.5,
+      "seasonAverage": 61.3,
+      "last3Average": 63.7,
       "lastGameScore": 67,
-      "scoreVolatility": 6.5,
+      "scoreVolatility": 5.8,
       "homeAverage": 60.5,
-      "awayAverage": 60.5
+      "awayAverage": 62
     },
     "HUDSONYOUNG": {
       "playerName": "Hudson Young",
       "key": "HUDSONYOUNG",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 51.5,
-      "last3Average": 51.5,
-      "lastGameScore": 40,
-      "scoreVolatility": 11.5,
-      "homeAverage": 51.5,
+      "gamesPlayed": 4,
+      "currentPrice": 739000,
+      "priceImpliedProjection": 57.7,
+      "seasonAverage": 55.5,
+      "last3Average": 53,
+      "lastGameScore": 48,
+      "scoreVolatility": 12.2,
+      "homeAverage": 59.5,
       "awayAverage": 51.5
+    },
+    "JAYDENCAMPBELL": {
+      "playerName": "Jayden Campbell",
+      "key": "JAYDENCAMPBELL",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 2,
+      "currentPrice": 806000,
+      "priceImpliedProjection": 63,
+      "seasonAverage": 74.5,
+      "last3Average": 74.5,
+      "lastGameScore": 71,
+      "scoreVolatility": 3.5,
+      "homeAverage": 71,
+      "awayAverage": 78
     },
     "ISAAHYEO": {
       "playerName": "Isaah Yeo",
       "key": "ISAAHYEO",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 53,
-      "last3Average": 53,
-      "lastGameScore": 54,
-      "scoreVolatility": 1,
-      "homeAverage": 54,
-      "awayAverage": 52
+      "gamesPlayed": 4,
+      "currentPrice": 726000,
+      "priceImpliedProjection": 56.7,
+      "seasonAverage": 56,
+      "last3Average": 57.3,
+      "lastGameScore": 53,
+      "scoreVolatility": 5.2,
+      "homeAverage": 53.5,
+      "awayAverage": 58.5
     },
     "ERINCLARK": {
       "playerName": "Erin Clark",
       "key": "ERINCLARK",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
+      "gamesPlayed": 4,
+      "currentPrice": 664000,
+      "priceImpliedProjection": 51.9,
       "seasonAverage": 46,
-      "last3Average": 46,
-      "lastGameScore": 53,
-      "scoreVolatility": 7,
-      "homeAverage": 46,
-      "awayAverage": 46
+      "last3Average": 48.3,
+      "lastGameScore": 34,
+      "scoreVolatility": 9.8,
+      "homeAverage": 42,
+      "awayAverage": 58
     },
     "JOSEPHTAPINE": {
       "playerName": "Joseph Tapine",
       "key": "JOSEPHTAPINE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 36,
-      "last3Average": 36,
-      "lastGameScore": 40,
-      "scoreVolatility": 4,
-      "homeAverage": 36,
+      "gamesPlayed": 4,
+      "currentPrice": 622000,
+      "priceImpliedProjection": 48.6,
+      "seasonAverage": 43.3,
+      "last3Average": 47,
+      "lastGameScore": 57,
+      "scoreVolatility": 9,
+      "homeAverage": 50.5,
       "awayAverage": 36
     },
     "LATRELLMITCHELL": {
       "playerName": "Latrell Mitchell",
       "key": "LATRELLMITCHELL",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 65.5,
-      "last3Average": 65.5,
+      "gamesPlayed": 3,
+      "currentPrice": 760000,
+      "priceImpliedProjection": 59.4,
+      "seasonAverage": 62.3,
+      "last3Average": 62.3,
       "lastGameScore": 56,
-      "scoreVolatility": 9.5,
-      "homeAverage": 65.5,
+      "scoreVolatility": 9,
+      "homeAverage": 56,
       "awayAverage": 65.5
     },
     "DYLANLUCAS": {
       "playerName": "Dylan Lucas",
       "key": "DYLANLUCAS",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 56,
-      "last3Average": 56,
-      "lastGameScore": 52,
-      "scoreVolatility": 4,
-      "homeAverage": 60,
-      "awayAverage": 52
+      "gamesPlayed": 4,
+      "currentPrice": 731000,
+      "priceImpliedProjection": 57.1,
+      "seasonAverage": 58.3,
+      "last3Average": 57.7,
+      "lastGameScore": 62,
+      "scoreVolatility": 3.8,
+      "homeAverage": 59.5,
+      "awayAverage": 57
     },
     "JACOBPRESTON": {
       "playerName": "Jacob Preston",
       "key": "JACOBPRESTON",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 1,
-      "seasonAverage": 74,
-      "last3Average": 74,
-      "lastGameScore": 74,
-      "scoreVolatility": 0,
-      "homeAverage": 74,
-      "awayAverage": 74
+      "gamesPlayed": 3,
+      "currentPrice": 725000,
+      "priceImpliedProjection": 56.6,
+      "seasonAverage": 53.3,
+      "last3Average": 53.3,
+      "lastGameScore": 31,
+      "scoreVolatility": 17.6,
+      "homeAverage": 52.5,
+      "awayAverage": 55
     },
     "FLETCHERSHARPE": {
       "playerName": "Fletcher Sharpe",
       "key": "FLETCHERSHARPE",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 1,
-      "seasonAverage": 41,
-      "last3Average": 41,
-      "lastGameScore": 41,
-      "scoreVolatility": 0,
+      "gamesPlayed": 2,
+      "currentPrice": 666000,
+      "priceImpliedProjection": 52,
+      "seasonAverage": 38,
+      "last3Average": 38,
+      "lastGameScore": 35,
+      "scoreVolatility": 3,
       "homeAverage": 41,
-      "awayAverage": 41
+      "awayAverage": 35
     },
     "ISAIYAKATOA": {
       "playerName": "Isaiya Katoa",
       "key": "ISAIYAKATOA",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 44.5,
-      "last3Average": 44.5,
-      "lastGameScore": 46,
-      "scoreVolatility": 1.5,
+      "gamesPlayed": 4,
+      "currentPrice": 647000,
+      "priceImpliedProjection": 50.5,
+      "seasonAverage": 46.8,
+      "last3Average": 48,
+      "lastGameScore": 48,
+      "scoreVolatility": 2.6,
       "homeAverage": 44.5,
-      "awayAverage": 44.5
+      "awayAverage": 49
     },
     "KEAONKOLOAMATANGI": {
       "playerName": "Keaon Koloamatangi",
       "key": "KEAONKOLOAMATANGI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 48.5,
-      "last3Average": 48.5,
-      "lastGameScore": 47,
-      "scoreVolatility": 1.5,
-      "homeAverage": 48.5,
+      "gamesPlayed": 3,
+      "currentPrice": 672000,
+      "priceImpliedProjection": 52.5,
+      "seasonAverage": 48.3,
+      "last3Average": 48.3,
+      "lastGameScore": 48,
+      "scoreVolatility": 1.2,
+      "homeAverage": 48,
       "awayAverage": 48.5
     },
     "NICHOLASHYNES": {
       "playerName": "Nicholas Hynes",
       "key": "NICHOLASHYNES",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 61.5,
-      "last3Average": 61.5,
-      "lastGameScore": 39,
-      "scoreVolatility": 22.5,
-      "homeAverage": 84,
-      "awayAverage": 39
+      "gamesPlayed": 4,
+      "currentPrice": 757000,
+      "priceImpliedProjection": 59.1,
+      "seasonAverage": 63.8,
+      "last3Average": 57,
+      "lastGameScore": 69,
+      "scoreVolatility": 16.2,
+      "homeAverage": 73.5,
+      "awayAverage": 54
     },
     "TRAIFULLER": {
       "playerName": "Trai Fuller",
       "key": "TRAIFULLER",
       "primaryPosition": "Fullback",
       "gamesPlayed": 1,
+      "currentPrice": 507000,
+      "priceImpliedProjection": 39.6,
       "seasonAverage": 3,
       "last3Average": 3,
       "lastGameScore": 3,
@@ -215,11 +277,13 @@
       "playerName": "Kai Pearce-Paul",
       "key": "KAIPEARCEPAUL",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 1,
+      "gamesPlayed": 3,
+      "currentPrice": 721000,
+      "priceImpliedProjection": 56.3,
       "seasonAverage": 61,
       "last3Average": 61,
-      "lastGameScore": 61,
-      "scoreVolatility": 0,
+      "lastGameScore": 69,
+      "scoreVolatility": 6.5,
       "homeAverage": 61,
       "awayAverage": 61
     },
@@ -227,379 +291,471 @@
       "playerName": "Toby Couchman",
       "key": "TOBYCOUCHMAN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 45,
-      "last3Average": 45,
-      "lastGameScore": 34,
-      "scoreVolatility": 11,
+      "gamesPlayed": 3,
+      "currentPrice": 638000,
+      "priceImpliedProjection": 49.8,
+      "seasonAverage": 41,
+      "last3Average": 41,
+      "lastGameScore": 33,
+      "scoreVolatility": 10.6,
       "homeAverage": 34,
-      "awayAverage": 56
+      "awayAverage": 44.5
     },
     "JAMALFOGARTY": {
       "playerName": "Jamal Fogarty",
       "key": "JAMALFOGARTY",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 46,
-      "last3Average": 46,
+      "gamesPlayed": 3,
+      "currentPrice": 652000,
+      "priceImpliedProjection": 50.9,
+      "seasonAverage": 47,
+      "last3Average": 47,
       "lastGameScore": 49,
-      "scoreVolatility": 3,
-      "homeAverage": 46,
-      "awayAverage": 46
+      "scoreVolatility": 2.8,
+      "homeAverage": 47,
+      "awayAverage": 47
     },
     "BLAYKEBRAILEY": {
       "playerName": "Blayke Brailey",
       "key": "BLAYKEBRAILEY",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 56.5,
-      "last3Average": 56.5,
-      "lastGameScore": 52,
-      "scoreVolatility": 4.5,
-      "homeAverage": 61,
-      "awayAverage": 52
+      "gamesPlayed": 4,
+      "currentPrice": 732000,
+      "priceImpliedProjection": 57.2,
+      "seasonAverage": 60,
+      "last3Average": 59.7,
+      "lastGameScore": 51,
+      "scoreVolatility": 10,
+      "homeAverage": 68.5,
+      "awayAverage": 51.5
     },
     "JAMESTEDESCO": {
       "playerName": "James Tedesco",
       "key": "JAMESTEDESCO",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 51.5,
-      "last3Average": 51.5,
-      "lastGameScore": 42,
-      "scoreVolatility": 9.5,
-      "homeAverage": 42,
-      "awayAverage": 61
+      "gamesPlayed": 4,
+      "currentPrice": 650000,
+      "priceImpliedProjection": 50.8,
+      "seasonAverage": 46,
+      "last3Average": 41,
+      "lastGameScore": 26,
+      "scoreVolatility": 13.4,
+      "homeAverage": 48.5,
+      "awayAverage": 43.5
     },
     "PATRICKCARRIGAN": {
       "playerName": "Patrick Carrigan",
       "key": "PATRICKCARRIGAN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 52,
-      "last3Average": 52,
-      "lastGameScore": 57,
-      "scoreVolatility": 5,
-      "homeAverage": 52,
-      "awayAverage": 52
+      "gamesPlayed": 4,
+      "currentPrice": 687000,
+      "priceImpliedProjection": 53.7,
+      "seasonAverage": 55.3,
+      "last3Average": 58,
+      "lastGameScore": 66,
+      "scoreVolatility": 7.2,
+      "homeAverage": 56.7,
+      "awayAverage": 51
     },
     "BEAUFERMOR": {
       "playerName": "Beau Fermor",
       "key": "BEAUFERMOR",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 50,
-      "last3Average": 50,
-      "lastGameScore": 52,
-      "scoreVolatility": 2,
-      "homeAverage": 50,
-      "awayAverage": 50
+      "gamesPlayed": 4,
+      "currentPrice": 622000,
+      "priceImpliedProjection": 48.6,
+      "seasonAverage": 43.5,
+      "last3Average": 42,
+      "lastGameScore": 31,
+      "scoreVolatility": 7.9,
+      "homeAverage": 31,
+      "awayAverage": 47.7
     },
     "LINDSAYSMITH": {
       "playerName": "Lindsay Smith",
       "key": "LINDSAYSMITH",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 34,
-      "last3Average": 34,
-      "lastGameScore": 36,
-      "scoreVolatility": 2,
-      "homeAverage": 36,
-      "awayAverage": 32
+      "gamesPlayed": 4,
+      "currentPrice": 565000,
+      "priceImpliedProjection": 44.1,
+      "seasonAverage": 37.5,
+      "last3Average": 39.3,
+      "lastGameScore": 41,
+      "scoreVolatility": 3.8,
+      "homeAverage": 38.5,
+      "awayAverage": 36.5
     },
     "TINOFAASUAMALEAUI": {
       "playerName": "Tino Fa'asuamaleaui",
       "key": "TINOFAASUAMALEAUI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 32,
-      "last3Average": 32,
-      "lastGameScore": 30,
-      "scoreVolatility": 2,
-      "homeAverage": 32,
-      "awayAverage": 32
+      "gamesPlayed": 4,
+      "currentPrice": 537000,
+      "priceImpliedProjection": 42,
+      "seasonAverage": 33,
+      "last3Average": 32.7,
+      "lastGameScore": 35,
+      "scoreVolatility": 1.9,
+      "homeAverage": 35,
+      "awayAverage": 32.3
     },
     "DALYCHERRYEVANS": {
       "playerName": "Daly Cherry-Evans",
       "key": "DALYCHERRYEVANS",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 42,
-      "last3Average": 42,
-      "lastGameScore": 59,
-      "scoreVolatility": 17,
-      "homeAverage": 59,
-      "awayAverage": 25
+      "gamesPlayed": 4,
+      "currentPrice": 624000,
+      "priceImpliedProjection": 48.8,
+      "seasonAverage": 48,
+      "last3Average": 55.7,
+      "lastGameScore": 64,
+      "scoreVolatility": 15.2,
+      "homeAverage": 51.5,
+      "awayAverage": 44.5
+    },
+    "LUKEMETCALF": {
+      "playerName": "Luke Metcalf",
+      "key": "LUKEMETCALF",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 630000,
+      "priceImpliedProjection": 49.2,
+      "seasonAverage": 20,
+      "last3Average": 20,
+      "lastGameScore": 20,
+      "scoreVolatility": 0,
+      "homeAverage": 20,
+      "awayAverage": 20
     },
     "COREYHORSBURGH": {
       "playerName": "Corey Horsburgh",
       "key": "COREYHORSBURGH",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 53.5,
-      "last3Average": 53.5,
-      "lastGameScore": 44,
-      "scoreVolatility": 9.5,
-      "homeAverage": 53.5,
+      "gamesPlayed": 4,
+      "currentPrice": 638000,
+      "priceImpliedProjection": 49.8,
+      "seasonAverage": 46.3,
+      "last3Average": 40.7,
+      "lastGameScore": 34,
+      "scoreVolatility": 10.5,
+      "homeAverage": 39,
       "awayAverage": 53.5
     },
     "JACOBKIRAZ": {
       "playerName": "Jacob Kiraz",
       "key": "JACOBKIRAZ",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 61,
-      "last3Average": 61,
-      "lastGameScore": 61,
-      "scoreVolatility": 0,
-      "homeAverage": 61,
-      "awayAverage": 61
+      "gamesPlayed": 3,
+      "currentPrice": 618000,
+      "priceImpliedProjection": 48.3,
+      "seasonAverage": 42.3,
+      "last3Average": 42.3,
+      "lastGameScore": 49,
+      "scoreVolatility": 18.6,
+      "homeAverage": 55,
+      "awayAverage": 17
     },
     "ADDINFONUABLAKE": {
       "playerName": "Addin Fonua-Blake",
       "key": "ADDINFONUABLAKE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 45.5,
-      "last3Average": 45.5,
-      "lastGameScore": 37,
-      "scoreVolatility": 8.5,
-      "homeAverage": 54,
-      "awayAverage": 37
+      "gamesPlayed": 4,
+      "currentPrice": 622000,
+      "priceImpliedProjection": 48.6,
+      "seasonAverage": 45.8,
+      "last3Average": 43,
+      "lastGameScore": 44,
+      "scoreVolatility": 6.2,
+      "homeAverage": 51,
+      "awayAverage": 40.5
     },
     "REECEWALSH": {
       "playerName": "Reece Walsh",
       "key": "REECEWALSH",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 47,
-      "last3Average": 47,
-      "lastGameScore": 69,
-      "scoreVolatility": 22,
-      "homeAverage": 47,
-      "awayAverage": 47
+      "gamesPlayed": 4,
+      "currentPrice": 668000,
+      "priceImpliedProjection": 52.2,
+      "seasonAverage": 56.5,
+      "last3Average": 67,
+      "lastGameScore": 82,
+      "scoreVolatility": 21.5,
+      "homeAverage": 58.7,
+      "awayAverage": 50
     },
     "ZACHOSKING": {
       "playerName": "Zac Hosking",
       "key": "ZACHOSKING",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 36,
-      "last3Average": 36,
-      "lastGameScore": 37,
-      "scoreVolatility": 1,
-      "homeAverage": 36,
+      "gamesPlayed": 4,
+      "currentPrice": 541000,
+      "priceImpliedProjection": 42.3,
+      "seasonAverage": 34.5,
+      "last3Average": 34.3,
+      "lastGameScore": 32,
+      "scoreVolatility": 1.8,
+      "homeAverage": 33,
       "awayAverage": 36
     },
     "HARRYGRANT": {
       "playerName": "Harry Grant",
       "key": "HARRYGRANT",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 67.5,
-      "last3Average": 67.5,
-      "lastGameScore": 72,
-      "scoreVolatility": 4.5,
-      "homeAverage": 63,
-      "awayAverage": 72
+      "gamesPlayed": 4,
+      "currentPrice": 698000,
+      "priceImpliedProjection": 54.5,
+      "seasonAverage": 56.5,
+      "last3Average": 54.3,
+      "lastGameScore": 47,
+      "scoreVolatility": 11.5,
+      "homeAverage": 53.5,
+      "awayAverage": 59.5
     },
     "VALENTINEHOLMES": {
       "playerName": "Valentine Holmes",
       "key": "VALENTINEHOLMES",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 40,
-      "last3Average": 40,
-      "lastGameScore": 53,
-      "scoreVolatility": 13,
+      "gamesPlayed": 4,
+      "currentPrice": 594000,
+      "priceImpliedProjection": 46.4,
+      "seasonAverage": 43.3,
+      "last3Average": 48.7,
+      "lastGameScore": 42,
+      "scoreVolatility": 10.3,
       "homeAverage": 53,
-      "awayAverage": 27
+      "awayAverage": 40
     },
     "MAXKING": {
       "playerName": "Max King",
       "key": "MAXKING",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 54,
-      "last3Average": 54,
-      "lastGameScore": 54,
-      "scoreVolatility": 0,
-      "homeAverage": 54,
-      "awayAverage": 54
+      "gamesPlayed": 3,
+      "currentPrice": 622000,
+      "priceImpliedProjection": 48.6,
+      "seasonAverage": 44.7,
+      "last3Average": 44.7,
+      "lastGameScore": 37,
+      "scoreVolatility": 7,
+      "homeAverage": 45.5,
+      "awayAverage": 43
     },
     "ADAMREYNOLDS": {
       "playerName": "Adam Reynolds",
       "key": "ADAMREYNOLDS",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 39,
-      "last3Average": 39,
-      "lastGameScore": 65,
-      "scoreVolatility": 26,
-      "homeAverage": 39,
-      "awayAverage": 39
+      "gamesPlayed": 3,
+      "currentPrice": 585000,
+      "priceImpliedProjection": 45.7,
+      "seasonAverage": 41.3,
+      "last3Average": 41.3,
+      "lastGameScore": 46,
+      "scoreVolatility": 21.5,
+      "homeAverage": 41.3,
+      "awayAverage": 41.3
     },
     "CAMERONMUNSTER": {
       "playerName": "Cameron Munster",
       "key": "CAMERONMUNSTER",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 57.5,
-      "last3Average": 57.5,
-      "lastGameScore": 46,
-      "scoreVolatility": 11.5,
-      "homeAverage": 69,
-      "awayAverage": 46
+      "gamesPlayed": 4,
+      "currentPrice": 666000,
+      "priceImpliedProjection": 52,
+      "seasonAverage": 52,
+      "last3Average": 46.3,
+      "lastGameScore": 36,
+      "scoreVolatility": 12.3,
+      "homeAverage": 63,
+      "awayAverage": 41
     },
     "ANGUSCRICHTON": {
       "playerName": "Angus Crichton",
       "key": "ANGUSCRICHTON",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 41,
-      "last3Average": 41,
-      "lastGameScore": 39,
-      "scoreVolatility": 2,
-      "homeAverage": 39,
-      "awayAverage": 43
+      "gamesPlayed": 4,
+      "currentPrice": 578000,
+      "priceImpliedProjection": 45.2,
+      "seasonAverage": 40.8,
+      "last3Average": 40,
+      "lastGameScore": 38,
+      "scoreVolatility": 2.3,
+      "homeAverage": 41,
+      "awayAverage": 40.5
     },
     "NAUFAHUWHYTE": {
       "playerName": "Naufahu Whyte",
       "key": "NAUFAHUWHYTE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 36.5,
-      "last3Average": 36.5,
-      "lastGameScore": 33,
-      "scoreVolatility": 3.5,
-      "homeAverage": 33,
-      "awayAverage": 40
+      "gamesPlayed": 4,
+      "currentPrice": 597000,
+      "priceImpliedProjection": 46.6,
+      "seasonAverage": 46,
+      "last3Average": 48,
+      "lastGameScore": 61,
+      "scoreVolatility": 10.6,
+      "homeAverage": 41.5,
+      "awayAverage": 50.5
     },
     "SCOTTDRINKWATER": {
       "playerName": "Scott Drinkwater",
       "key": "SCOTTDRINKWATER",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 27,
-      "last3Average": 27,
-      "lastGameScore": 33,
-      "scoreVolatility": 6,
-      "homeAverage": 27,
+      "gamesPlayed": 4,
+      "currentPrice": 579000,
+      "priceImpliedProjection": 45.2,
+      "seasonAverage": 44,
+      "last3Average": 51.7,
+      "lastGameScore": 56,
+      "scoreVolatility": 17.9,
+      "homeAverage": 61,
       "awayAverage": 27
     },
     "JACKWILLIAMS": {
       "playerName": "Jack Williams",
       "key": "JACKWILLIAMS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 53.5,
-      "last3Average": 53.5,
-      "lastGameScore": 52,
-      "scoreVolatility": 1.5,
-      "homeAverage": 53.5,
-      "awayAverage": 53.5
+      "gamesPlayed": 4,
+      "currentPrice": 641000,
+      "priceImpliedProjection": 50.1,
+      "seasonAverage": 49,
+      "last3Average": 47,
+      "lastGameScore": 36,
+      "scoreVolatility": 7.6,
+      "homeAverage": 53,
+      "awayAverage": 47.7
     },
     "JAYDNSUA": {
       "playerName": "Jaydn Su'A",
       "key": "JAYDNSUA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 58,
-      "last3Average": 58,
-      "lastGameScore": 57,
-      "scoreVolatility": 1,
+      "gamesPlayed": 4,
+      "currentPrice": 713000,
+      "priceImpliedProjection": 55.7,
+      "seasonAverage": 60.5,
+      "last3Average": 61,
+      "lastGameScore": 49,
+      "scoreVolatility": 10.2,
       "homeAverage": 57,
-      "awayAverage": 59
+      "awayAverage": 61.7
     },
     "DAMIENCOOK": {
       "playerName": "Damien Cook",
       "key": "DAMIENCOOK",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 72,
-      "last3Average": 72,
-      "lastGameScore": 53,
-      "scoreVolatility": 19,
+      "gamesPlayed": 4,
+      "currentPrice": 708000,
+      "priceImpliedProjection": 55.3,
+      "seasonAverage": 59.8,
+      "last3Average": 49.3,
+      "lastGameScore": 60,
+      "scoreVolatility": 20.2,
       "homeAverage": 53,
-      "awayAverage": 91
+      "awayAverage": 62
     },
     "VILIAMEKIKAU": {
       "playerName": "Viliame Kikau",
       "key": "VILIAMEKIKAU",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 1,
-      "seasonAverage": 74,
-      "last3Average": 74,
-      "lastGameScore": 74,
-      "scoreVolatility": 0,
-      "homeAverage": 74,
-      "awayAverage": 74
+      "gamesPlayed": 3,
+      "currentPrice": 649000,
+      "priceImpliedProjection": 50.7,
+      "seasonAverage": 52.7,
+      "last3Average": 52.7,
+      "lastGameScore": 56,
+      "scoreVolatility": 18.9,
+      "homeAverage": 65,
+      "awayAverage": 28
     },
     "TOMDEARDEN": {
       "playerName": "Tom Dearden",
       "key": "TOMDEARDEN",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 43,
-      "last3Average": 43,
-      "lastGameScore": 29,
-      "scoreVolatility": 14,
-      "homeAverage": 43,
+      "gamesPlayed": 4,
+      "currentPrice": 601000,
+      "priceImpliedProjection": 47,
+      "seasonAverage": 45.5,
+      "last3Average": 41.7,
+      "lastGameScore": 48,
+      "scoreVolatility": 10.2,
+      "homeAverage": 48,
       "awayAverage": 43
     },
     "KLIRO": {
       "playerName": "KL Iro",
       "key": "KLIRO",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 32,
-      "scoreVolatility": 1,
-      "homeAverage": 34,
-      "awayAverage": 32
+      "gamesPlayed": 4,
+      "currentPrice": 536000,
+      "priceImpliedProjection": 41.9,
+      "seasonAverage": 35,
+      "last3Average": 35.3,
+      "lastGameScore": 28,
+      "scoreVolatility": 6.7,
+      "homeAverage": 40,
+      "awayAverage": 30
     },
     "JACKSONFORD": {
       "playerName": "Jackson Ford",
       "key": "JACKSONFORD",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 59,
-      "last3Average": 59,
-      "lastGameScore": 74,
-      "scoreVolatility": 15,
-      "homeAverage": 59,
-      "awayAverage": 59
+      "gamesPlayed": 4,
+      "currentPrice": 720000,
+      "priceImpliedProjection": 56.3,
+      "seasonAverage": 62.3,
+      "last3Average": 68.3,
+      "lastGameScore": 50,
+      "scoreVolatility": 15.6,
+      "homeAverage": 56,
+      "awayAverage": 81
     },
     "CONNORWATSON": {
       "playerName": "Connor Watson",
       "key": "CONNORWATSON",
       "primaryPosition": null,
+      "gamesPlayed": 4,
+      "currentPrice": 537000,
+      "priceImpliedProjection": 42,
+      "seasonAverage": 40.3,
+      "last3Average": 50,
+      "lastGameScore": 69,
+      "scoreVolatility": 20.8,
+      "homeAverage": 40.5,
+      "awayAverage": 40
+    },
+    "TRENTLOIERO": {
+      "playerName": "Trent Loiero",
+      "key": "TRENTLOIERO",
+      "primaryPosition": "Prop",
       "gamesPlayed": 2,
-      "seasonAverage": 23.5,
-      "last3Average": 23.5,
-      "lastGameScore": 36,
-      "scoreVolatility": 12.5,
-      "homeAverage": 36,
-      "awayAverage": 11
+      "currentPrice": 625000,
+      "priceImpliedProjection": 48.8,
+      "seasonAverage": 50,
+      "last3Average": 50,
+      "lastGameScore": 44,
+      "scoreVolatility": 6,
+      "homeAverage": 56,
+      "awayAverage": 44
     },
     "HAMISOTABUAIFIDOW": {
       "playerName": "Hamiso Tabuai-Fidow",
       "key": "HAMISOTABUAIFIDOW",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 61.5,
-      "last3Average": 61.5,
-      "lastGameScore": 67,
-      "scoreVolatility": 5.5,
+      "gamesPlayed": 4,
+      "currentPrice": 637000,
+      "priceImpliedProjection": 49.8,
+      "seasonAverage": 49.3,
+      "last3Average": 47,
+      "lastGameScore": 40,
+      "scoreVolatility": 13,
       "homeAverage": 61.5,
-      "awayAverage": 61.5
+      "awayAverage": 37
     },
     "JACKDEBELIN": {
       "playerName": "Jack De Belin",
       "key": "JACKDEBELIN",
       "primaryPosition": "Prop",
       "gamesPlayed": 2,
+      "currentPrice": 592000,
+      "priceImpliedProjection": 46.3,
       "seasonAverage": 37,
       "last3Average": 37,
       "lastGameScore": 25,
@@ -611,43 +767,51 @@
       "playerName": "Dylan Edwards",
       "key": "DYLANEDWARDS",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 51,
-      "last3Average": 51,
-      "lastGameScore": 38,
-      "scoreVolatility": 13,
-      "homeAverage": 38,
-      "awayAverage": 64
+      "gamesPlayed": 4,
+      "currentPrice": 627000,
+      "priceImpliedProjection": 49,
+      "seasonAverage": 47.3,
+      "last3Average": 41.7,
+      "lastGameScore": 22,
+      "scoreVolatility": 18.2,
+      "homeAverage": 30,
+      "awayAverage": 64.5
     },
     "MARKNAWAQANITAWASE": {
       "playerName": "Mark Nawaqanitawase",
       "key": "MARKNAWAQANITAWASE",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 42.5,
-      "last3Average": 42.5,
-      "lastGameScore": 44,
-      "scoreVolatility": 1.5,
-      "homeAverage": 44,
-      "awayAverage": 41
+      "gamesPlayed": 4,
+      "currentPrice": 587000,
+      "priceImpliedProjection": 45.9,
+      "seasonAverage": 46.5,
+      "last3Average": 48.3,
+      "lastGameScore": 68,
+      "scoreVolatility": 13,
+      "homeAverage": 38.5,
+      "awayAverage": 54.5
     },
     "JORDANRIKI": {
       "playerName": "Jordan Riki",
       "key": "JORDANRIKI",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 41,
-      "last3Average": 41,
-      "lastGameScore": 41,
-      "scoreVolatility": 0,
-      "homeAverage": 41,
-      "awayAverage": 41
+      "gamesPlayed": 4,
+      "currentPrice": 642000,
+      "priceImpliedProjection": 50.2,
+      "seasonAverage": 53.5,
+      "last3Average": 57.7,
+      "lastGameScore": 54,
+      "scoreVolatility": 15.1,
+      "homeAverage": 45.3,
+      "awayAverage": 78
     },
     "EUANAITKEN": {
       "playerName": "Euan Aitken",
       "key": "EUANAITKEN",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 2,
+      "currentPrice": 600000,
+      "priceImpliedProjection": 46.9,
       "seasonAverage": 41.5,
       "last3Average": 41.5,
       "lastGameScore": 33,
@@ -660,6 +824,8 @@
       "key": "TAYLANMAY",
       "primaryPosition": "Centre",
       "gamesPlayed": 1,
+      "currentPrice": 564000,
+      "priceImpliedProjection": 44.1,
       "seasonAverage": 5,
       "last3Average": 5,
       "lastGameScore": 5,
@@ -671,259 +837,51 @@
       "playerName": "Haumole Olakau'atu",
       "key": "HAUMOLEOLAKAUATU",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 47.5,
-      "last3Average": 47.5,
-      "lastGameScore": 41,
-      "scoreVolatility": 6.5,
-      "homeAverage": 47.5,
-      "awayAverage": 47.5
+      "gamesPlayed": 3,
+      "currentPrice": 618000,
+      "priceImpliedProjection": 48.3,
+      "seasonAverage": 49.7,
+      "last3Average": 49.7,
+      "lastGameScore": 54,
+      "scoreVolatility": 6.1,
+      "homeAverage": 49.7,
+      "awayAverage": 49.7
     },
     "ISAIAHPAPALII": {
       "playerName": "Isaiah Papali'i",
       "key": "ISAIAHPAPALII",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 58,
-      "last3Average": 58,
-      "lastGameScore": 62,
-      "scoreVolatility": 4,
-      "homeAverage": 62,
-      "awayAverage": 54
+      "gamesPlayed": 4,
+      "currentPrice": 659000,
+      "priceImpliedProjection": 51.5,
+      "seasonAverage": 55.3,
+      "last3Average": 55.7,
+      "lastGameScore": 59,
+      "scoreVolatility": 6.1,
+      "homeAverage": 60.5,
+      "awayAverage": 50
     },
     "SAMVERRILLS": {
       "playerName": "Sam Verrills",
       "key": "SAMVERRILLS",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 40.5,
-      "last3Average": 40.5,
-      "lastGameScore": 32,
-      "scoreVolatility": 8.5,
-      "homeAverage": 40.5,
-      "awayAverage": 40.5
-    },
-    "JMAINEHOPGOOD": {
-      "playerName": "J'maine Hopgood",
-      "key": "JMAINEHOPGOOD",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 49,
-      "last3Average": 49,
-      "lastGameScore": 49,
-      "scoreVolatility": 0,
-      "homeAverage": 49,
-      "awayAverage": 49
-    },
-    "JUNIORPAULO": {
-      "playerName": "Junior Paulo",
-      "key": "JUNIORPAULO",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 32,
-      "scoreVolatility": 3,
-      "homeAverage": 35,
-      "awayAverage": 35
-    },
-    "TREYMOONEY": {
-      "playerName": "Trey Mooney",
-      "key": "TREYMOONEY",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 59.5,
-      "last3Average": 59.5,
-      "lastGameScore": 53,
-      "scoreVolatility": 6.5,
-      "homeAverage": 66,
-      "awayAverage": 53
-    },
-    "MITCHELLMOSES": {
-      "playerName": "Mitchell Moses",
-      "key": "MITCHELLMOSES",
-      "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 41.5,
-      "last3Average": 41.5,
-      "lastGameScore": 48,
-      "scoreVolatility": 6.5,
-      "homeAverage": 41.5,
-      "awayAverage": 41.5
-    },
-    "TANAHBOYD": {
-      "playerName": "Tanah Boyd",
-      "key": "TANAHBOYD",
-      "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 77,
-      "last3Average": 77,
-      "lastGameScore": 76,
-      "scoreVolatility": 1,
-      "homeAverage": 77,
-      "awayAverage": 77
-    },
-    "WAYDEEGAN": {
-      "playerName": "Wayde Egan",
-      "key": "WAYDEEGAN",
-      "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 30.5,
-      "last3Average": 30.5,
-      "lastGameScore": 31,
-      "scoreVolatility": 0.5,
-      "homeAverage": 30.5,
-      "awayAverage": 30.5
-    },
-    "BRADMANBEST": {
-      "playerName": "Bradman Best",
-      "key": "BRADMANBEST",
-      "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 40.5,
-      "last3Average": 40.5,
-      "lastGameScore": 48,
-      "scoreVolatility": 7.5,
-      "homeAverage": 33,
-      "awayAverage": 48
-    },
-    "APISAIKOROISAU": {
-      "playerName": "Apisai Koroisau",
-      "key": "APISAIKOROISAU",
-      "primaryPosition": null,
-      "gamesPlayed": 1,
-      "seasonAverage": 31,
-      "last3Average": 31,
-      "lastGameScore": 31,
-      "scoreVolatility": 0,
-      "homeAverage": 31,
-      "awayAverage": 31
-    },
-    "JAHROMEHUGHES": {
-      "playerName": "Jahrome Hughes",
-      "key": "JAHROMEHUGHES",
-      "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 46.5,
-      "last3Average": 46.5,
-      "lastGameScore": 55,
-      "scoreVolatility": 8.5,
+      "gamesPlayed": 4,
+      "currentPrice": 558000,
+      "priceImpliedProjection": 43.6,
+      "seasonAverage": 40.3,
+      "last3Average": 37.3,
+      "lastGameScore": 38,
+      "scoreVolatility": 6.2,
       "homeAverage": 38,
-      "awayAverage": 55
+      "awayAverage": 41
     },
-    "JAMESFISHERHARRIS": {
-      "playerName": "James Fisher-Harris",
-      "key": "JAMESFISHERHARRIS",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 58,
-      "last3Average": 58,
-      "lastGameScore": 49,
-      "scoreVolatility": 9,
-      "homeAverage": 58,
-      "awayAverage": 58
-    },
-    "STEFANOUTOIKAMANU": {
-      "playerName": "Stefano Utoikamanu",
-      "key": "STEFANOUTOIKAMANU",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 57,
-      "last3Average": 57,
-      "lastGameScore": 66,
-      "scoreVolatility": 9,
-      "homeAverage": 48,
-      "awayAverage": 66
-    },
-    "KOTONISTAGGS": {
-      "playerName": "Kotoni Staggs",
-      "key": "KOTONISTAGGS",
+    "MOALAGRAHAMTAUFA": {
+      "playerName": "Moala Graham-Taufa",
+      "key": "MOALAGRAHAMTAUFA",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 33.5,
-      "last3Average": 33.5,
-      "lastGameScore": 40,
-      "scoreVolatility": 6.5,
-      "homeAverage": 33.5,
-      "awayAverage": 33.5
-    },
-    "TOMSTARLING": {
-      "playerName": "Tom Starling",
-      "key": "TOMSTARLING",
-      "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 41.5,
-      "last3Average": 41.5,
-      "lastGameScore": 36,
-      "scoreVolatility": 5.5,
-      "homeAverage": 41.5,
-      "awayAverage": 41.5
-    },
-    "ALEXTWAL": {
-      "playerName": "Alex Twal",
-      "key": "ALEXTWAL",
-      "primaryPosition": "Prop",
       "gamesPlayed": 1,
-      "seasonAverage": 55,
-      "last3Average": 55,
-      "lastGameScore": 55,
-      "scoreVolatility": 0,
-      "homeAverage": 55,
-      "awayAverage": 55
-    },
-    "BRAIDONBURNS": {
-      "playerName": "Braidon Burns",
-      "key": "BRAIDONBURNS",
-      "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 46.5,
-      "last3Average": 46.5,
-      "lastGameScore": 62,
-      "scoreVolatility": 15.5,
-      "homeAverage": 46.5,
-      "awayAverage": 46.5
-    },
-    "SIUAWONG": {
-      "playerName": "Siua Wong",
-      "key": "SIUAWONG",
-      "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 44,
-      "last3Average": 44,
-      "lastGameScore": 48,
-      "scoreVolatility": 4,
-      "homeAverage": 48,
-      "awayAverage": 40
-    },
-    "SAMWALKER": {
-      "playerName": "Sam Walker",
-      "key": "SAMWALKER",
-      "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 34.5,
-      "last3Average": 34.5,
-      "lastGameScore": 42,
-      "scoreVolatility": 7.5,
-      "homeAverage": 42,
-      "awayAverage": 27
-    },
-    "REUBENCOTTER": {
-      "playerName": "Reuben Cotter",
-      "key": "REUBENCOTTER",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 35,
-      "scoreVolatility": 0,
-      "homeAverage": 35,
-      "awayAverage": 35
-    },
-    "JOSHCURRAN": {
-      "playerName": "Josh Curran",
-      "key": "JOSHCURRAN",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 1,
+      "currentPrice": 240000,
+      "priceImpliedProjection": 18.8,
       "seasonAverage": 11,
       "last3Average": 11,
       "lastGameScore": 11,
@@ -931,107 +889,419 @@
       "homeAverage": 11,
       "awayAverage": 11
     },
+    "JMAINEHOPGOOD": {
+      "playerName": "J'maine Hopgood",
+      "key": "JMAINEHOPGOOD",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 2,
+      "currentPrice": 560000,
+      "priceImpliedProjection": 43.8,
+      "seasonAverage": 29.5,
+      "last3Average": 29.5,
+      "lastGameScore": 10,
+      "scoreVolatility": 19.5,
+      "homeAverage": 10,
+      "awayAverage": 49
+    },
+    "JUNIORPAULO": {
+      "playerName": "Junior Paulo",
+      "key": "JUNIORPAULO",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 4,
+      "currentPrice": 518000,
+      "priceImpliedProjection": 40.5,
+      "seasonAverage": 34.5,
+      "last3Average": 33.3,
+      "lastGameScore": 27,
+      "scoreVolatility": 5.4,
+      "homeAverage": 41,
+      "awayAverage": 32.3
+    },
+    "TREYMOONEY": {
+      "playerName": "Trey Mooney",
+      "key": "TREYMOONEY",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 538000,
+      "priceImpliedProjection": 42,
+      "seasonAverage": 49.3,
+      "last3Average": 49.3,
+      "lastGameScore": 29,
+      "scoreVolatility": 15.3,
+      "homeAverage": 47.5,
+      "awayAverage": 53
+    },
+    "MITCHELLMOSES": {
+      "playerName": "Mitchell Moses",
+      "key": "MITCHELLMOSES",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 4,
+      "currentPrice": 587000,
+      "priceImpliedProjection": 45.9,
+      "seasonAverage": 44.5,
+      "last3Average": 47.7,
+      "lastGameScore": 27,
+      "scoreVolatility": 15.5,
+      "homeAverage": 68,
+      "awayAverage": 36.7
+    },
+    "MITCHELLBARNETT": {
+      "playerName": "Mitchell Barnett",
+      "key": "MITCHELLBARNETT",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 2,
+      "currentPrice": 548000,
+      "priceImpliedProjection": 42.8,
+      "seasonAverage": 33,
+      "last3Average": 33,
+      "lastGameScore": 32,
+      "scoreVolatility": 1,
+      "homeAverage": 32,
+      "awayAverage": 34
+    },
+    "TANAHBOYD": {
+      "playerName": "Tanah Boyd",
+      "key": "TANAHBOYD",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 4,
+      "currentPrice": 750000,
+      "priceImpliedProjection": 58.6,
+      "seasonAverage": 74.5,
+      "last3Average": 73.3,
+      "lastGameScore": 58,
+      "scoreVolatility": 10.2,
+      "homeAverage": 70.7,
+      "awayAverage": 86
+    },
+    "WAYDEEGAN": {
+      "playerName": "Wayde Egan",
+      "key": "WAYDEEGAN",
+      "primaryPosition": null,
+      "gamesPlayed": 4,
+      "currentPrice": 498000,
+      "priceImpliedProjection": 38.9,
+      "seasonAverage": 33,
+      "last3Average": 34,
+      "lastGameScore": 32,
+      "scoreVolatility": 3.5,
+      "homeAverage": 31,
+      "awayAverage": 39
+    },
+    "BRADMANBEST": {
+      "playerName": "Bradman Best",
+      "key": "BRADMANBEST",
+      "primaryPosition": "Centre",
+      "gamesPlayed": 4,
+      "currentPrice": 542000,
+      "priceImpliedProjection": 42.3,
+      "seasonAverage": 39.8,
+      "last3Average": 42,
+      "lastGameScore": 43,
+      "scoreVolatility": 6.1,
+      "homeAverage": 34,
+      "awayAverage": 45.5
+    },
+    "APISAIKOROISAU": {
+      "playerName": "Apisai Koroisau",
+      "key": "APISAIKOROISAU",
+      "primaryPosition": null,
+      "gamesPlayed": 3,
+      "currentPrice": 544000,
+      "priceImpliedProjection": 42.5,
+      "seasonAverage": 39.7,
+      "last3Average": 39.7,
+      "lastGameScore": 49,
+      "scoreVolatility": 7.4,
+      "homeAverage": 31,
+      "awayAverage": 44
+    },
+    "JAHROMEHUGHES": {
+      "playerName": "Jahrome Hughes",
+      "key": "JAHROMEHUGHES",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 4,
+      "currentPrice": 679000,
+      "priceImpliedProjection": 53,
+      "seasonAverage": 58,
+      "last3Average": 64.7,
+      "lastGameScore": 66,
+      "scoreVolatility": 13.2,
+      "homeAverage": 55.5,
+      "awayAverage": 60.5
+    },
+    "JAMESFISHERHARRIS": {
+      "playerName": "James Fisher-Harris",
+      "key": "JAMESFISHERHARRIS",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 4,
+      "currentPrice": 649000,
+      "priceImpliedProjection": 50.7,
+      "seasonAverage": 54.3,
+      "last3Average": 50,
+      "lastGameScore": 46,
+      "scoreVolatility": 8,
+      "homeAverage": 54,
+      "awayAverage": 55
+    },
+    "REECEROBSON": {
+      "playerName": "Reece Robson",
+      "key": "REECEROBSON",
+      "primaryPosition": null,
+      "gamesPlayed": 2,
+      "currentPrice": 577000,
+      "priceImpliedProjection": 45.1,
+      "seasonAverage": 44.5,
+      "last3Average": 44.5,
+      "lastGameScore": 40,
+      "scoreVolatility": 4.5,
+      "homeAverage": 49,
+      "awayAverage": 40
+    },
+    "STEFANOUTOIKAMANU": {
+      "playerName": "Stefano Utoikamanu",
+      "key": "STEFANOUTOIKAMANU",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 4,
+      "currentPrice": 647000,
+      "priceImpliedProjection": 50.5,
+      "seasonAverage": 54.8,
+      "last3Average": 57,
+      "lastGameScore": 46,
+      "scoreVolatility": 8.2,
+      "homeAverage": 53.5,
+      "awayAverage": 56
+    },
+    "KOTONISTAGGS": {
+      "playerName": "Kotoni Staggs",
+      "key": "KOTONISTAGGS",
+      "primaryPosition": "Centre",
+      "gamesPlayed": 4,
+      "currentPrice": 555000,
+      "priceImpliedProjection": 43.4,
+      "seasonAverage": 45,
+      "last3Average": 51,
+      "lastGameScore": 65,
+      "scoreVolatility": 13.8,
+      "homeAverage": 44,
+      "awayAverage": 48
+    },
+    "TOMSTARLING": {
+      "playerName": "Tom Starling",
+      "key": "TOMSTARLING",
+      "primaryPosition": null,
+      "gamesPlayed": 4,
+      "currentPrice": 508000,
+      "priceImpliedProjection": 39.7,
+      "seasonAverage": 34.5,
+      "last3Average": 30.3,
+      "lastGameScore": 33,
+      "scoreVolatility": 8.9,
+      "homeAverage": 27.5,
+      "awayAverage": 41.5
+    },
+    "ALEXTWAL": {
+      "playerName": "Alex Twal",
+      "key": "ALEXTWAL",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 655000,
+      "priceImpliedProjection": 51.2,
+      "seasonAverage": 64.7,
+      "last3Average": 64.7,
+      "lastGameScore": 78,
+      "scoreVolatility": 9.7,
+      "homeAverage": 55,
+      "awayAverage": 69.5
+    },
+    "BRAIDONBURNS": {
+      "playerName": "Braidon Burns",
+      "key": "BRAIDONBURNS",
+      "primaryPosition": "Fullback",
+      "gamesPlayed": 4,
+      "currentPrice": 572000,
+      "priceImpliedProjection": 44.7,
+      "seasonAverage": 47,
+      "last3Average": 52.3,
+      "lastGameScore": 68,
+      "scoreVolatility": 18.2,
+      "homeAverage": 47.5,
+      "awayAverage": 46.5
+    },
+    "SIUAWONG": {
+      "playerName": "Siua Wong",
+      "key": "SIUAWONG",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 4,
+      "currentPrice": 601000,
+      "priceImpliedProjection": 47,
+      "seasonAverage": 50.5,
+      "last3Average": 54,
+      "lastGameScore": 59,
+      "scoreVolatility": 7.2,
+      "homeAverage": 51.5,
+      "awayAverage": 49.5
+    },
+    "SAMWALKER": {
+      "playerName": "Sam Walker",
+      "key": "SAMWALKER",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 4,
+      "currentPrice": 495000,
+      "priceImpliedProjection": 38.7,
+      "seasonAverage": 34.3,
+      "last3Average": 36.7,
+      "lastGameScore": 42,
+      "scoreVolatility": 7.8,
+      "homeAverage": 34,
+      "awayAverage": 34.5
+    },
+    "REUBENCOTTER": {
+      "playerName": "Reuben Cotter",
+      "key": "REUBENCOTTER",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 513000,
+      "priceImpliedProjection": 40.1,
+      "seasonAverage": 31.7,
+      "last3Average": 31.7,
+      "lastGameScore": 22,
+      "scoreVolatility": 6.9,
+      "homeAverage": 30,
+      "awayAverage": 35
+    },
+    "JOSHCURRAN": {
+      "playerName": "Josh Curran",
+      "key": "JOSHCURRAN",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 412000,
+      "priceImpliedProjection": 32.2,
+      "seasonAverage": 11.7,
+      "last3Average": 11.7,
+      "lastGameScore": 2,
+      "scoreVolatility": 8.2,
+      "homeAverage": 6.5,
+      "awayAverage": 22
+    },
     "MOEAKIFOTUAIKA": {
       "playerName": "Moeaki Fotuaika",
       "key": "MOEAKIFOTUAIKA",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 29,
-      "scoreVolatility": 6,
-      "homeAverage": 35,
-      "awayAverage": 35
+      "gamesPlayed": 4,
+      "currentPrice": 493000,
+      "priceImpliedProjection": 38.5,
+      "seasonAverage": 33.3,
+      "last3Average": 30.7,
+      "lastGameScore": 33,
+      "scoreVolatility": 4.7,
+      "homeAverage": 33,
+      "awayAverage": 33.3
     },
     "JAKECLIFFORD": {
       "playerName": "Jake Clifford",
       "key": "JAKECLIFFORD",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 41.5,
-      "last3Average": 41.5,
-      "lastGameScore": 46,
-      "scoreVolatility": 4.5,
-      "homeAverage": 41.5,
+      "gamesPlayed": 4,
+      "currentPrice": 590000,
+      "priceImpliedProjection": 46.1,
+      "seasonAverage": 50.8,
+      "last3Average": 55.3,
+      "lastGameScore": 70,
+      "scoreVolatility": 12.1,
+      "homeAverage": 60,
       "awayAverage": 41.5
     },
     "GEHAMATSHIBASAKI": {
       "playerName": "Gehamat Shibasaki",
       "key": "GEHAMATSHIBASAKI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 14,
-      "last3Average": 14,
-      "lastGameScore": 7,
-      "scoreVolatility": 7,
-      "homeAverage": 14,
-      "awayAverage": 14
+      "gamesPlayed": 3,
+      "currentPrice": 435000,
+      "priceImpliedProjection": 34,
+      "seasonAverage": 19.3,
+      "last3Average": 19.3,
+      "lastGameScore": 30,
+      "scoreVolatility": 9.5,
+      "homeAverage": 19.3,
+      "awayAverage": 19.3
     },
     "MAXPLATH": {
       "playerName": "Max Plath",
       "key": "MAXPLATH",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 39,
-      "last3Average": 39,
-      "lastGameScore": 39,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 522000,
+      "priceImpliedProjection": 40.8,
+      "seasonAverage": 37.3,
+      "last3Average": 37.3,
+      "lastGameScore": 46,
+      "scoreVolatility": 7.8,
       "homeAverage": 39,
-      "awayAverage": 39
+      "awayAverage": 36.5
     },
     "ROGERTUIVASASHECK": {
       "playerName": "Roger Tuivasa-Sheck",
       "key": "ROGERTUIVASASHECK",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 31,
-      "last3Average": 31,
-      "lastGameScore": 20,
-      "scoreVolatility": 11,
-      "homeAverage": 31,
-      "awayAverage": 31
+      "gamesPlayed": 4,
+      "currentPrice": 457000,
+      "priceImpliedProjection": 35.7,
+      "seasonAverage": 27.8,
+      "last3Average": 23,
+      "lastGameScore": 22,
+      "scoreVolatility": 8.6,
+      "homeAverage": 28,
+      "awayAverage": 27
     },
     "ADAMDOUEIHI": {
       "playerName": "Adam Doueihi",
       "key": "ADAMDOUEIHI",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 1,
-      "seasonAverage": 82,
-      "last3Average": 82,
-      "lastGameScore": 82,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 675000,
+      "priceImpliedProjection": 52.7,
+      "seasonAverage": 68,
+      "last3Average": 68,
+      "lastGameScore": 75,
+      "scoreVolatility": 15.1,
       "homeAverage": 82,
-      "awayAverage": 82
+      "awayAverage": 61
     },
     "BRITONNIKORA": {
       "playerName": "Briton Nikora",
       "key": "BRITONNIKORA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 47.5,
-      "last3Average": 47.5,
-      "lastGameScore": 60,
-      "scoreVolatility": 12.5,
-      "homeAverage": 35,
+      "gamesPlayed": 3,
+      "currentPrice": 579000,
+      "priceImpliedProjection": 45.2,
+      "seasonAverage": 50,
+      "last3Average": 50,
+      "lastGameScore": 55,
+      "scoreVolatility": 10.8,
+      "homeAverage": 45,
       "awayAverage": 60
     },
     "KITIONEKAUTOGA": {
       "playerName": "Kitione Kautoga",
       "key": "KITIONEKAUTOGA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 33.5,
-      "last3Average": 33.5,
-      "lastGameScore": 31,
-      "scoreVolatility": 2.5,
-      "homeAverage": 33.5,
-      "awayAverage": 33.5
+      "gamesPlayed": 4,
+      "currentPrice": 566000,
+      "priceImpliedProjection": 44.2,
+      "seasonAverage": 47.5,
+      "last3Average": 51.3,
+      "lastGameScore": 60,
+      "scoreVolatility": 14.2,
+      "homeAverage": 63,
+      "awayAverage": 42.3
     },
     "MATTHEWTIMOKO": {
       "playerName": "Matthew Timoko",
       "key": "MATTHEWTIMOKO",
       "primaryPosition": "Centre",
       "gamesPlayed": 1,
+      "currentPrice": 530000,
+      "priceImpliedProjection": 41.4,
       "seasonAverage": 21,
       "last3Average": 21,
       "lastGameScore": 21,
@@ -1043,23 +1313,27 @@
       "playerName": "Robert Toia",
       "key": "ROBERTTOIA",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 32,
-      "last3Average": 32,
-      "lastGameScore": 32,
-      "scoreVolatility": 0,
-      "homeAverage": 32,
-      "awayAverage": 32
+      "gamesPlayed": 3,
+      "currentPrice": 568000,
+      "priceImpliedProjection": 44.4,
+      "seasonAverage": 49,
+      "last3Average": 49,
+      "lastGameScore": 57,
+      "scoreVolatility": 12,
+      "homeAverage": 45,
+      "awayAverage": 57
     },
     "REUBENGARRICK": {
       "playerName": "Reuben Garrick",
       "key": "REUBENGARRICK",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
+      "gamesPlayed": 3,
+      "currentPrice": 472000,
+      "priceImpliedProjection": 36.9,
       "seasonAverage": 27,
       "last3Average": 27,
-      "lastGameScore": 31,
-      "scoreVolatility": 4,
+      "lastGameScore": 27,
+      "scoreVolatility": 3.3,
       "homeAverage": 27,
       "awayAverage": 27
     },
@@ -1067,115 +1341,149 @@
       "playerName": "Tallis Duncan",
       "key": "TALLISDUNCAN",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 34,
-      "last3Average": 34,
-      "lastGameScore": 23,
-      "scoreVolatility": 11,
-      "homeAverage": 34,
+      "gamesPlayed": 3,
+      "currentPrice": 516000,
+      "priceImpliedProjection": 40.3,
+      "seasonAverage": 35.7,
+      "last3Average": 35.7,
+      "lastGameScore": 39,
+      "scoreVolatility": 9.3,
+      "homeAverage": 39,
       "awayAverage": 34
     },
     "MATTBURTON": {
       "playerName": "Matt Burton",
       "key": "MATTBURTON",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 1,
-      "seasonAverage": 47,
-      "last3Average": 47,
-      "lastGameScore": 47,
-      "scoreVolatility": 0,
-      "homeAverage": 47,
-      "awayAverage": 47
+      "gamesPlayed": 3,
+      "currentPrice": 633000,
+      "priceImpliedProjection": 49.5,
+      "seasonAverage": 62,
+      "last3Average": 62,
+      "lastGameScore": 66,
+      "scoreVolatility": 11,
+      "homeAverage": 56.5,
+      "awayAverage": 73
     },
     "AJBRIMSON": {
       "playerName": "AJ Brimson",
       "key": "AJBRIMSON",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
+      "gamesPlayed": 4,
+      "currentPrice": 466000,
+      "priceImpliedProjection": 36.4,
       "seasonAverage": 31,
-      "last3Average": 31,
-      "lastGameScore": 39,
-      "scoreVolatility": 8,
-      "homeAverage": 31,
-      "awayAverage": 31
+      "last3Average": 33.7,
+      "lastGameScore": 29,
+      "scoreVolatility": 5.8,
+      "homeAverage": 29,
+      "awayAverage": 31.7
     },
     "PETERMAMOUZELOS": {
       "playerName": "Peter Mamouzelos",
       "key": "PETERMAMOUZELOS",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 34.5,
-      "last3Average": 34.5,
-      "lastGameScore": 30,
-      "scoreVolatility": 4.5,
-      "homeAverage": 34.5,
+      "gamesPlayed": 3,
+      "currentPrice": 500000,
+      "priceImpliedProjection": 39.1,
+      "seasonAverage": 33.3,
+      "last3Average": 33.3,
+      "lastGameScore": 31,
+      "scoreVolatility": 4,
+      "homeAverage": 31,
       "awayAverage": 34.5
+    },
+    "TEIGWILTON": {
+      "playerName": "Teig Wilton",
+      "key": "TEIGWILTON",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 2,
+      "currentPrice": 486000,
+      "priceImpliedProjection": 38,
+      "seasonAverage": 28.5,
+      "last3Average": 28.5,
+      "lastGameScore": 41,
+      "scoreVolatility": 12.5,
+      "homeAverage": 16,
+      "awayAverage": 41
     },
     "LACHLANGALVIN": {
       "playerName": "Lachlan Galvin",
       "key": "LACHLANGALVIN",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 1,
-      "seasonAverage": 70,
-      "last3Average": 70,
-      "lastGameScore": 70,
-      "scoreVolatility": 0,
-      "homeAverage": 70,
-      "awayAverage": 70
+      "gamesPlayed": 3,
+      "currentPrice": 585000,
+      "priceImpliedProjection": 45.7,
+      "seasonAverage": 51.3,
+      "last3Average": 51.3,
+      "lastGameScore": 54,
+      "scoreVolatility": 16.4,
+      "homeAverage": 62,
+      "awayAverage": 30
     },
     "KYLEFLANAGAN": {
       "playerName": "Kyle Flanagan",
       "key": "KYLEFLANAGAN",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 26,
-      "scoreVolatility": 7,
+      "gamesPlayed": 4,
+      "currentPrice": 432000,
+      "priceImpliedProjection": 33.8,
+      "seasonAverage": 25,
+      "last3Average": 20,
+      "lastGameScore": 15,
+      "scoreVolatility": 9.5,
       "homeAverage": 26,
-      "awayAverage": 40
+      "awayAverage": 24.7
     },
     "BRIANTOO": {
       "playerName": "Brian To'o",
       "key": "BRIANTOO",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 38,
-      "last3Average": 38,
-      "lastGameScore": 54,
-      "scoreVolatility": 16,
-      "homeAverage": 54,
-      "awayAverage": 22
+      "gamesPlayed": 4,
+      "currentPrice": 458000,
+      "priceImpliedProjection": 35.8,
+      "seasonAverage": 28,
+      "last3Average": 30,
+      "lastGameScore": 8,
+      "scoreVolatility": 16.7,
+      "homeAverage": 31,
+      "awayAverage": 25
     },
     "DANEGAGAI": {
       "playerName": "Dane Gagai",
       "key": "DANEGAGAI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 42,
-      "last3Average": 42,
-      "lastGameScore": 43,
-      "scoreVolatility": 1,
-      "homeAverage": 41,
-      "awayAverage": 43
+      "gamesPlayed": 4,
+      "currentPrice": 497000,
+      "priceImpliedProjection": 38.8,
+      "seasonAverage": 37.3,
+      "last3Average": 36,
+      "lastGameScore": 51,
+      "scoreVolatility": 13.9,
+      "homeAverage": 27.5,
+      "awayAverage": 47
     },
     "NATBUTCHER": {
       "playerName": "Nat Butcher",
       "key": "NATBUTCHER",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 48.5,
-      "last3Average": 48.5,
-      "lastGameScore": 34,
-      "scoreVolatility": 14.5,
-      "homeAverage": 34,
-      "awayAverage": 63
+      "gamesPlayed": 4,
+      "currentPrice": 537000,
+      "priceImpliedProjection": 42,
+      "seasonAverage": 41.5,
+      "last3Average": 34.3,
+      "lastGameScore": 41,
+      "scoreVolatility": 13.2,
+      "homeAverage": 31,
+      "awayAverage": 52
     },
     "KALYNPONGA": {
       "playerName": "Kalyn Ponga",
       "key": "KALYNPONGA",
       "primaryPosition": "Fullback",
       "gamesPlayed": 2,
+      "currentPrice": 649000,
+      "priceImpliedProjection": 50.7,
       "seasonAverage": 58,
       "last3Average": 58,
       "lastGameScore": 36,
@@ -1187,295 +1495,387 @@
       "playerName": "Nick Meaney",
       "key": "NICKMEANEY",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 31.5,
-      "last3Average": 31.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 8.5,
-      "homeAverage": 40,
+      "gamesPlayed": 3,
+      "currentPrice": 467000,
+      "priceImpliedProjection": 36.5,
+      "seasonAverage": 26.3,
+      "last3Average": 26.3,
+      "lastGameScore": 16,
+      "scoreVolatility": 10.1,
+      "homeAverage": 28,
       "awayAverage": 23
     },
     "TOMTRBOJEVIC": {
       "playerName": "Tom Trbojevic",
       "key": "TOMTRBOJEVIC",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 62,
-      "last3Average": 62,
-      "lastGameScore": 57,
-      "scoreVolatility": 5,
-      "homeAverage": 62,
-      "awayAverage": 62
+      "gamesPlayed": 3,
+      "currentPrice": 668000,
+      "priceImpliedProjection": 52.2,
+      "seasonAverage": 59.7,
+      "last3Average": 59.7,
+      "lastGameScore": 55,
+      "scoreVolatility": 5.2,
+      "homeAverage": 59.7,
+      "awayAverage": 59.7
     },
     "GREGMARZHEW": {
       "playerName": "Greg Marzhew",
       "key": "GREGMARZHEW",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 37,
-      "last3Average": 37,
-      "lastGameScore": 31,
-      "scoreVolatility": 6,
-      "homeAverage": 43,
-      "awayAverage": 31
+      "gamesPlayed": 4,
+      "currentPrice": 485000,
+      "priceImpliedProjection": 37.9,
+      "seasonAverage": 34,
+      "last3Average": 31,
+      "lastGameScore": 27,
+      "scoreVolatility": 5.9,
+      "homeAverage": 39,
+      "awayAverage": 29
+    },
+    "JAMIEHUMPHREYS": {
+      "playerName": "Jamie Humphreys",
+      "key": "JAMIEHUMPHREYS",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 515000,
+      "priceImpliedProjection": 40.2,
+      "seasonAverage": 33,
+      "last3Average": 33,
+      "lastGameScore": 33,
+      "scoreVolatility": 0,
+      "homeAverage": 33,
+      "awayAverage": 33
     },
     "STEPHENCRICHTON": {
       "playerName": "Stephen Crichton",
       "key": "STEPHENCRICHTON",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 41,
-      "last3Average": 41,
-      "lastGameScore": 41,
-      "scoreVolatility": 0,
-      "homeAverage": 41,
-      "awayAverage": 41
+      "gamesPlayed": 3,
+      "currentPrice": 523000,
+      "priceImpliedProjection": 40.9,
+      "seasonAverage": 40,
+      "last3Average": 40,
+      "lastGameScore": 32,
+      "scoreVolatility": 6.2,
+      "homeAverage": 36.5,
+      "awayAverage": 47
     },
     "HARRYHAYES": {
       "playerName": "Harry Hayes",
       "key": "HARRYHAYES",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 48,
-      "last3Average": 48,
-      "lastGameScore": 48,
-      "scoreVolatility": 0,
+      "gamesPlayed": 2,
+      "currentPrice": 525000,
+      "priceImpliedProjection": 41,
+      "seasonAverage": 40,
+      "last3Average": 40,
+      "lastGameScore": 32,
+      "scoreVolatility": 8,
       "homeAverage": 48,
-      "awayAverage": 48
+      "awayAverage": 32
     },
     "MITCHKENNY": {
       "playerName": "Mitch Kenny",
       "key": "MITCHKENNY",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 41,
-      "scoreVolatility": 8,
-      "homeAverage": 41,
-      "awayAverage": 25
+      "gamesPlayed": 4,
+      "currentPrice": 455000,
+      "priceImpliedProjection": 35.5,
+      "seasonAverage": 29.8,
+      "last3Average": 31.3,
+      "lastGameScore": 19,
+      "scoreVolatility": 8.4,
+      "homeAverage": 30,
+      "awayAverage": 29.5
     },
     "ALEXSEYFARTH": {
       "playerName": "Alex Seyfarth",
       "key": "ALEXSEYFARTH",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 16,
-      "last3Average": 16,
-      "lastGameScore": 16,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 393000,
+      "priceImpliedProjection": 30.7,
+      "seasonAverage": 15.3,
+      "last3Average": 15.3,
+      "lastGameScore": 17,
+      "scoreVolatility": 1.7,
       "homeAverage": 16,
-      "awayAverage": 16
+      "awayAverage": 15
     },
     "SAMUELAFAINU": {
       "playerName": "Samuela Fainu",
       "key": "SAMUELAFAINU",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 1,
-      "seasonAverage": 76,
-      "last3Average": 76,
-      "lastGameScore": 76,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 633000,
+      "priceImpliedProjection": 49.5,
+      "seasonAverage": 61,
+      "last3Average": 61,
+      "lastGameScore": 42,
+      "scoreVolatility": 14.2,
       "homeAverage": 76,
-      "awayAverage": 76
+      "awayAverage": 53.5
     },
     "PAULALAMOTI": {
       "playerName": "Paul Alamoti",
       "key": "PAULALAMOTI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 28,
-      "last3Average": 28,
-      "lastGameScore": 31,
-      "scoreVolatility": 3,
-      "homeAverage": 31,
-      "awayAverage": 25
+      "gamesPlayed": 4,
+      "currentPrice": 465000,
+      "priceImpliedProjection": 36.3,
+      "seasonAverage": 34,
+      "last3Average": 37,
+      "lastGameScore": 42,
+      "scoreVolatility": 6.5,
+      "homeAverage": 36.5,
+      "awayAverage": 31.5
     },
     "TOLUTAUKOULA": {
       "playerName": "Tolutau Koula",
       "key": "TOLUTAUKOULA",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 44.5,
-      "last3Average": 44.5,
-      "lastGameScore": 16,
-      "scoreVolatility": 28.5,
-      "homeAverage": 44.5,
-      "awayAverage": 44.5
+      "gamesPlayed": 3,
+      "currentPrice": 563000,
+      "priceImpliedProjection": 44,
+      "seasonAverage": 49.7,
+      "last3Average": 49.7,
+      "lastGameScore": 60,
+      "scoreVolatility": 24.4,
+      "homeAverage": 49.7,
+      "awayAverage": 49.7
     },
     "PHILLIPSAMI": {
       "playerName": "Phillip Sami",
       "key": "PHILLIPSAMI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 16.5,
-      "last3Average": 16.5,
-      "lastGameScore": 17,
-      "scoreVolatility": 0.5,
-      "homeAverage": 16.5,
-      "awayAverage": 16.5
+      "gamesPlayed": 4,
+      "currentPrice": 426000,
+      "priceImpliedProjection": 33.3,
+      "seasonAverage": 30,
+      "last3Average": 34.7,
+      "lastGameScore": 47,
+      "scoreVolatility": 13.7,
+      "homeAverage": 47,
+      "awayAverage": 24.3
     },
     "TOMGILBERT": {
       "playerName": "Tom Gilbert",
       "key": "TOMGILBERT",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 42,
-      "last3Average": 42,
-      "lastGameScore": 58,
-      "scoreVolatility": 16,
+      "gamesPlayed": 4,
+      "currentPrice": 525000,
+      "priceImpliedProjection": 41,
+      "seasonAverage": 41.3,
+      "last3Average": 46.3,
+      "lastGameScore": 33,
+      "scoreVolatility": 12.5,
       "homeAverage": 42,
-      "awayAverage": 42
+      "awayAverage": 40.5
     },
     "LUKEGARNER": {
       "playerName": "Luke Garner",
       "key": "LUKEGARNER",
       "primaryPosition": "2nd Row",
+      "gamesPlayed": 4,
+      "currentPrice": 490000,
+      "priceImpliedProjection": 38.3,
+      "seasonAverage": 34,
+      "last3Average": 28.7,
+      "lastGameScore": 16,
+      "scoreVolatility": 14.7,
+      "homeAverage": 31.5,
+      "awayAverage": 36.5
+    },
+    "JACOBLIDDLE": {
+      "playerName": "Jacob Liddle",
+      "key": "JACOBLIDDLE",
+      "primaryPosition": null,
       "gamesPlayed": 2,
-      "seasonAverage": 48.5,
-      "last3Average": 48.5,
-      "lastGameScore": 47,
-      "scoreVolatility": 1.5,
-      "homeAverage": 47,
-      "awayAverage": 50
+      "currentPrice": 471000,
+      "priceImpliedProjection": 36.8,
+      "seasonAverage": 28.5,
+      "last3Average": 28.5,
+      "lastGameScore": 35,
+      "scoreVolatility": 6.5,
+      "homeAverage": 28.5,
+      "awayAverage": 28.5
     },
     "JAKESIMPKIN": {
       "playerName": "Jake Simpkin",
       "key": "JAKESIMPKIN",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 37.5,
-      "last3Average": 37.5,
-      "lastGameScore": 24,
-      "scoreVolatility": 13.5,
-      "homeAverage": 37.5,
-      "awayAverage": 37.5
+      "gamesPlayed": 3,
+      "currentPrice": 502000,
+      "priceImpliedProjection": 39.2,
+      "seasonAverage": 37.3,
+      "last3Average": 37.3,
+      "lastGameScore": 37,
+      "scoreVolatility": 11,
+      "homeAverage": 37.3,
+      "awayAverage": 37.3
+    },
+    "CODYHOPWOOD": {
+      "playerName": "Cody Hopwood",
+      "key": "CODYHOPWOOD",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 1,
+      "currentPrice": 244000,
+      "priceImpliedProjection": 19.1,
+      "seasonAverage": 15,
+      "last3Average": 15,
+      "lastGameScore": 15,
+      "scoreVolatility": 0,
+      "homeAverage": 15,
+      "awayAverage": 15
     },
     "MURRAYTAULAGI": {
       "playerName": "Murray Taulagi",
       "key": "MURRAYTAULAGI",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 38,
-      "last3Average": 38,
-      "lastGameScore": 23,
-      "scoreVolatility": 15,
-      "homeAverage": 38,
+      "gamesPlayed": 4,
+      "currentPrice": 520000,
+      "priceImpliedProjection": 40.6,
+      "seasonAverage": 41,
+      "last3Average": 37,
+      "lastGameScore": 34,
+      "scoreVolatility": 13.1,
+      "homeAverage": 44,
       "awayAverage": 38
     },
     "ETHANSTRANGE": {
       "playerName": "Ethan Strange",
       "key": "ETHANSTRANGE",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 37.5,
-      "last3Average": 37.5,
-      "lastGameScore": 52,
-      "scoreVolatility": 14.5,
-      "homeAverage": 37.5,
+      "gamesPlayed": 4,
+      "currentPrice": 496000,
+      "priceImpliedProjection": 38.8,
+      "seasonAverage": 37.8,
+      "last3Average": 42.7,
+      "lastGameScore": 34,
+      "scoreVolatility": 10.6,
+      "homeAverage": 38,
       "awayAverage": 37.5
     },
     "CHRISTIANTUIPULOTU": {
       "playerName": "Christian Tuipulotu",
       "key": "CHRISTIANTUIPULOTU",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 28.5,
-      "last3Average": 28.5,
-      "lastGameScore": 30,
-      "scoreVolatility": 1.5,
+      "gamesPlayed": 4,
+      "currentPrice": 445000,
+      "priceImpliedProjection": 34.8,
+      "seasonAverage": 29.5,
+      "last3Average": 30.3,
+      "lastGameScore": 18,
+      "scoreVolatility": 9,
       "homeAverage": 30,
-      "awayAverage": 27
+      "awayAverage": 29.3
     },
     "BRIANKELLY": {
       "playerName": "Brian Kelly",
       "key": "BRIANKELLY",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 35,
-      "scoreVolatility": 0,
-      "homeAverage": 35,
-      "awayAverage": 35
+      "gamesPlayed": 2,
+      "currentPrice": 518000,
+      "priceImpliedProjection": 40.5,
+      "seasonAverage": 47.5,
+      "last3Average": 47.5,
+      "lastGameScore": 60,
+      "scoreVolatility": 12.5,
+      "homeAverage": 47.5,
+      "awayAverage": 47.5
     },
     "JOSHKING": {
       "playerName": "Josh King",
       "key": "JOSHKING",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 45,
-      "last3Average": 45,
-      "lastGameScore": 50,
-      "scoreVolatility": 5,
-      "homeAverage": 40,
-      "awayAverage": 50
+      "gamesPlayed": 4,
+      "currentPrice": 504000,
+      "priceImpliedProjection": 39.4,
+      "seasonAverage": 38,
+      "last3Average": 37.3,
+      "lastGameScore": 30,
+      "scoreVolatility": 7.9,
+      "homeAverage": 36,
+      "awayAverage": 40
     },
     "JOSIAHKARAPANI": {
       "playerName": "Josiah Karapani",
       "key": "JOSIAHKARAPANI",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 24,
-      "last3Average": 24,
+      "gamesPlayed": 4,
+      "currentPrice": 404000,
+      "priceImpliedProjection": 31.6,
+      "seasonAverage": 24.3,
+      "last3Average": 23.3,
       "lastGameScore": 21,
-      "scoreVolatility": 3,
-      "homeAverage": 24,
-      "awayAverage": 24
+      "scoreVolatility": 3.3,
+      "homeAverage": 23,
+      "awayAverage": 28
     },
     "BENTRBOJEVIC": {
       "playerName": "Ben Trbojevic",
       "key": "BENTRBOJEVIC",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 46,
-      "last3Average": 46,
-      "lastGameScore": 52,
-      "scoreVolatility": 6,
-      "homeAverage": 46,
-      "awayAverage": 46
+      "gamesPlayed": 3,
+      "currentPrice": 538000,
+      "priceImpliedProjection": 42,
+      "seasonAverage": 47,
+      "last3Average": 47,
+      "lastGameScore": 49,
+      "scoreVolatility": 5.1,
+      "homeAverage": 47,
+      "awayAverage": 47
     },
     "THOMASJENKINS": {
       "playerName": "Thomas Jenkins",
       "key": "THOMASJENKINS",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 53.5,
-      "last3Average": 53.5,
-      "lastGameScore": 31,
-      "scoreVolatility": 22.5,
-      "homeAverage": 31,
-      "awayAverage": 76
+      "gamesPlayed": 4,
+      "currentPrice": 668000,
+      "priceImpliedProjection": 52.2,
+      "seasonAverage": 65.5,
+      "last3Average": 62,
+      "lastGameScore": 75,
+      "scoreVolatility": 20,
+      "homeAverage": 53,
+      "awayAverage": 78
     },
     "CLINTONGUTHERSON": {
       "playerName": "Clinton Gutherson",
       "key": "CLINTONGUTHERSON",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 26,
-      "last3Average": 26,
-      "lastGameScore": 27,
-      "scoreVolatility": 1,
+      "gamesPlayed": 4,
+      "currentPrice": 409000,
+      "priceImpliedProjection": 32,
+      "seasonAverage": 23.8,
+      "last3Average": 23.3,
+      "lastGameScore": 7,
+      "scoreVolatility": 10.5,
       "homeAverage": 27,
-      "awayAverage": 25
+      "awayAverage": 22.7
     },
     "MOSESLEOTA": {
       "playerName": "Moses Leota",
       "key": "MOSESLEOTA",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 27.5,
-      "last3Average": 27.5,
-      "lastGameScore": 31,
-      "scoreVolatility": 3.5,
-      "homeAverage": 31,
-      "awayAverage": 24
+      "gamesPlayed": 4,
+      "currentPrice": 469000,
+      "priceImpliedProjection": 36.6,
+      "seasonAverage": 35.3,
+      "last3Average": 39,
+      "lastGameScore": 37,
+      "scoreVolatility": 9.2,
+      "homeAverage": 34,
+      "awayAverage": 36.5
     },
     "CHANELHARRISTAVITA": {
       "playerName": "Chanel Harris-Tavita",
       "key": "CHANELHARRISTAVITA",
       "primaryPosition": "Halfback",
       "gamesPlayed": 2,
+      "currentPrice": 470000,
+      "priceImpliedProjection": 36.7,
       "seasonAverage": 22.5,
       "last3Average": 22.5,
       "lastGameScore": 0,
@@ -1487,36 +1887,42 @@
       "playerName": "Connor Tracey",
       "key": "CONNORTRACEY",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 41,
-      "last3Average": 41,
-      "lastGameScore": 41,
-      "scoreVolatility": 0,
-      "homeAverage": 41,
-      "awayAverage": 41
+      "gamesPlayed": 3,
+      "currentPrice": 541000,
+      "priceImpliedProjection": 42.3,
+      "seasonAverage": 46.3,
+      "last3Average": 46.3,
+      "lastGameScore": 32,
+      "scoreVolatility": 14.4,
+      "homeAverage": 36.5,
+      "awayAverage": 66
     },
     "MATCROKER": {
       "playerName": "Mat Croker",
       "key": "MATCROKER",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 36,
-      "last3Average": 36,
-      "lastGameScore": 34,
-      "scoreVolatility": 2,
-      "homeAverage": 38,
-      "awayAverage": 34
+      "gamesPlayed": 4,
+      "currentPrice": 522000,
+      "priceImpliedProjection": 40.8,
+      "seasonAverage": 43.5,
+      "last3Average": 45.3,
+      "lastGameScore": 49,
+      "scoreVolatility": 7.8,
+      "homeAverage": 45.5,
+      "awayAverage": 41.5
     },
     "JYEGRAY": {
       "playerName": "Jye Gray",
       "key": "JYEGRAY",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 36.5,
-      "last3Average": 36.5,
-      "lastGameScore": 37,
-      "scoreVolatility": 0.5,
-      "homeAverage": 36.5,
+      "gamesPlayed": 3,
+      "currentPrice": 521000,
+      "priceImpliedProjection": 40.7,
+      "seasonAverage": 47,
+      "last3Average": 47,
+      "lastGameScore": 68,
+      "scoreVolatility": 14.9,
+      "homeAverage": 68,
       "awayAverage": 36.5
     },
     "ETHANBULLEMOR": {
@@ -1524,6 +1930,8 @@
       "key": "ETHANBULLEMOR",
       "primaryPosition": "Prop",
       "gamesPlayed": 2,
+      "currentPrice": 481000,
+      "priceImpliedProjection": 37.6,
       "seasonAverage": 32,
       "last3Average": 32,
       "lastGameScore": 31,
@@ -1535,175 +1943,219 @@
       "playerName": "Jahream Bula",
       "key": "JAHREAMBULA",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 33,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 486000,
+      "priceImpliedProjection": 38,
+      "seasonAverage": 38.7,
+      "last3Average": 38.7,
+      "lastGameScore": 52,
+      "scoreVolatility": 9.5,
       "homeAverage": 33,
-      "awayAverage": 33
+      "awayAverage": 41.5
     },
     "PHOENIXCROSSLAND": {
       "playerName": "Phoenix Crossland",
       "key": "PHOENIXCROSSLAND",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 41.5,
-      "last3Average": 41.5,
-      "lastGameScore": 31,
-      "scoreVolatility": 10.5,
-      "homeAverage": 52,
-      "awayAverage": 31
+      "gamesPlayed": 4,
+      "currentPrice": 538000,
+      "priceImpliedProjection": 42,
+      "seasonAverage": 45.8,
+      "last3Average": 43.7,
+      "lastGameScore": 52,
+      "scoreVolatility": 8.7,
+      "homeAverage": 50,
+      "awayAverage": 41.5
     },
     "LEKAHALASIMA": {
       "playerName": "Leka Halasima",
       "key": "LEKAHALASIMA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 45.5,
-      "last3Average": 45.5,
-      "lastGameScore": 69,
-      "scoreVolatility": 23.5,
-      "homeAverage": 45.5,
-      "awayAverage": 45.5
+      "gamesPlayed": 4,
+      "currentPrice": 502000,
+      "priceImpliedProjection": 39.2,
+      "seasonAverage": 37,
+      "last3Average": 42,
+      "lastGameScore": 16,
+      "scoreVolatility": 20.7,
+      "homeAverage": 35.7,
+      "awayAverage": 41
     },
     "ISAIAHIONGI": {
       "playerName": "Isaiah Iongi",
       "key": "ISAIAHIONGI",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 62,
-      "last3Average": 62,
-      "lastGameScore": 67,
-      "scoreVolatility": 5,
-      "homeAverage": 62,
-      "awayAverage": 62
+      "gamesPlayed": 4,
+      "currentPrice": 544000,
+      "priceImpliedProjection": 42.5,
+      "seasonAverage": 42.3,
+      "last3Average": 37.3,
+      "lastGameScore": 21,
+      "scoreVolatility": 20.1,
+      "homeAverage": 24,
+      "awayAverage": 48.3
     },
     "LEHIHOPOATE": {
       "playerName": "Lehi Hopoate",
       "key": "LEHIHOPOATE",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 19.5,
-      "last3Average": 19.5,
-      "lastGameScore": 11,
-      "scoreVolatility": 8.5,
-      "homeAverage": 19.5,
-      "awayAverage": 19.5
+      "gamesPlayed": 3,
+      "currentPrice": 434000,
+      "priceImpliedProjection": 33.9,
+      "seasonAverage": 28.3,
+      "last3Average": 28.3,
+      "lastGameScore": 46,
+      "scoreVolatility": 14.3,
+      "homeAverage": 28.3,
+      "awayAverage": 28.3
     },
     "KODINIKORIMA": {
       "playerName": "Kodi Nikorima",
       "key": "KODINIKORIMA",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 25,
-      "last3Average": 25,
-      "lastGameScore": 23,
-      "scoreVolatility": 2,
+      "gamesPlayed": 4,
+      "currentPrice": 444000,
+      "priceImpliedProjection": 34.7,
+      "seasonAverage": 31.8,
+      "last3Average": 33.3,
+      "lastGameScore": 31,
+      "scoreVolatility": 8.7,
       "homeAverage": 25,
-      "awayAverage": 25
+      "awayAverage": 38.5
     },
     "SCOTTSORENSEN": {
       "playerName": "Scott Sorensen",
       "key": "SCOTTSORENSEN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 24.5,
-      "last3Average": 24.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 1.5,
-      "homeAverage": 23,
-      "awayAverage": 26
+      "gamesPlayed": 4,
+      "currentPrice": 412000,
+      "priceImpliedProjection": 32.2,
+      "seasonAverage": 25.5,
+      "last3Average": 25.3,
+      "lastGameScore": 14,
+      "scoreVolatility": 9,
+      "homeAverage": 18.5,
+      "awayAverage": 32.5
     },
     "KELMATUILAGI": {
       "playerName": "Kelma Tuilagi",
       "key": "KELMATUILAGI",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 1,
-      "seasonAverage": 73,
-      "last3Average": 73,
-      "lastGameScore": 73,
-      "scoreVolatility": 0,
-      "homeAverage": 73,
-      "awayAverage": 73
+      "gamesPlayed": 3,
+      "currentPrice": 590000,
+      "priceImpliedProjection": 46.1,
+      "seasonAverage": 56,
+      "last3Average": 56,
+      "lastGameScore": 47,
+      "scoreVolatility": 12,
+      "homeAverage": 48,
+      "awayAverage": 60
+    },
+    "LIAMMARTIN": {
+      "playerName": "Liam Martin",
+      "key": "LIAMMARTIN",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 2,
+      "currentPrice": 481000,
+      "priceImpliedProjection": 37.6,
+      "seasonAverage": 32,
+      "last3Average": 32,
+      "lastGameScore": 20,
+      "scoreVolatility": 12,
+      "homeAverage": 20,
+      "awayAverage": 44
     },
     "JOSHADDOCARR": {
       "playerName": "Josh Addo-Carr",
       "key": "JOSHADDOCARR",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 13,
-      "last3Average": 13,
-      "lastGameScore": 13,
-      "scoreVolatility": 0,
-      "homeAverage": 13,
-      "awayAverage": 13
+      "gamesPlayed": 3,
+      "currentPrice": 448000,
+      "priceImpliedProjection": 35,
+      "seasonAverage": 32.7,
+      "last3Average": 32.7,
+      "lastGameScore": 45,
+      "scoreVolatility": 14.1,
+      "homeAverage": 40,
+      "awayAverage": 29
     },
     "REEDMAHONEY": {
       "playerName": "Reed Mahoney",
       "key": "REEDMAHONEY",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 46,
-      "last3Average": 46,
-      "lastGameScore": 36,
-      "scoreVolatility": 10,
-      "homeAverage": 46,
+      "gamesPlayed": 4,
+      "currentPrice": 486000,
+      "priceImpliedProjection": 38,
+      "seasonAverage": 34.8,
+      "last3Average": 27.7,
+      "lastGameScore": 13,
+      "scoreVolatility": 15.2,
+      "homeAverage": 23.5,
       "awayAverage": 46
     },
     "CHRISRANDALL": {
       "playerName": "Chris Randall",
       "key": "CHRISRANDALL",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 36.5,
-      "last3Average": 36.5,
-      "lastGameScore": 47,
-      "scoreVolatility": 10.5,
-      "homeAverage": 36.5,
-      "awayAverage": 36.5
+      "gamesPlayed": 4,
+      "currentPrice": 487000,
+      "priceImpliedProjection": 38,
+      "seasonAverage": 38.5,
+      "last3Average": 42.7,
+      "lastGameScore": 41,
+      "scoreVolatility": 7.7,
+      "homeAverage": 41,
+      "awayAverage": 37.7
     },
     "MORGANSMITHIES": {
       "playerName": "Morgan Smithies",
       "key": "MORGANSMITHIES",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 37,
-      "last3Average": 37,
-      "lastGameScore": 31,
-      "scoreVolatility": 6,
-      "homeAverage": 37,
+      "gamesPlayed": 4,
+      "currentPrice": 476000,
+      "priceImpliedProjection": 37.2,
+      "seasonAverage": 36.3,
+      "last3Average": 34,
+      "lastGameScore": 35,
+      "scoreVolatility": 4.3,
+      "homeAverage": 35.5,
       "awayAverage": 37
     },
     "DANIELTUPOU": {
       "playerName": "Daniel Tupou",
       "key": "DANIELTUPOU",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 29.5,
-      "last3Average": 29.5,
-      "lastGameScore": 32,
-      "scoreVolatility": 2.5,
-      "homeAverage": 32,
-      "awayAverage": 27
+      "gamesPlayed": 4,
+      "currentPrice": 429000,
+      "priceImpliedProjection": 33.5,
+      "seasonAverage": 31,
+      "last3Average": 32.3,
+      "lastGameScore": 45,
+      "scoreVolatility": 9.1,
+      "homeAverage": 26,
+      "awayAverage": 36
     },
     "JAROMELUAI": {
       "playerName": "Jarome Luai",
       "key": "JAROMELUAI",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 1,
-      "seasonAverage": 66,
-      "last3Average": 66,
-      "lastGameScore": 66,
-      "scoreVolatility": 0,
+      "gamesPlayed": 2,
+      "currentPrice": 529000,
+      "priceImpliedProjection": 41.3,
+      "seasonAverage": 49,
+      "last3Average": 49,
+      "lastGameScore": 32,
+      "scoreVolatility": 17,
       "homeAverage": 66,
-      "awayAverage": 66
+      "awayAverage": 32
     },
     "DYLANBROWN": {
       "playerName": "Dylan Brown",
       "key": "DYLANBROWN",
       "primaryPosition": "Halfback",
       "gamesPlayed": 2,
+      "currentPrice": 492000,
+      "priceImpliedProjection": 38.4,
       "seasonAverage": 40.5,
       "last3Average": 40.5,
       "lastGameScore": 44,
@@ -1715,108 +2167,126 @@
       "playerName": "Taniela Paseka",
       "key": "TANIELAPASEKA",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 43.5,
-      "last3Average": 43.5,
-      "lastGameScore": 38,
-      "scoreVolatility": 5.5,
-      "homeAverage": 43.5,
-      "awayAverage": 43.5
+      "gamesPlayed": 3,
+      "currentPrice": 516000,
+      "priceImpliedProjection": 40.3,
+      "seasonAverage": 41,
+      "last3Average": 41,
+      "lastGameScore": 36,
+      "scoreVolatility": 5.7,
+      "homeAverage": 41,
+      "awayAverage": 41
     },
     "KULIKEFUFINEFEUIAKI": {
       "playerName": "Kulikefu Finefeuiaki",
       "key": "KULIKEFUFINEFEUIAKI",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 59,
-      "last3Average": 59,
-      "lastGameScore": 64,
-      "scoreVolatility": 5,
+      "gamesPlayed": 4,
+      "currentPrice": 638000,
+      "priceImpliedProjection": 49.8,
+      "seasonAverage": 62.3,
+      "last3Average": 65,
+      "lastGameScore": 76,
+      "scoreVolatility": 8.8,
       "homeAverage": 59,
-      "awayAverage": 59
+      "awayAverage": 65.5
     },
     "CHARNZENICOLLKLOKSTAD": {
       "playerName": "Charnze Nicoll-Klokstad",
       "key": "CHARNZENICOLLKLOKSTAD",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 37.5,
-      "last3Average": 37.5,
-      "lastGameScore": 32,
-      "scoreVolatility": 5.5,
-      "homeAverage": 37.5,
-      "awayAverage": 37.5
+      "gamesPlayed": 3,
+      "currentPrice": 486000,
+      "priceImpliedProjection": 38,
+      "seasonAverage": 38.3,
+      "last3Average": 38.3,
+      "lastGameScore": 40,
+      "scoreVolatility": 4.6,
+      "homeAverage": 38.3,
+      "awayAverage": 38.3
     },
     "JAMAYNEISAAKO": {
       "playerName": "Jamayne Isaako",
       "key": "JAMAYNEISAAKO",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 34,
-      "last3Average": 34,
-      "lastGameScore": 24,
-      "scoreVolatility": 10,
+      "gamesPlayed": 4,
+      "currentPrice": 551000,
+      "priceImpliedProjection": 43,
+      "seasonAverage": 51.5,
+      "last3Average": 54,
+      "lastGameScore": 73,
+      "scoreVolatility": 19.1,
       "homeAverage": 34,
-      "awayAverage": 34
+      "awayAverage": 69
     },
     "JAKEAVERILLO": {
       "playerName": "Jake Averillo",
       "key": "JAKEAVERILLO",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 43.5,
-      "last3Average": 43.5,
-      "lastGameScore": 47,
-      "scoreVolatility": 3.5,
+      "gamesPlayed": 4,
+      "currentPrice": 576000,
+      "priceImpliedProjection": 45,
+      "seasonAverage": 53.8,
+      "last3Average": 58.3,
+      "lastGameScore": 66,
+      "scoreVolatility": 10.6,
       "homeAverage": 43.5,
-      "awayAverage": 43.5
+      "awayAverage": 64
     },
     "CASEYMCLEAN": {
       "playerName": "Casey McLean",
       "key": "CASEYMCLEAN",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 32.5,
-      "last3Average": 32.5,
-      "lastGameScore": 44,
-      "scoreVolatility": 11.5,
-      "homeAverage": 44,
-      "awayAverage": 21
+      "gamesPlayed": 4,
+      "currentPrice": 479000,
+      "priceImpliedProjection": 37.4,
+      "seasonAverage": 41,
+      "last3Average": 47.7,
+      "lastGameScore": 71,
+      "scoreVolatility": 19.2,
+      "homeAverage": 57.5,
+      "awayAverage": 24.5
     },
     "TYSONFRIZELL": {
       "playerName": "Tyson Frizell",
       "key": "TYSONFRIZELL",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 34,
-      "last3Average": 34,
-      "lastGameScore": 35,
-      "scoreVolatility": 1,
-      "homeAverage": 33,
-      "awayAverage": 35
+      "gamesPlayed": 4,
+      "currentPrice": 481000,
+      "priceImpliedProjection": 37.6,
+      "seasonAverage": 39.5,
+      "last3Average": 41.7,
+      "lastGameScore": 54,
+      "scoreVolatility": 8.4,
+      "homeAverage": 34.5,
+      "awayAverage": 44.5
     },
     "JESSERAMIEN": {
       "playerName": "Jesse Ramien",
       "key": "JESSERAMIEN",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 49,
-      "last3Average": 49,
-      "lastGameScore": 35,
-      "scoreVolatility": 14,
-      "homeAverage": 63,
-      "awayAverage": 35
+      "gamesPlayed": 4,
+      "currentPrice": 516000,
+      "priceImpliedProjection": 40.3,
+      "seasonAverage": 41.8,
+      "last3Average": 34.7,
+      "lastGameScore": 37,
+      "scoreVolatility": 12.4,
+      "homeAverage": 47.5,
+      "awayAverage": 36
     },
     "JOSHPAPALII": {
       "playerName": "Josh Papalii",
       "key": "JOSHPAPALII",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 12,
-      "last3Average": 12,
-      "lastGameScore": 12,
-      "scoreVolatility": 0,
-      "homeAverage": 12,
+      "gamesPlayed": 2,
+      "currentPrice": 438000,
+      "priceImpliedProjection": 34.2,
+      "seasonAverage": 28,
+      "last3Average": 28,
+      "lastGameScore": 44,
+      "scoreVolatility": 16,
+      "homeAverage": 44,
       "awayAverage": 12
     },
     "MATHEWFEAGAI": {
@@ -1824,6 +2294,8 @@
       "key": "MATHEWFEAGAI",
       "primaryPosition": "Fullback",
       "gamesPlayed": 2,
+      "currentPrice": 389000,
+      "priceImpliedProjection": 30.4,
       "seasonAverage": 5.5,
       "last3Average": 5.5,
       "lastGameScore": 2,
@@ -1836,6 +2308,8 @@
       "key": "LACHLANHUBNER",
       "primaryPosition": "Prop",
       "gamesPlayed": 2,
+      "currentPrice": 427000,
+      "priceImpliedProjection": 33.4,
       "seasonAverage": 18.5,
       "last3Average": 18.5,
       "lastGameScore": 12,
@@ -1847,204 +2321,238 @@
       "playerName": "Ezra Mam",
       "key": "EZRAMAM",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 30.5,
-      "last3Average": 30.5,
-      "lastGameScore": 33,
-      "scoreVolatility": 2.5,
-      "homeAverage": 30.5,
-      "awayAverage": 30.5
+      "gamesPlayed": 4,
+      "currentPrice": 432000,
+      "priceImpliedProjection": 33.8,
+      "seasonAverage": 31.3,
+      "last3Average": 32.3,
+      "lastGameScore": 36,
+      "scoreVolatility": 3.4,
+      "homeAverage": 32.3,
+      "awayAverage": 28
     },
     "GRIFFINNEAME": {
       "playerName": "Griffin Neame",
       "key": "GRIFFINNEAME",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 20.5,
-      "last3Average": 20.5,
-      "lastGameScore": 26,
-      "scoreVolatility": 5.5,
-      "homeAverage": 20.5,
+      "gamesPlayed": 4,
+      "currentPrice": 377000,
+      "priceImpliedProjection": 29.5,
+      "seasonAverage": 22.5,
+      "last3Average": 25,
+      "lastGameScore": 19,
+      "scoreVolatility": 5.9,
+      "homeAverage": 24.5,
       "awayAverage": 20.5
     },
     "RYLEYSMITH": {
       "playerName": "Ryley Smith",
       "key": "RYLEYSMITH",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 31,
-      "last3Average": 31,
-      "lastGameScore": 38,
-      "scoreVolatility": 7,
-      "homeAverage": 31,
-      "awayAverage": 31
+      "gamesPlayed": 4,
+      "currentPrice": 441000,
+      "priceImpliedProjection": 34.5,
+      "seasonAverage": 31.5,
+      "last3Average": 34,
+      "lastGameScore": 22,
+      "scoreVolatility": 8.6,
+      "homeAverage": 42,
+      "awayAverage": 28
     },
     "HEAMASIMAKASINI": {
       "playerName": "Heamasi Makasini",
       "key": "HEAMASIMAKASINI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 35,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 322000,
+      "priceImpliedProjection": 25.2,
+      "seasonAverage": 33.7,
+      "last3Average": 33.7,
+      "lastGameScore": 29,
+      "scoreVolatility": 3.4,
       "homeAverage": 35,
-      "awayAverage": 35
+      "awayAverage": 33
     },
     "SIONEKATOA": {
       "playerName": "Sione Katoa",
       "key": "SIONEKATOA",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 51,
-      "last3Average": 51,
-      "lastGameScore": 45,
-      "scoreVolatility": 6,
-      "homeAverage": 57,
-      "awayAverage": 45
+      "gamesPlayed": 4,
+      "currentPrice": 524000,
+      "priceImpliedProjection": 40.9,
+      "seasonAverage": 43.8,
+      "last3Average": 39.3,
+      "lastGameScore": 38,
+      "scoreVolatility": 8.5,
+      "homeAverage": 46,
+      "awayAverage": 41.5
     },
     "BAILEYSIMONSSON": {
       "playerName": "Bailey Simonsson",
       "key": "BAILEYSIMONSSON",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 25.5,
-      "last3Average": 25.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 2.5,
-      "homeAverage": 25.5,
-      "awayAverage": 25.5
+      "gamesPlayed": 4,
+      "currentPrice": 440000,
+      "priceImpliedProjection": 34.4,
+      "seasonAverage": 34.3,
+      "last3Average": 36.3,
+      "lastGameScore": 46,
+      "scoreVolatility": 9.2,
+      "homeAverage": 40,
+      "awayAverage": 32.3
     },
     "XAVIERWILLISON": {
       "playerName": "Xavier Willison",
       "key": "XAVIERWILLISON",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 27.5,
-      "last3Average": 27.5,
-      "lastGameScore": 37,
-      "scoreVolatility": 9.5,
-      "homeAverage": 27.5,
-      "awayAverage": 27.5
+      "gamesPlayed": 4,
+      "currentPrice": 419000,
+      "priceImpliedProjection": 32.7,
+      "seasonAverage": 31.5,
+      "last3Average": 36,
+      "lastGameScore": 50,
+      "scoreVolatility": 12.9,
+      "homeAverage": 35,
+      "awayAverage": 21
     },
     "JAXONPURDUE": {
       "playerName": "Jaxon Purdue",
       "key": "JAXONPURDUE",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 36,
-      "last3Average": 36,
-      "lastGameScore": 48,
-      "scoreVolatility": 12,
-      "homeAverage": 36,
+      "gamesPlayed": 4,
+      "currentPrice": 508000,
+      "priceImpliedProjection": 39.7,
+      "seasonAverage": 42.5,
+      "last3Average": 48.7,
+      "lastGameScore": 35,
+      "scoreVolatility": 14.6,
+      "homeAverage": 49,
       "awayAverage": 36
     },
     "SAVELIOTAMALE": {
       "playerName": "Savelio Tamale",
       "key": "SAVELIOTAMALE",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 25,
-      "scoreVolatility": 8,
-      "homeAverage": 33,
+      "gamesPlayed": 4,
+      "currentPrice": 503000,
+      "priceImpliedProjection": 39.3,
+      "seasonAverage": 43.3,
+      "last3Average": 44,
+      "lastGameScore": 50,
+      "scoreVolatility": 12,
+      "homeAverage": 53.5,
       "awayAverage": 33
     },
     "KAEOWEEKES": {
       "playerName": "Kaeo Weekes",
       "key": "KAEOWEEKES",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 33.5,
-      "last3Average": 33.5,
-      "lastGameScore": 24,
-      "scoreVolatility": 9.5,
-      "homeAverage": 33.5,
+      "gamesPlayed": 4,
+      "currentPrice": 496000,
+      "priceImpliedProjection": 38.8,
+      "seasonAverage": 41.5,
+      "last3Average": 41,
+      "lastGameScore": 41,
+      "scoreVolatility": 12.1,
+      "homeAverage": 49.5,
       "awayAverage": 33.5
     },
     "SUALAUVIFAALOGO": {
       "playerName": "Sualauvi Faalogo",
       "key": "SUALAUVIFAALOGO",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 67.5,
-      "last3Average": 67.5,
-      "lastGameScore": 80,
-      "scoreVolatility": 12.5,
-      "homeAverage": 55,
-      "awayAverage": 80
+      "gamesPlayed": 4,
+      "currentPrice": 631000,
+      "priceImpliedProjection": 49.3,
+      "seasonAverage": 59.8,
+      "last3Average": 61.3,
+      "lastGameScore": 54,
+      "scoreVolatility": 11.8,
+      "homeAverage": 52.5,
+      "awayAverage": 67
     },
     "ALEXJOHNSTON": {
       "playerName": "Alex Johnston",
       "key": "ALEXJOHNSTON",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 39.5,
-      "last3Average": 39.5,
-      "lastGameScore": 49,
-      "scoreVolatility": 9.5,
-      "homeAverage": 39.5,
+      "gamesPlayed": 3,
+      "currentPrice": 469000,
+      "priceImpliedProjection": 36.6,
+      "seasonAverage": 37.3,
+      "last3Average": 37.3,
+      "lastGameScore": 33,
+      "scoreVolatility": 8.3,
+      "homeAverage": 33,
       "awayAverage": 39.5
     },
     "BENHUNT": {
       "playerName": "Ben Hunt",
       "key": "BENHUNT",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 30,
-      "last3Average": 30,
-      "lastGameScore": 25,
-      "scoreVolatility": 5,
-      "homeAverage": 30,
-      "awayAverage": 30
+      "gamesPlayed": 4,
+      "currentPrice": 428000,
+      "priceImpliedProjection": 33.4,
+      "seasonAverage": 29.8,
+      "last3Average": 28,
+      "lastGameScore": 16,
+      "scoreVolatility": 10.2,
+      "homeAverage": 25.3,
+      "awayAverage": 43
     },
     "LINDSAYCOLLINS": {
       "playerName": "Lindsay Collins",
       "key": "LINDSAYCOLLINS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 39.5,
-      "last3Average": 39.5,
-      "lastGameScore": 35,
-      "scoreVolatility": 4.5,
-      "homeAverage": 35,
-      "awayAverage": 44
+      "gamesPlayed": 4,
+      "currentPrice": 465000,
+      "priceImpliedProjection": 36.3,
+      "seasonAverage": 36.5,
+      "last3Average": 34,
+      "lastGameScore": 40,
+      "scoreVolatility": 6.3,
+      "homeAverage": 31,
+      "awayAverage": 42
     },
     "TEVITATATOLA": {
       "playerName": "Tevita Tatola",
       "key": "TEVITATATOLA",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 41.5,
-      "last3Average": 41.5,
-      "lastGameScore": 41,
-      "scoreVolatility": 0.5,
-      "homeAverage": 41.5,
+      "gamesPlayed": 3,
+      "currentPrice": 493000,
+      "priceImpliedProjection": 38.5,
+      "seasonAverage": 42.7,
+      "last3Average": 42.7,
+      "lastGameScore": 45,
+      "scoreVolatility": 1.7,
+      "homeAverage": 45,
       "awayAverage": 41.5
     },
     "DAVIDFIFITA": {
       "playerName": "David Fifita",
       "key": "DAVIDFIFITA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 40,
-      "last3Average": 40,
-      "lastGameScore": 43,
-      "scoreVolatility": 3,
-      "homeAverage": 40,
+      "gamesPlayed": 3,
+      "currentPrice": 516000,
+      "priceImpliedProjection": 40.3,
+      "seasonAverage": 43.7,
+      "last3Average": 43.7,
+      "lastGameScore": 51,
+      "scoreVolatility": 5.7,
+      "homeAverage": 51,
       "awayAverage": 40
     },
     "COENHESS": {
       "playerName": "Coen Hess",
       "key": "COENHESS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 32,
-      "last3Average": 32,
-      "lastGameScore": 26,
-      "scoreVolatility": 6,
-      "homeAverage": 32,
+      "gamesPlayed": 4,
+      "currentPrice": 418000,
+      "priceImpliedProjection": 32.7,
+      "seasonAverage": 28.5,
+      "last3Average": 25.3,
+      "lastGameScore": 20,
+      "scoreVolatility": 6.5,
+      "homeAverage": 25,
       "awayAverage": 32
     },
     "SIOSIUATAUKEIAHO": {
@@ -2052,6 +2560,8 @@
       "key": "SIOSIUATAUKEIAHO",
       "primaryPosition": "Prop",
       "gamesPlayed": 1,
+      "currentPrice": 431000,
+      "priceImpliedProjection": 33.7,
       "seasonAverage": 7,
       "last3Average": 7,
       "lastGameScore": 7,
@@ -2063,139 +2573,177 @@
       "playerName": "Moses Suli",
       "key": "MOSESSULI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 35.5,
-      "last3Average": 35.5,
-      "lastGameScore": 39,
-      "scoreVolatility": 3.5,
+      "gamesPlayed": 3,
+      "currentPrice": 475000,
+      "priceImpliedProjection": 37.1,
+      "seasonAverage": 40.7,
+      "last3Average": 40.7,
+      "lastGameScore": 51,
+      "scoreVolatility": 7.8,
       "homeAverage": 39,
-      "awayAverage": 32
+      "awayAverage": 41.5
     },
     "KOBEHETHERINGTON": {
       "playerName": "Kobe Hetherington",
       "key": "KOBEHETHERINGTON",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 26,
-      "last3Average": 26,
-      "lastGameScore": 16,
-      "scoreVolatility": 10,
-      "homeAverage": 26,
-      "awayAverage": 26
+      "gamesPlayed": 3,
+      "currentPrice": 456000,
+      "priceImpliedProjection": 35.6,
+      "seasonAverage": 38.3,
+      "last3Average": 38.3,
+      "lastGameScore": 63,
+      "scoreVolatility": 19.3,
+      "homeAverage": 38.3,
+      "awayAverage": 38.3
     },
     "SAMMCINTYRE": {
       "playerName": "Sam McIntyre",
       "key": "SAMMCINTYRE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 51,
-      "last3Average": 51,
-      "lastGameScore": 47,
-      "scoreVolatility": 4,
-      "homeAverage": 51,
+      "gamesPlayed": 4,
+      "currentPrice": 492000,
+      "priceImpliedProjection": 38.4,
+      "seasonAverage": 40,
+      "last3Average": 35,
+      "lastGameScore": 41,
+      "scoreVolatility": 14.2,
+      "homeAverage": 29,
       "awayAverage": 51
+    },
+    "ENARITUALA": {
+      "playerName": "Enari Tuala",
+      "key": "ENARITUALA",
+      "primaryPosition": "Fullback",
+      "gamesPlayed": 2,
+      "currentPrice": 486000,
+      "priceImpliedProjection": 38,
+      "seasonAverage": 47.5,
+      "last3Average": 47.5,
+      "lastGameScore": 52,
+      "scoreVolatility": 4.5,
+      "homeAverage": 52,
+      "awayAverage": 43
     },
     "THOMASHAZELTON": {
       "playerName": "Thomas Hazelton",
       "key": "THOMASHAZELTON",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 28.5,
-      "last3Average": 28.5,
-      "lastGameScore": 22,
-      "scoreVolatility": 6.5,
-      "homeAverage": 35,
-      "awayAverage": 22
+      "gamesPlayed": 4,
+      "currentPrice": 443000,
+      "priceImpliedProjection": 34.6,
+      "seasonAverage": 34.3,
+      "last3Average": 34,
+      "lastGameScore": 36,
+      "scoreVolatility": 7.9,
+      "homeAverage": 39.5,
+      "awayAverage": 29
     },
     "SELWYNCOBBO": {
       "playerName": "Selwyn Cobbo",
       "key": "SELWYNCOBBO",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 30,
-      "last3Average": 30,
-      "lastGameScore": 29,
-      "scoreVolatility": 1,
+      "gamesPlayed": 4,
+      "currentPrice": 452000,
+      "priceImpliedProjection": 35.3,
+      "seasonAverage": 35.5,
+      "last3Average": 37,
+      "lastGameScore": 34,
+      "scoreVolatility": 7.4,
       "homeAverage": 30,
-      "awayAverage": 30
+      "awayAverage": 41
     },
     "SAMUELHEALEY": {
       "playerName": "Samuel Healey",
       "key": "SAMUELHEALEY",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 18.5,
-      "last3Average": 18.5,
-      "lastGameScore": 20,
-      "scoreVolatility": 1.5,
-      "homeAverage": 18.5,
-      "awayAverage": 18.5
+      "gamesPlayed": 4,
+      "currentPrice": 287000,
+      "priceImpliedProjection": 22.4,
+      "seasonAverage": 17.5,
+      "last3Average": 17.7,
+      "lastGameScore": 12,
+      "scoreVolatility": 3.5,
+      "homeAverage": 16.3,
+      "awayAverage": 21
     },
     "JACKHOWARTH": {
       "playerName": "Jack Howarth",
       "key": "JACKHOWARTH",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 45.5,
-      "last3Average": 45.5,
-      "lastGameScore": 51,
-      "scoreVolatility": 5.5,
-      "homeAverage": 40,
-      "awayAverage": 51
+      "gamesPlayed": 4,
+      "currentPrice": 458000,
+      "priceImpliedProjection": 35.8,
+      "seasonAverage": 33,
+      "last3Average": 30.7,
+      "lastGameScore": 10,
+      "scoreVolatility": 15,
+      "homeAverage": 35.5,
+      "awayAverage": 30.5
     },
     "JACOBSAIFITI": {
       "playerName": "Jacob Saifiti",
       "key": "JACOBSAIFITI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 45,
-      "last3Average": 45,
-      "lastGameScore": 41,
-      "scoreVolatility": 4,
-      "homeAverage": 49,
-      "awayAverage": 41
+      "gamesPlayed": 4,
+      "currentPrice": 529000,
+      "priceImpliedProjection": 41.3,
+      "seasonAverage": 48.8,
+      "last3Average": 48.7,
+      "lastGameScore": 67,
+      "scoreVolatility": 11.3,
+      "homeAverage": 43.5,
+      "awayAverage": 54
     },
     "JOJOFIFITA": {
       "playerName": "Jojo Fifita",
       "key": "JOJOFIFITA",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 26.5,
-      "last3Average": 26.5,
-      "lastGameScore": 33,
-      "scoreVolatility": 6.5,
-      "homeAverage": 26.5,
-      "awayAverage": 26.5
+      "gamesPlayed": 4,
+      "currentPrice": 413000,
+      "priceImpliedProjection": 32.3,
+      "seasonAverage": 31.5,
+      "last3Average": 35.3,
+      "lastGameScore": 46,
+      "scoreVolatility": 9.6,
+      "homeAverage": 46,
+      "awayAverage": 26.7
     },
     "CONNELLYLEMUELU": {
       "playerName": "Connelly Lemuelu",
       "key": "CONNELLYLEMUELU",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 53,
-      "last3Average": 53,
-      "lastGameScore": 49,
-      "scoreVolatility": 4,
+      "gamesPlayed": 4,
+      "currentPrice": 600000,
+      "priceImpliedProjection": 46.9,
+      "seasonAverage": 58,
+      "last3Average": 58.3,
+      "lastGameScore": 58,
+      "scoreVolatility": 6.7,
       "homeAverage": 53,
-      "awayAverage": 53
+      "awayAverage": 63
     },
     "DYLANWALKER": {
       "playerName": "Dylan Walker",
       "key": "DYLANWALKER",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 32.5,
-      "last3Average": 32.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 9.5,
-      "homeAverage": 32.5,
-      "awayAverage": 32.5
+      "gamesPlayed": 4,
+      "currentPrice": 448000,
+      "priceImpliedProjection": 35,
+      "seasonAverage": 35.8,
+      "last3Average": 33.7,
+      "lastGameScore": 41,
+      "scoreVolatility": 7.6,
+      "homeAverage": 37,
+      "awayAverage": 35.3
     },
     "HARRISONEDWARDS": {
       "playerName": "Harrison Edwards",
       "key": "HARRISONEDWARDS",
       "primaryPosition": "Prop",
       "gamesPlayed": 1,
+      "currentPrice": 421000,
+      "priceImpliedProjection": 32.9,
       "seasonAverage": 11,
       "last3Average": 11,
       "lastGameScore": 11,
@@ -2207,55 +2755,79 @@
       "playerName": "Jayden Brailey",
       "key": "JAYDENBRAILEY",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 10.5,
-      "last3Average": 10.5,
-      "lastGameScore": 8,
-      "scoreVolatility": 2.5,
-      "homeAverage": 10.5,
+      "gamesPlayed": 4,
+      "currentPrice": 307000,
+      "priceImpliedProjection": 24,
+      "seasonAverage": 14.5,
+      "last3Average": 15,
+      "lastGameScore": 13,
+      "scoreVolatility": 5.9,
+      "homeAverage": 18.5,
       "awayAverage": 10.5
+    },
+    "LYHKANKINGTOGIA": {
+      "playerName": "Lyhkan King-Togia",
+      "key": "LYHKANKINGTOGIA",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 406000,
+      "priceImpliedProjection": 31.7,
+      "seasonAverage": 0,
+      "last3Average": 0,
+      "lastGameScore": 0,
+      "scoreVolatility": 0,
+      "homeAverage": 0,
+      "awayAverage": 0
     },
     "JAKETRBOJEVIC": {
       "playerName": "Jake Trbojevic",
       "key": "JAKETRBOJEVIC",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 38,
-      "scoreVolatility": 5,
-      "homeAverage": 33,
-      "awayAverage": 33
+      "gamesPlayed": 3,
+      "currentPrice": 424000,
+      "priceImpliedProjection": 33.1,
+      "seasonAverage": 30,
+      "last3Average": 30,
+      "lastGameScore": 24,
+      "scoreVolatility": 5.9,
+      "homeAverage": 30,
+      "awayAverage": 30
     },
     "LACHLANILIAS": {
       "playerName": "Lachlan Ilias",
       "key": "LACHLANILIAS",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 39,
-      "scoreVolatility": 4,
-      "homeAverage": 35,
-      "awayAverage": 35
+      "gamesPlayed": 4,
+      "currentPrice": 392000,
+      "priceImpliedProjection": 30.6,
+      "seasonAverage": 26.5,
+      "last3Average": 25,
+      "lastGameScore": 28,
+      "scoreVolatility": 11.4,
+      "homeAverage": 28,
+      "awayAverage": 26
     },
     "HAMISHSTEWART": {
       "playerName": "Hamish Stewart",
       "key": "HAMISHSTEWART",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 40,
-      "last3Average": 40,
-      "lastGameScore": 37,
-      "scoreVolatility": 3,
+      "gamesPlayed": 4,
+      "currentPrice": 531000,
+      "priceImpliedProjection": 41.5,
+      "seasonAverage": 50.5,
+      "last3Average": 53,
+      "lastGameScore": 71,
+      "scoreVolatility": 12.8,
       "homeAverage": 37,
-      "awayAverage": 43
+      "awayAverage": 55
     },
     "CAMPBELLGRAHAM": {
       "playerName": "Campbell Graham",
       "key": "CAMPBELLGRAHAM",
       "primaryPosition": "Centre",
       "gamesPlayed": 2,
+      "currentPrice": 463000,
+      "priceImpliedProjection": 36.2,
       "seasonAverage": 42,
       "last3Average": 42,
       "lastGameScore": 42,
@@ -2267,175 +2839,205 @@
       "playerName": "Emre Guler",
       "key": "EMREGULER",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 32.5,
-      "last3Average": 32.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 9.5,
+      "gamesPlayed": 4,
+      "currentPrice": 467000,
+      "priceImpliedProjection": 36.5,
+      "seasonAverage": 39,
+      "last3Average": 38,
+      "lastGameScore": 39,
+      "scoreVolatility": 10.4,
       "homeAverage": 23,
-      "awayAverage": 42
+      "awayAverage": 44.3
     },
     "EGANBUTCHER": {
       "playerName": "Egan Butcher",
       "key": "EGANBUTCHER",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 34.5,
-      "last3Average": 34.5,
-      "lastGameScore": 37,
-      "scoreVolatility": 2.5,
-      "homeAverage": 37,
-      "awayAverage": 32
+      "gamesPlayed": 4,
+      "currentPrice": 400000,
+      "priceImpliedProjection": 31.3,
+      "seasonAverage": 25.5,
+      "last3Average": 23.3,
+      "lastGameScore": 2,
+      "scoreVolatility": 13.8,
+      "homeAverage": 34,
+      "awayAverage": 17
     },
     "THOMASCANT": {
       "playerName": "Thomas Cant",
       "key": "THOMASCANT",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 1,
-      "seasonAverage": 14,
-      "last3Average": 14,
-      "lastGameScore": 14,
-      "scoreVolatility": 0,
-      "homeAverage": 14,
-      "awayAverage": 14
+      "gamesPlayed": 3,
+      "currentPrice": 349000,
+      "priceImpliedProjection": 27.3,
+      "seasonAverage": 16,
+      "last3Average": 16,
+      "lastGameScore": 15,
+      "scoreVolatility": 2.2,
+      "homeAverage": 16.5,
+      "awayAverage": 15
     },
     "DOMINICYOUNG": {
       "playerName": "Dominic Young",
       "key": "DOMINICYOUNG",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 53.5,
-      "last3Average": 53.5,
-      "lastGameScore": 51,
-      "scoreVolatility": 2.5,
-      "homeAverage": 56,
-      "awayAverage": 51
+      "gamesPlayed": 4,
+      "currentPrice": 544000,
+      "priceImpliedProjection": 42.5,
+      "seasonAverage": 51.8,
+      "last3Average": 50.3,
+      "lastGameScore": 75,
+      "scoreVolatility": 17.9,
+      "homeAverage": 40.5,
+      "awayAverage": 63
     },
     "JASONTAUMALOLO": {
       "playerName": "Jason Taumalolo",
       "key": "JASONTAUMALOLO",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 33,
-      "scoreVolatility": 2,
-      "homeAverage": 35,
+      "gamesPlayed": 4,
+      "currentPrice": 461000,
+      "priceImpliedProjection": 36,
+      "seasonAverage": 38,
+      "last3Average": 38.3,
+      "lastGameScore": 39,
+      "scoreVolatility": 3.6,
+      "homeAverage": 41,
       "awayAverage": 35
     },
     "TAINETUAUPIKI": {
       "playerName": "Taine Tuaupiki",
       "key": "TAINETUAUPIKI",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 38,
-      "last3Average": 38,
-      "lastGameScore": 38,
-      "scoreVolatility": 0,
-      "homeAverage": 38,
-      "awayAverage": 38
+      "gamesPlayed": 3,
+      "currentPrice": 478000,
+      "priceImpliedProjection": 37.3,
+      "seasonAverage": 42.3,
+      "last3Average": 42.3,
+      "lastGameScore": 39,
+      "scoreVolatility": 5.4,
+      "homeAverage": 38.5,
+      "awayAverage": 50
     },
     "SANDONSMITH": {
       "playerName": "Sandon Smith",
       "key": "SANDONSMITH",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 28.5,
-      "last3Average": 28.5,
-      "lastGameScore": 34,
-      "scoreVolatility": 5.5,
-      "homeAverage": 23,
-      "awayAverage": 34
+      "gamesPlayed": 4,
+      "currentPrice": 428000,
+      "priceImpliedProjection": 33.4,
+      "seasonAverage": 34.8,
+      "last3Average": 38.7,
+      "lastGameScore": 50,
+      "scoreVolatility": 9.7,
+      "homeAverage": 27.5,
+      "awayAverage": 42
     },
     "BILLYBURNS": {
       "playerName": "Billy Burns",
       "key": "BILLYBURNS",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 29.5,
-      "last3Average": 29.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 6.5,
-      "homeAverage": 36,
-      "awayAverage": 23
+      "gamesPlayed": 4,
+      "currentPrice": 436000,
+      "priceImpliedProjection": 34.1,
+      "seasonAverage": 35.3,
+      "last3Average": 35,
+      "lastGameScore": 44,
+      "scoreVolatility": 7.7,
+      "homeAverage": 37,
+      "awayAverage": 33.5
     },
     "LUKEBROOKS": {
       "playerName": "Luke Brooks",
       "key": "LUKEBROOKS",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 40.5,
-      "last3Average": 40.5,
-      "lastGameScore": 51,
-      "scoreVolatility": 10.5,
-      "homeAverage": 40.5,
-      "awayAverage": 40.5
+      "gamesPlayed": 3,
+      "currentPrice": 458000,
+      "priceImpliedProjection": 35.8,
+      "seasonAverage": 38.3,
+      "last3Average": 38.3,
+      "lastGameScore": 34,
+      "scoreVolatility": 9.1,
+      "homeAverage": 38.3,
+      "awayAverage": 38.3
     },
     "OREGONKAUFUSI": {
       "playerName": "Oregon Kaufusi",
       "key": "OREGONKAUFUSI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 27.5,
-      "last3Average": 27.5,
-      "lastGameScore": 25,
-      "scoreVolatility": 2.5,
-      "homeAverage": 30,
-      "awayAverage": 25
+      "gamesPlayed": 4,
+      "currentPrice": 378000,
+      "priceImpliedProjection": 29.5,
+      "seasonAverage": 25.5,
+      "last3Average": 24,
+      "lastGameScore": 27,
+      "scoreVolatility": 3.6,
+      "homeAverage": 25,
+      "awayAverage": 26
     },
     "BLAIZETALAGI": {
       "playerName": "Blaize Talagi",
       "key": "BLAIZETALAGI",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 37.5,
-      "last3Average": 37.5,
-      "lastGameScore": 40,
-      "scoreVolatility": 2.5,
-      "homeAverage": 40,
-      "awayAverage": 35
+      "gamesPlayed": 4,
+      "currentPrice": 468000,
+      "priceImpliedProjection": 36.6,
+      "seasonAverage": 38,
+      "last3Average": 39,
+      "lastGameScore": 27,
+      "scoreVolatility": 8.3,
+      "homeAverage": 33.5,
+      "awayAverage": 42.5
     },
     "DEMITRICVAIMAUGA": {
       "playerName": "Demitric Vaimauga",
       "key": "DEMITRICVAIMAUGA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 20,
-      "last3Average": 20,
-      "lastGameScore": 24,
-      "scoreVolatility": 4,
+      "gamesPlayed": 3,
+      "currentPrice": 375000,
+      "priceImpliedProjection": 29.3,
+      "seasonAverage": 23,
+      "last3Average": 23,
+      "lastGameScore": 29,
+      "scoreVolatility": 5.4,
       "homeAverage": 20,
-      "awayAverage": 20
+      "awayAverage": 29
     },
     "LUCIANOLEILUA": {
       "playerName": "Luciano Leilua",
       "key": "LUCIANOLEILUA",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 42.5,
-      "last3Average": 42.5,
-      "lastGameScore": 42,
-      "scoreVolatility": 0.5,
+      "gamesPlayed": 4,
+      "currentPrice": 513000,
+      "priceImpliedProjection": 40.1,
+      "seasonAverage": 45.8,
+      "last3Average": 46.7,
+      "lastGameScore": 41,
+      "scoreVolatility": 6.5,
       "homeAverage": 42,
-      "awayAverage": 43
+      "awayAverage": 47
     },
     "KLESEHAAS": {
       "playerName": "Klese Haas",
       "key": "KLESEHAAS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 32.5,
-      "last3Average": 32.5,
-      "lastGameScore": 42,
-      "scoreVolatility": 9.5,
-      "homeAverage": 32.5,
-      "awayAverage": 32.5
+      "gamesPlayed": 4,
+      "currentPrice": 417000,
+      "priceImpliedProjection": 32.6,
+      "seasonAverage": 32,
+      "last3Average": 35,
+      "lastGameScore": 35,
+      "scoreVolatility": 7.2,
+      "homeAverage": 35,
+      "awayAverage": 31
     },
     "KURTCAPEWELL": {
       "playerName": "Kurt Capewell",
       "key": "KURTCAPEWELL",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 1,
+      "currentPrice": 442000,
+      "priceImpliedProjection": 34.5,
       "seasonAverage": 48,
       "last3Average": 48,
       "lastGameScore": 48,
@@ -2447,31 +3049,37 @@
       "playerName": "Max Feagai",
       "key": "MAXFEAGAI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 22.5,
-      "last3Average": 22.5,
-      "lastGameScore": 24,
-      "scoreVolatility": 1.5,
-      "homeAverage": 22.5,
-      "awayAverage": 22.5
+      "gamesPlayed": 3,
+      "currentPrice": 384000,
+      "priceImpliedProjection": 30,
+      "seasonAverage": 26,
+      "last3Average": 26,
+      "lastGameScore": 33,
+      "scoreVolatility": 5.1,
+      "homeAverage": 26,
+      "awayAverage": 26
     },
     "WILLWARBRICK": {
       "playerName": "Will Warbrick",
       "key": "WILLWARBRICK",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 46.5,
-      "last3Average": 46.5,
-      "lastGameScore": 58,
-      "scoreVolatility": 11.5,
-      "homeAverage": 35,
-      "awayAverage": 58
+      "gamesPlayed": 4,
+      "currentPrice": 515000,
+      "priceImpliedProjection": 40.2,
+      "seasonAverage": 49.3,
+      "last3Average": 54,
+      "lastGameScore": 76,
+      "scoreVolatility": 19,
+      "homeAverage": 31.5,
+      "awayAverage": 67
     },
     "BRONSONXERRI": {
       "playerName": "Bronson Xerri",
       "key": "BRONSONXERRI",
       "primaryPosition": "Centre",
       "gamesPlayed": 1,
+      "currentPrice": 428000,
+      "priceImpliedProjection": 33.4,
       "seasonAverage": 36,
       "last3Average": 36,
       "lastGameScore": 36,
@@ -2483,79 +3091,107 @@
       "playerName": "Samuel Hughes",
       "key": "SAMUELHUGHES",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 19,
-      "last3Average": 19,
-      "lastGameScore": 19,
-      "scoreVolatility": 0,
+      "gamesPlayed": 2,
+      "currentPrice": 371000,
+      "priceImpliedProjection": 29,
+      "seasonAverage": 13.5,
+      "last3Average": 13.5,
+      "lastGameScore": 8,
+      "scoreVolatility": 5.5,
       "homeAverage": 19,
-      "awayAverage": 19
+      "awayAverage": 8
+    },
+    "FRANCISMOLO": {
+      "playerName": "Francis Molo",
+      "key": "FRANCISMOLO",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 1,
+      "currentPrice": 417000,
+      "priceImpliedProjection": 32.6,
+      "seasonAverage": 28,
+      "last3Average": 28,
+      "lastGameScore": 28,
+      "scoreVolatility": 0,
+      "homeAverage": 28,
+      "awayAverage": 28
     },
     "COREYWADDELL": {
       "playerName": "Corey Waddell",
       "key": "COREYWADDELL",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 16,
-      "last3Average": 16,
-      "lastGameScore": 16,
-      "scoreVolatility": 0,
-      "homeAverage": 16,
-      "awayAverage": 16
+      "gamesPlayed": 2,
+      "currentPrice": 383000,
+      "priceImpliedProjection": 29.9,
+      "seasonAverage": 20.5,
+      "last3Average": 20.5,
+      "lastGameScore": 25,
+      "scoreVolatility": 4.5,
+      "homeAverage": 20.5,
+      "awayAverage": 20.5
     },
     "BLAKESTEEP": {
       "playerName": "Blake Steep",
       "key": "BLAKESTEEP",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 24.5,
-      "last3Average": 24.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 1.5,
-      "homeAverage": 23,
+      "gamesPlayed": 3,
+      "currentPrice": 375000,
+      "priceImpliedProjection": 29.3,
+      "seasonAverage": 22.3,
+      "last3Average": 22.3,
+      "lastGameScore": 18,
+      "scoreVolatility": 3.3,
+      "homeAverage": 20.5,
       "awayAverage": 26
     },
     "SEBASTIANKRIS": {
       "playerName": "Sebastian Kris",
       "key": "SEBASTIANKRIS",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 23.5,
-      "last3Average": 23.5,
-      "lastGameScore": 20,
-      "scoreVolatility": 3.5,
-      "homeAverage": 23.5,
+      "gamesPlayed": 4,
+      "currentPrice": 372000,
+      "priceImpliedProjection": 29.1,
+      "seasonAverage": 27,
+      "last3Average": 27,
+      "lastGameScore": 38,
+      "scoreVolatility": 6.8,
+      "homeAverage": 30.5,
       "awayAverage": 23.5
     },
     "WILLIAMKENNEDY": {
       "playerName": "William Kennedy",
       "key": "WILLIAMKENNEDY",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 32.5,
-      "last3Average": 32.5,
-      "lastGameScore": 24,
-      "scoreVolatility": 8.5,
-      "homeAverage": 41,
-      "awayAverage": 24
+      "gamesPlayed": 4,
+      "currentPrice": 413000,
+      "priceImpliedProjection": 32.3,
+      "seasonAverage": 32.8,
+      "last3Average": 30,
+      "lastGameScore": 44,
+      "scoreVolatility": 9.8,
+      "homeAverage": 31.5,
+      "awayAverage": 34
     },
     "DEINEMARINER": {
       "playerName": "Deine Mariner",
       "key": "DEINEMARINER",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 20,
-      "last3Average": 20,
-      "lastGameScore": 22,
-      "scoreVolatility": 2,
-      "homeAverage": 20,
-      "awayAverage": 20
+      "gamesPlayed": 4,
+      "currentPrice": 376000,
+      "priceImpliedProjection": 29.4,
+      "seasonAverage": 27.5,
+      "last3Average": 30.7,
+      "lastGameScore": 34,
+      "scoreVolatility": 7.7,
+      "homeAverage": 24.7,
+      "awayAverage": 36
     },
     "JACKCOGGER": {
       "playerName": "Jack Cogger",
       "key": "JACKCOGGER",
       "primaryPosition": "Halfback",
       "gamesPlayed": 2,
+      "currentPrice": 360000,
+      "priceImpliedProjection": 28.1,
       "seasonAverage": 10,
       "last3Average": 10,
       "lastGameScore": 4,
@@ -2563,23 +3199,41 @@
       "homeAverage": 4,
       "awayAverage": 16
     },
+    "GRANTANDERSON": {
+      "playerName": "Grant Anderson",
+      "key": "GRANTANDERSON",
+      "primaryPosition": "Fullback",
+      "gamesPlayed": 2,
+      "currentPrice": 371000,
+      "priceImpliedProjection": 29,
+      "seasonAverage": 16,
+      "last3Average": 16,
+      "lastGameScore": 14,
+      "scoreVolatility": 2,
+      "homeAverage": 14,
+      "awayAverage": 18
+    },
     "BRAYDONTRINDALL": {
       "playerName": "Braydon Trindall",
       "key": "BRAYDONTRINDALL",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 47.5,
-      "last3Average": 47.5,
-      "lastGameScore": 26,
-      "scoreVolatility": 21.5,
-      "homeAverage": 69,
-      "awayAverage": 26
+      "gamesPlayed": 4,
+      "currentPrice": 528000,
+      "priceImpliedProjection": 41.3,
+      "seasonAverage": 49.5,
+      "last3Average": 43,
+      "lastGameScore": 53,
+      "scoreVolatility": 15.4,
+      "homeAverage": 59.5,
+      "awayAverage": 39.5
     },
     "WILLPENISINI": {
       "playerName": "Will Penisini",
       "key": "WILLPENISINI",
       "primaryPosition": "Centre",
       "gamesPlayed": 1,
+      "currentPrice": 420000,
+      "priceImpliedProjection": 32.8,
       "seasonAverage": 36,
       "last3Average": 36,
       "lastGameScore": 36,
@@ -2587,323 +3241,307 @@
       "homeAverage": 36,
       "awayAverage": 36
     },
+    "CHARLIEGUYMER": {
+      "playerName": "Charlie Guymer",
+      "key": "CHARLIEGUYMER",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 1,
+      "currentPrice": 377000,
+      "priceImpliedProjection": 29.5,
+      "seasonAverage": -1,
+      "last3Average": -1,
+      "lastGameScore": -1,
+      "scoreVolatility": 0,
+      "homeAverage": -1,
+      "awayAverage": -1
+    },
     "SITILITUPOUNIUA": {
       "playerName": "Sitili Tupouniua",
       "key": "SITILITUPOUNIUA",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 35,
-      "last3Average": 35,
-      "lastGameScore": 35,
-      "scoreVolatility": 0,
-      "homeAverage": 35,
-      "awayAverage": 35
+      "gamesPlayed": 3,
+      "currentPrice": 433000,
+      "priceImpliedProjection": 33.8,
+      "seasonAverage": 38,
+      "last3Average": 38,
+      "lastGameScore": 47,
+      "scoreVolatility": 6.5,
+      "homeAverage": 41,
+      "awayAverage": 32
     },
     "JERMAINEMCEWEN": {
       "playerName": "Jermaine McEwen",
       "key": "JERMAINEMCEWEN",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 33.5,
-      "last3Average": 33.5,
-      "lastGameScore": 30,
-      "scoreVolatility": 3.5,
-      "homeAverage": 37,
-      "awayAverage": 30
+      "gamesPlayed": 4,
+      "currentPrice": 441000,
+      "priceImpliedProjection": 34.5,
+      "seasonAverage": 38.5,
+      "last3Average": 39,
+      "lastGameScore": 55,
+      "scoreVolatility": 9.9,
+      "homeAverage": 34.5,
+      "awayAverage": 42.5
     },
     "AUBLIXTAWHA": {
       "playerName": "Aublix Tawha",
       "key": "AUBLIXTAWHA",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 12.5,
-      "last3Average": 12.5,
-      "lastGameScore": 17,
-      "scoreVolatility": 4.5,
-      "homeAverage": 12.5,
-      "awayAverage": 12.5
+      "gamesPlayed": 3,
+      "currentPrice": 322000,
+      "priceImpliedProjection": 25.2,
+      "seasonAverage": 15,
+      "last3Average": 15,
+      "lastGameScore": 20,
+      "scoreVolatility": 5.1,
+      "homeAverage": 15,
+      "awayAverage": 15
     },
     "BILLYSMITH": {
       "playerName": "Billy Smith",
       "key": "BILLYSMITH",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 44,
-      "last3Average": 44,
-      "lastGameScore": 44,
-      "scoreVolatility": 0,
-      "homeAverage": 44,
-      "awayAverage": 44
+      "gamesPlayed": 2,
+      "currentPrice": 410000,
+      "priceImpliedProjection": 32,
+      "seasonAverage": 28.5,
+      "last3Average": 28.5,
+      "lastGameScore": 13,
+      "scoreVolatility": 15.5,
+      "homeAverage": 28.5,
+      "awayAverage": 28.5
     },
     "CORYPAIX": {
       "playerName": "Cory Paix",
       "key": "CORYPAIX",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 21,
-      "last3Average": 21,
-      "lastGameScore": 24,
-      "scoreVolatility": 3,
-      "homeAverage": 21,
-      "awayAverage": 21
+      "gamesPlayed": 4,
+      "currentPrice": 389000,
+      "priceImpliedProjection": 30.4,
+      "seasonAverage": 31,
+      "last3Average": 35.3,
+      "lastGameScore": 43,
+      "scoreVolatility": 10.3,
+      "homeAverage": 28.3,
+      "awayAverage": 39
     },
     "COREYJENSEN": {
       "playerName": "Corey Jensen",
       "key": "COREYJENSEN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 31.5,
-      "last3Average": 31.5,
-      "lastGameScore": 51,
-      "scoreVolatility": 19.5,
-      "homeAverage": 31.5,
-      "awayAverage": 31.5
+      "gamesPlayed": 4,
+      "currentPrice": 444000,
+      "priceImpliedProjection": 34.7,
+      "seasonAverage": 39.5,
+      "last3Average": 48.7,
+      "lastGameScore": 54,
+      "scoreVolatility": 16.6,
+      "homeAverage": 39,
+      "awayAverage": 41
     },
     "RAYSTONE": {
       "playerName": "Ray Stone",
       "key": "RAYSTONE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 33,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 381000,
+      "priceImpliedProjection": 29.8,
+      "seasonAverage": 26.3,
+      "last3Average": 26.3,
+      "lastGameScore": 26,
+      "scoreVolatility": 5.3,
       "homeAverage": 33,
-      "awayAverage": 33
+      "awayAverage": 23
     },
     "SEANKEPPIE": {
       "playerName": "Sean Keppie",
       "key": "SEANKEPPIE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 8,
-      "last3Average": 8,
-      "lastGameScore": 8,
-      "scoreVolatility": 0,
-      "homeAverage": 8,
+      "gamesPlayed": 2,
+      "currentPrice": 359000,
+      "priceImpliedProjection": 28,
+      "seasonAverage": 19,
+      "last3Average": 19,
+      "lastGameScore": 30,
+      "scoreVolatility": 11,
+      "homeAverage": 30,
       "awayAverage": 8
+    },
+    "TYSONGAMBLE": {
+      "playerName": "Tyson Gamble",
+      "key": "TYSONGAMBLE",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 418000,
+      "priceImpliedProjection": 32.7,
+      "seasonAverage": 47,
+      "last3Average": 47,
+      "lastGameScore": 47,
+      "scoreVolatility": 0,
+      "homeAverage": 47,
+      "awayAverage": 47
     },
     "JACKWIGHTON": {
       "playerName": "Jack Wighton",
       "key": "JACKWIGHTON",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 36,
-      "last3Average": 36,
-      "lastGameScore": 35,
-      "scoreVolatility": 1,
-      "homeAverage": 36,
+      "gamesPlayed": 3,
+      "currentPrice": 411000,
+      "priceImpliedProjection": 32.1,
+      "seasonAverage": 32,
+      "last3Average": 32,
+      "lastGameScore": 24,
+      "scoreVolatility": 5.7,
+      "homeAverage": 24,
       "awayAverage": 36
     },
     "SUNIATURUVA": {
       "playerName": "Sunia Turuva",
       "key": "SUNIATURUVA",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 46,
-      "last3Average": 46,
+      "gamesPlayed": 3,
+      "currentPrice": 433000,
+      "priceImpliedProjection": 33.8,
+      "seasonAverage": 38.7,
+      "last3Average": 38.7,
       "lastGameScore": 46,
-      "scoreVolatility": 0,
+      "scoreVolatility": 10.4,
       "homeAverage": 46,
-      "awayAverage": 46
+      "awayAverage": 35
     },
     "TYRANWISHART": {
       "playerName": "Tyran Wishart",
       "key": "TYRANWISHART",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 29.5,
-      "last3Average": 29.5,
-      "lastGameScore": 17,
-      "scoreVolatility": 12.5,
-      "homeAverage": 42,
-      "awayAverage": 17
+      "gamesPlayed": 4,
+      "currentPrice": 363000,
+      "priceImpliedProjection": 28.4,
+      "seasonAverage": 24.3,
+      "last3Average": 18.3,
+      "lastGameScore": 12,
+      "scoreVolatility": 11.4,
+      "homeAverage": 34,
+      "awayAverage": 14.5
     },
     "FONUAPOLE": {
       "playerName": "Fonua Pole",
       "key": "FONUAPOLE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 17,
-      "last3Average": 17,
-      "lastGameScore": 17,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 383000,
+      "priceImpliedProjection": 29.9,
+      "seasonAverage": 29.3,
+      "last3Average": 29.3,
+      "lastGameScore": 30,
+      "scoreVolatility": 9.8,
       "homeAverage": 17,
-      "awayAverage": 17
+      "awayAverage": 35.5
+    },
+    "SIULAGITUIMALATUBROWN": {
+      "playerName": "Siulagi Tuimalatu-Brown",
+      "key": "SIULAGITUIMALATUBROWN",
+      "primaryPosition": "Fullback",
+      "gamesPlayed": 2,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
+      "seasonAverage": 5,
+      "last3Average": 5,
+      "lastGameScore": 9,
+      "scoreVolatility": 4,
+      "homeAverage": 1,
+      "awayAverage": 9
     },
     "SALESIFOKETI": {
       "playerName": "Salesi Foketi",
       "key": "SALESIFOKETI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 11,
-      "last3Average": 11,
-      "lastGameScore": 15,
-      "scoreVolatility": 4,
-      "homeAverage": 15,
-      "awayAverage": 7
+      "gamesPlayed": 4,
+      "currentPrice": 299000,
+      "priceImpliedProjection": 23.4,
+      "seasonAverage": 17,
+      "last3Average": 20.3,
+      "lastGameScore": 13,
+      "scoreVolatility": 9.7,
+      "homeAverage": 24,
+      "awayAverage": 10
     },
     "ADAMPOMPEY": {
       "playerName": "Adam Pompey",
       "key": "ADAMPOMPEY",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 28.5,
-      "last3Average": 28.5,
-      "lastGameScore": 18,
-      "scoreVolatility": 10.5,
-      "homeAverage": 28.5,
-      "awayAverage": 28.5
+      "gamesPlayed": 3,
+      "currentPrice": 362000,
+      "priceImpliedProjection": 28.3,
+      "seasonAverage": 21.3,
+      "last3Average": 21.3,
+      "lastGameScore": 7,
+      "scoreVolatility": 13.3,
+      "homeAverage": 21.3,
+      "awayAverage": 21.3
     },
     "KURTMANN": {
       "playerName": "Kurt Mann",
       "key": "KURTMANN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 33,
-      "scoreVolatility": 0,
-      "homeAverage": 33,
-      "awayAverage": 33
+      "gamesPlayed": 3,
+      "currentPrice": 379000,
+      "priceImpliedProjection": 29.6,
+      "seasonAverage": 28.7,
+      "last3Average": 28.7,
+      "lastGameScore": 31,
+      "scoreVolatility": 4.8,
+      "homeAverage": 32,
+      "awayAverage": 22
     },
     "MARCELOMONTOYA": {
       "playerName": "Marcelo Montoya",
       "key": "MARCELOMONTOYA",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 42,
-      "last3Average": 42,
-      "lastGameScore": 42,
-      "scoreVolatility": 0,
-      "homeAverage": 42,
-      "awayAverage": 42
+      "gamesPlayed": 3,
+      "currentPrice": 433000,
+      "priceImpliedProjection": 33.8,
+      "seasonAverage": 40.3,
+      "last3Average": 40.3,
+      "lastGameScore": 44,
+      "scoreVolatility": 3.9,
+      "homeAverage": 43,
+      "awayAverage": 35
     },
     "JERALSKELTON": {
       "playerName": "Jeral Skelton",
       "key": "JERALSKELTON",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 59,
-      "last3Average": 59,
-      "lastGameScore": 59,
-      "scoreVolatility": 0,
+      "gamesPlayed": 2,
+      "currentPrice": 424000,
+      "priceImpliedProjection": 33.1,
+      "seasonAverage": 38.5,
+      "last3Average": 38.5,
+      "lastGameScore": 18,
+      "scoreVolatility": 20.5,
       "homeAverage": 59,
-      "awayAverage": 59
+      "awayAverage": 18
     },
     "ETHANSANDERS": {
       "playerName": "Ethan Sanders",
       "key": "ETHANSANDERS",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 46,
-      "last3Average": 46,
-      "lastGameScore": 34,
-      "scoreVolatility": 12,
-      "homeAverage": 46,
+      "gamesPlayed": 4,
+      "currentPrice": 483000,
+      "priceImpliedProjection": 37.7,
+      "seasonAverage": 46.8,
+      "last3Average": 43,
+      "lastGameScore": 43,
+      "scoreVolatility": 9.1,
+      "homeAverage": 47.5,
       "awayAverage": 46
     },
-    "JOSHKERR": {
-      "playerName": "Josh Kerr",
-      "key": "JOSHKERR",
+    "THOMASFLETCHER": {
+      "playerName": "Thomas Fletcher",
+      "key": "THOMASFLETCHER",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 26.5,
-      "last3Average": 26.5,
-      "lastGameScore": 29,
-      "scoreVolatility": 2.5,
-      "homeAverage": 29,
-      "awayAverage": 24
-    },
-    "MATTHEWLODGE": {
-      "playerName": "Matthew Lodge",
-      "key": "MATTHEWLODGE",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 21.5,
-      "last3Average": 21.5,
-      "lastGameScore": 24,
-      "scoreVolatility": 2.5,
-      "homeAverage": 21.5,
-      "awayAverage": 21.5
-    },
-    "BAILEYHAYWARD": {
-      "playerName": "Bailey Hayward",
-      "key": "BAILEYHAYWARD",
-      "primaryPosition": null,
       "gamesPlayed": 1,
-      "seasonAverage": 46,
-      "last3Average": 46,
-      "lastGameScore": 46,
-      "scoreVolatility": 0,
-      "homeAverage": 46,
-      "awayAverage": 46
-    },
-    "SIMISASAGI": {
-      "playerName": "Simi Sasagi",
-      "key": "SIMISASAGI",
-      "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 53,
-      "last3Average": 53,
-      "lastGameScore": 65,
-      "scoreVolatility": 12,
-      "homeAverage": 53,
-      "awayAverage": 53
-    },
-    "ORYNKEELEY": {
-      "playerName": "Oryn Keeley",
-      "key": "ORYNKEELEY",
-      "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 30.5,
-      "last3Average": 30.5,
-      "lastGameScore": 27,
-      "scoreVolatility": 3.5,
-      "homeAverage": 30.5,
-      "awayAverage": 30.5
-    },
-    "SAMUELSTONESTREET": {
-      "playerName": "Samuel Stonestreet",
-      "key": "SAMUELSTONESTREET",
-      "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 36,
-      "scoreVolatility": 3,
-      "homeAverage": 30,
-      "awayAverage": 36
-    },
-    "ATAMARIOTA": {
-      "playerName": "Ata Mariota",
-      "key": "ATAMARIOTA",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 27.5,
-      "last3Average": 27.5,
-      "lastGameScore": 28,
-      "scoreVolatility": 0.5,
-      "homeAverage": 27.5,
-      "awayAverage": 27.5
-    },
-    "BRONSONGARLICK": {
-      "playerName": "Bronson Garlick",
-      "key": "BRONSONGARLICK",
-      "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 17.5,
-      "last3Average": 17.5,
-      "lastGameScore": 9,
-      "scoreVolatility": 8.5,
-      "homeAverage": 17.5,
-      "awayAverage": 17.5
-    },
-    "ALECMACDONALD": {
-      "playerName": "Alec MacDonald",
-      "key": "ALECMACDONALD",
-      "primaryPosition": "Prop",
-      "gamesPlayed": 1,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
       "seasonAverage": 0,
       "last3Average": 0,
       "lastGameScore": 0,
@@ -2911,35 +3549,251 @@
       "homeAverage": 0,
       "awayAverage": 0
     },
+    "JOSHKERR": {
+      "playerName": "Josh Kerr",
+      "key": "JOSHKERR",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 4,
+      "currentPrice": 346000,
+      "priceImpliedProjection": 27,
+      "seasonAverage": 25,
+      "last3Average": 25.3,
+      "lastGameScore": 29,
+      "scoreVolatility": 4.5,
+      "homeAverage": 29,
+      "awayAverage": 23.7
+    },
+    "SEANOSULLIVAN": {
+      "playerName": "Sean O'Sullivan",
+      "key": "SEANOSULLIVAN",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 336000,
+      "priceImpliedProjection": 26.3,
+      "seasonAverage": 15,
+      "last3Average": 15,
+      "lastGameScore": 15,
+      "scoreVolatility": 0,
+      "homeAverage": 15,
+      "awayAverage": 15
+    },
+    "MATTHEWLODGE": {
+      "playerName": "Matthew Lodge",
+      "key": "MATTHEWLODGE",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 4,
+      "currentPrice": 337000,
+      "priceImpliedProjection": 26.3,
+      "seasonAverage": 23,
+      "last3Average": 24.3,
+      "lastGameScore": 16,
+      "scoreVolatility": 6.4,
+      "homeAverage": 24.5,
+      "awayAverage": 21.5
+    },
+    "LATUFAINU": {
+      "playerName": "Latu Fainu",
+      "key": "LATUFAINU",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 362000,
+      "priceImpliedProjection": 28.3,
+      "seasonAverage": 17,
+      "last3Average": 17,
+      "lastGameScore": 17,
+      "scoreVolatility": 0,
+      "homeAverage": 17,
+      "awayAverage": 17
+    },
+    "BAILEYHAYWARD": {
+      "playerName": "Bailey Hayward",
+      "key": "BAILEYHAYWARD",
+      "primaryPosition": null,
+      "gamesPlayed": 3,
+      "currentPrice": 398000,
+      "priceImpliedProjection": 31.1,
+      "seasonAverage": 32,
+      "last3Average": 32,
+      "lastGameScore": 23,
+      "scoreVolatility": 10,
+      "homeAverage": 34.5,
+      "awayAverage": 27
+    },
+    "SIMISASAGI": {
+      "playerName": "Simi Sasagi",
+      "key": "SIMISASAGI",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 4,
+      "currentPrice": 510000,
+      "priceImpliedProjection": 39.8,
+      "seasonAverage": 50,
+      "last3Average": 53,
+      "lastGameScore": 58,
+      "scoreVolatility": 11.9,
+      "homeAverage": 47,
+      "awayAverage": 53
+    },
+    "LUCAMORETTI": {
+      "playerName": "Luca Moretti",
+      "key": "LUCAMORETTI",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 1,
+      "currentPrice": 359000,
+      "priceImpliedProjection": 28,
+      "seasonAverage": 17,
+      "last3Average": 17,
+      "lastGameScore": 17,
+      "scoreVolatility": 0,
+      "homeAverage": 17,
+      "awayAverage": 17
+    },
+    "ORYNKEELEY": {
+      "playerName": "Oryn Keeley",
+      "key": "ORYNKEELEY",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 3,
+      "currentPrice": 380000,
+      "priceImpliedProjection": 29.7,
+      "seasonAverage": 30.3,
+      "last3Average": 30.3,
+      "lastGameScore": 30,
+      "scoreVolatility": 2.9,
+      "homeAverage": 30.5,
+      "awayAverage": 30
+    },
+    "ZACLAYBUTT": {
+      "playerName": "Zac Laybutt",
+      "key": "ZACLAYBUTT",
+      "primaryPosition": "Centre",
+      "gamesPlayed": 1,
+      "currentPrice": 377000,
+      "priceImpliedProjection": 29.5,
+      "seasonAverage": 34,
+      "last3Average": 34,
+      "lastGameScore": 34,
+      "scoreVolatility": 0,
+      "homeAverage": 34,
+      "awayAverage": 34
+    },
+    "SAMUELSTONESTREET": {
+      "playerName": "Samuel Stonestreet",
+      "key": "SAMUELSTONESTREET",
+      "primaryPosition": "Fullback",
+      "gamesPlayed": 4,
+      "currentPrice": 403000,
+      "priceImpliedProjection": 31.5,
+      "seasonAverage": 33.8,
+      "last3Average": 35,
+      "lastGameScore": 31,
+      "scoreVolatility": 3.3,
+      "homeAverage": 34,
+      "awayAverage": 33.5
+    },
+    "ATAMARIOTA": {
+      "playerName": "Ata Mariota",
+      "key": "ATAMARIOTA",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 4,
+      "currentPrice": 343000,
+      "priceImpliedProjection": 26.8,
+      "seasonAverage": 25,
+      "last3Average": 24.3,
+      "lastGameScore": 26,
+      "scoreVolatility": 3.5,
+      "homeAverage": 22.5,
+      "awayAverage": 27.5
+    },
+    "BRONSONGARLICK": {
+      "playerName": "Bronson Garlick",
+      "key": "BRONSONGARLICK",
+      "primaryPosition": null,
+      "gamesPlayed": 3,
+      "currentPrice": 312000,
+      "priceImpliedProjection": 24.4,
+      "seasonAverage": 16.3,
+      "last3Average": 16.3,
+      "lastGameScore": 14,
+      "scoreVolatility": 7.1,
+      "homeAverage": 14,
+      "awayAverage": 17.5
+    },
+    "ALECMACDONALD": {
+      "playerName": "Alec MacDonald",
+      "key": "ALECMACDONALD",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 321000,
+      "priceImpliedProjection": 25.1,
+      "seasonAverage": 22,
+      "last3Average": 22,
+      "lastGameScore": 30,
+      "scoreVolatility": 15.7,
+      "homeAverage": 18,
+      "awayAverage": 30
+    },
+    "MARATANIUKORE": {
+      "playerName": "Marata Niukore",
+      "key": "MARATANIUKORE",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 2,
+      "currentPrice": 381000,
+      "priceImpliedProjection": 29.8,
+      "seasonAverage": 32,
+      "last3Average": 32,
+      "lastGameScore": 20,
+      "scoreVolatility": 12,
+      "homeAverage": 20,
+      "awayAverage": 44
+    },
     "SEANRUSSELL": {
       "playerName": "Sean Russell",
       "key": "SEANRUSSELL",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 37,
-      "last3Average": 37,
-      "lastGameScore": 25,
-      "scoreVolatility": 12,
-      "homeAverage": 37,
-      "awayAverage": 37
+      "gamesPlayed": 4,
+      "currentPrice": 412000,
+      "priceImpliedProjection": 32.2,
+      "seasonAverage": 36.3,
+      "last3Average": 32,
+      "lastGameScore": 45,
+      "scoreVolatility": 10.8,
+      "homeAverage": 26,
+      "awayAverage": 39.7
     },
     "ALILEIATAUA": {
       "playerName": "Ali Leiataua",
       "key": "ALILEIATAUA",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 32,
-      "last3Average": 32,
-      "lastGameScore": 50,
-      "scoreVolatility": 18,
+      "gamesPlayed": 3,
+      "currentPrice": 384000,
+      "priceImpliedProjection": 30,
+      "seasonAverage": 34.7,
+      "last3Average": 34.7,
+      "lastGameScore": 40,
+      "scoreVolatility": 15.2,
       "homeAverage": 32,
-      "awayAverage": 32
+      "awayAverage": 40
+    },
+    "LIPOIHOPOI": {
+      "playerName": "Lipoi Hopoi",
+      "key": "LIPOIHOPOI",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 1,
+      "currentPrice": 281000,
+      "priceImpliedProjection": 22,
+      "seasonAverage": 7,
+      "last3Average": 7,
+      "lastGameScore": 7,
+      "scoreVolatility": 0,
+      "homeAverage": 7,
+      "awayAverage": 7
     },
     "DAVVYMOALE": {
       "playerName": "Davvy Moale",
       "key": "DAVVYMOALE",
       "primaryPosition": "Prop",
       "gamesPlayed": 1,
+      "currentPrice": 346000,
+      "priceImpliedProjection": 27,
       "seasonAverage": 14,
       "last3Average": 14,
       "lastGameScore": 14,
@@ -2951,55 +3805,79 @@
       "playerName": "Jaeman Salmon",
       "key": "JAEMANSALMON",
       "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 397000,
+      "priceImpliedProjection": 31,
+      "seasonAverage": 34.7,
+      "last3Average": 34.7,
+      "lastGameScore": 31,
+      "scoreVolatility": 8.2,
+      "homeAverage": 38.5,
+      "awayAverage": 27
+    },
+    "TYRELLSLOAN": {
+      "playerName": "Tyrell Sloan",
+      "key": "TYRELLSLOAN",
+      "primaryPosition": "Fullback",
       "gamesPlayed": 1,
-      "seasonAverage": 46,
-      "last3Average": 46,
-      "lastGameScore": 46,
+      "currentPrice": 354000,
+      "priceImpliedProjection": 27.7,
+      "seasonAverage": 24,
+      "last3Average": 24,
+      "lastGameScore": 24,
       "scoreVolatility": 0,
-      "homeAverage": 46,
-      "awayAverage": 46
+      "homeAverage": 24,
+      "awayAverage": 24
     },
     "SIONEFAINU": {
       "playerName": "Sione Fainu",
       "key": "SIONEFAINU",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 27,
-      "last3Average": 27,
-      "lastGameScore": 27,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 361000,
+      "priceImpliedProjection": 28.2,
+      "seasonAverage": 28.3,
+      "last3Average": 28.3,
+      "lastGameScore": 20,
+      "scoreVolatility": 7.4,
       "homeAverage": 27,
-      "awayAverage": 27
+      "awayAverage": 29
     },
     "THOMASMIKAELE": {
       "playerName": "Thomas Mikaele",
       "key": "THOMASMIKAELE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 17,
-      "last3Average": 17,
-      "lastGameScore": 17,
-      "scoreVolatility": 0,
-      "homeAverage": 17,
+      "gamesPlayed": 2,
+      "currentPrice": 325000,
+      "priceImpliedProjection": 25.4,
+      "seasonAverage": 18.5,
+      "last3Average": 18.5,
+      "lastGameScore": 20,
+      "scoreVolatility": 1.5,
+      "homeAverage": 20,
       "awayAverage": 17
     },
     "FELISEKAUFUSI": {
       "playerName": "Felise Kaufusi",
       "key": "FELISEKAUFUSI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 27,
-      "last3Average": 27,
-      "lastGameScore": 30,
-      "scoreVolatility": 3,
+      "gamesPlayed": 4,
+      "currentPrice": 336000,
+      "priceImpliedProjection": 26.3,
+      "seasonAverage": 25.3,
+      "last3Average": 25.7,
+      "lastGameScore": 27,
+      "scoreVolatility": 3.7,
       "homeAverage": 27,
-      "awayAverage": 27
+      "awayAverage": 23.5
     },
     "NATHANBROWN": {
       "playerName": "Nathan Brown",
       "key": "NATHANBROWN",
       "primaryPosition": "Prop",
       "gamesPlayed": 2,
+      "currentPrice": 298000,
+      "priceImpliedProjection": 23.3,
       "seasonAverage": 9,
       "last3Average": 9,
       "lastGameScore": 10,
@@ -3011,115 +3889,149 @@
       "playerName": "Cody Walker",
       "key": "CODYWALKER",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 36.5,
-      "last3Average": 36.5,
-      "lastGameScore": 20,
-      "scoreVolatility": 16.5,
-      "homeAverage": 36.5,
+      "gamesPlayed": 3,
+      "currentPrice": 383000,
+      "priceImpliedProjection": 29.9,
+      "seasonAverage": 31.7,
+      "last3Average": 31.7,
+      "lastGameScore": 22,
+      "scoreVolatility": 15.1,
+      "homeAverage": 22,
       "awayAverage": 36.5
     },
     "JASONSAAB": {
       "playerName": "Jason Saab",
       "key": "JASONSAAB",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 12,
-      "last3Average": 12,
-      "lastGameScore": 4,
-      "scoreVolatility": 8,
-      "homeAverage": 12,
-      "awayAverage": 12
+      "gamesPlayed": 3,
+      "currentPrice": 292000,
+      "priceImpliedProjection": 22.8,
+      "seasonAverage": 17,
+      "last3Average": 17,
+      "lastGameScore": 27,
+      "scoreVolatility": 9.6,
+      "homeAverage": 17,
+      "awayAverage": 17
     },
     "JESSECOLQUHOUN": {
       "playerName": "Jesse Colquhoun",
       "key": "JESSECOLQUHOUN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 46.5,
-      "last3Average": 46.5,
-      "lastGameScore": 53,
-      "scoreVolatility": 6.5,
-      "homeAverage": 40,
-      "awayAverage": 53
+      "gamesPlayed": 4,
+      "currentPrice": 466000,
+      "priceImpliedProjection": 36.4,
+      "seasonAverage": 44.5,
+      "last3Average": 46,
+      "lastGameScore": 42,
+      "scoreVolatility": 5,
+      "homeAverage": 41.5,
+      "awayAverage": 47.5
     },
     "TOBYRUDOLF": {
       "playerName": "Toby Rudolf",
       "key": "TOBYRUDOLF",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 21,
-      "last3Average": 21,
-      "lastGameScore": 23,
-      "scoreVolatility": 2,
-      "homeAverage": 19,
-      "awayAverage": 23
+      "gamesPlayed": 4,
+      "currentPrice": 326000,
+      "priceImpliedProjection": 25.5,
+      "seasonAverage": 25,
+      "last3Average": 27,
+      "lastGameScore": 30,
+      "scoreVolatility": 4.3,
+      "homeAverage": 23.5,
+      "awayAverage": 26.5
     },
     "SIOSIFATALAKAI": {
       "playerName": "Siosifa Talakai",
       "key": "SIOSIFATALAKAI",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 15,
-      "last3Average": 15,
-      "lastGameScore": 14,
-      "scoreVolatility": 1,
-      "homeAverage": 16,
-      "awayAverage": 14
+      "gamesPlayed": 4,
+      "currentPrice": 272000,
+      "priceImpliedProjection": 21.3,
+      "seasonAverage": 16.5,
+      "last3Average": 16.7,
+      "lastGameScore": 18,
+      "scoreVolatility": 1.7,
+      "homeAverage": 17,
+      "awayAverage": 16
     },
     "TANNERSTOWERSSMITH": {
       "playerName": "Tanner Stowers-Smith",
       "key": "TANNERSTOWERSSMITH",
       "primaryPosition": "Prop",
+      "gamesPlayed": 3,
+      "currentPrice": 341000,
+      "priceImpliedProjection": 26.6,
+      "seasonAverage": 29,
+      "last3Average": 29,
+      "lastGameScore": 41,
+      "scoreVolatility": 9.1,
+      "homeAverage": 29,
+      "awayAverage": 29
+    },
+    "BLAKELAWRIE": {
+      "playerName": "Blake Lawrie",
+      "key": "BLAKELAWRIE",
+      "primaryPosition": "Prop",
       "gamesPlayed": 2,
-      "seasonAverage": 23,
-      "last3Average": 23,
-      "lastGameScore": 27,
-      "scoreVolatility": 4,
-      "homeAverage": 23,
-      "awayAverage": 23
+      "currentPrice": 363000,
+      "priceImpliedProjection": 28.4,
+      "seasonAverage": 39.5,
+      "last3Average": 39.5,
+      "lastGameScore": 51,
+      "scoreVolatility": 11.5,
+      "homeAverage": 39.5,
+      "awayAverage": 39.5
     },
     "BRADSCHNEIDER": {
       "playerName": "Brad Schneider",
       "key": "BRADSCHNEIDER",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 35.5,
-      "last3Average": 35.5,
-      "lastGameScore": 34,
-      "scoreVolatility": 1.5,
+      "gamesPlayed": 4,
+      "currentPrice": 336000,
+      "priceImpliedProjection": 26.3,
+      "seasonAverage": 23.3,
+      "last3Average": 18.7,
+      "lastGameScore": 2,
+      "scoreVolatility": 13.8,
       "homeAverage": 35.5,
-      "awayAverage": 35.5
+      "awayAverage": 11
     },
     "KEANOKINI": {
       "playerName": "Keano Kini",
       "key": "KEANOKINI",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 45.5,
-      "last3Average": 45.5,
-      "lastGameScore": 52,
-      "scoreVolatility": 6.5,
-      "homeAverage": 45.5,
-      "awayAverage": 45.5
+      "gamesPlayed": 4,
+      "currentPrice": 589000,
+      "priceImpliedProjection": 46,
+      "seasonAverage": 44.8,
+      "last3Average": 46.7,
+      "lastGameScore": 39,
+      "scoreVolatility": 5.8,
+      "homeAverage": 39,
+      "awayAverage": 46.7
     },
     "JACOBLABAN": {
       "playerName": "Jacob Laban",
       "key": "JACOBLABAN",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 23.5,
-      "last3Average": 23.5,
-      "lastGameScore": 35,
-      "scoreVolatility": 11.5,
-      "homeAverage": 23.5,
-      "awayAverage": 23.5
+      "gamesPlayed": 4,
+      "currentPrice": 371000,
+      "priceImpliedProjection": 29,
+      "seasonAverage": 34,
+      "last3Average": 41.3,
+      "lastGameScore": 50,
+      "scoreVolatility": 13.8,
+      "homeAverage": 32.3,
+      "awayAverage": 39
     },
     "JACKGOSIEWSKI": {
       "playerName": "Jack Gosiewski",
       "key": "JACKGOSIEWSKI",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 2,
+      "currentPrice": 319000,
+      "priceImpliedProjection": 24.9,
       "seasonAverage": 18,
       "last3Average": 18,
       "lastGameScore": 5,
@@ -3131,31 +4043,37 @@
       "playerName": "Braden Hamlin-Uele",
       "key": "BRADENHAMLINUELE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 13,
-      "last3Average": 13,
-      "lastGameScore": 13,
-      "scoreVolatility": 0,
+      "gamesPlayed": 2,
+      "currentPrice": 297000,
+      "priceImpliedProjection": 23.2,
+      "seasonAverage": 14,
+      "last3Average": 14,
+      "lastGameScore": 15,
+      "scoreVolatility": 1,
       "homeAverage": 13,
-      "awayAverage": 13
+      "awayAverage": 15
     },
     "HARRISONGRAHAM": {
       "playerName": "Harrison Graham",
       "key": "HARRISONGRAHAM",
       "primaryPosition": null,
-      "gamesPlayed": 1,
-      "seasonAverage": 22,
-      "last3Average": 22,
-      "lastGameScore": 22,
-      "scoreVolatility": 0,
-      "homeAverage": 22,
-      "awayAverage": 22
+      "gamesPlayed": 2,
+      "currentPrice": 317000,
+      "priceImpliedProjection": 24.8,
+      "seasonAverage": 32,
+      "last3Average": 32,
+      "lastGameScore": 42,
+      "scoreVolatility": 10,
+      "homeAverage": 32,
+      "awayAverage": 32
     },
     "BENAIAHIOELU": {
       "playerName": "Benaiah Ioelu",
       "key": "BENAIAHIOELU",
       "primaryPosition": null,
       "gamesPlayed": 2,
+      "currentPrice": 342000,
+      "priceImpliedProjection": 26.7,
       "seasonAverage": 28.5,
       "last3Average": 28.5,
       "lastGameScore": 21,
@@ -3167,127 +4085,177 @@
       "playerName": "Hame Sele",
       "key": "HAMESELE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 31.5,
-      "last3Average": 31.5,
-      "lastGameScore": 33,
-      "scoreVolatility": 1.5,
+      "gamesPlayed": 3,
+      "currentPrice": 345000,
+      "priceImpliedProjection": 27,
+      "seasonAverage": 28.7,
+      "last3Average": 28.7,
+      "lastGameScore": 23,
+      "scoreVolatility": 4.2,
       "homeAverage": 33,
-      "awayAverage": 30
+      "awayAverage": 26.5
     },
     "TUKIMIHIASIMPKINS": {
       "playerName": "Tukimihia Simpkins",
       "key": "TUKIMIHIASIMPKINS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 29,
-      "last3Average": 29,
-      "lastGameScore": 29,
-      "scoreVolatility": 0,
-      "homeAverage": 29,
-      "awayAverage": 29
+      "gamesPlayed": 2,
+      "currentPrice": 257000,
+      "priceImpliedProjection": 20.1,
+      "seasonAverage": 20,
+      "last3Average": 20,
+      "lastGameScore": 11,
+      "scoreVolatility": 9,
+      "homeAverage": 20,
+      "awayAverage": 20
     },
     "JOASHPAPALII": {
       "playerName": "Joash Papalii",
       "key": "JOASHPAPALII",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 1,
-      "last3Average": 1,
-      "lastGameScore": 1,
-      "scoreVolatility": 0,
-      "homeAverage": 1,
-      "awayAverage": 1
+      "gamesPlayed": 2,
+      "currentPrice": 260000,
+      "priceImpliedProjection": 20.3,
+      "seasonAverage": 6,
+      "last3Average": 6,
+      "lastGameScore": 11,
+      "scoreVolatility": 5,
+      "homeAverage": 6,
+      "awayAverage": 6
     },
     "XAVIERSAVAGE": {
       "playerName": "Xavier Savage",
       "key": "XAVIERSAVAGE",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 42.5,
-      "last3Average": 42.5,
-      "lastGameScore": 35,
-      "scoreVolatility": 7.5,
-      "homeAverage": 42.5,
+      "gamesPlayed": 4,
+      "currentPrice": 427000,
+      "priceImpliedProjection": 33.4,
+      "seasonAverage": 41.8,
+      "last3Average": 39,
+      "lastGameScore": 49,
+      "scoreVolatility": 7.8,
+      "homeAverage": 41,
       "awayAverage": 42.5
+    },
+    "BRENDANPIAKURA": {
+      "playerName": "Brendan Piakura",
+      "key": "BRENDANPIAKURA",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 2,
+      "currentPrice": 311000,
+      "priceImpliedProjection": 24.3,
+      "seasonAverage": 24,
+      "last3Average": 24,
+      "lastGameScore": 23,
+      "scoreVolatility": 1,
+      "homeAverage": 23,
+      "awayAverage": 25
     },
     "JORDANSAMRANI": {
       "playerName": "Jordan Samrani",
       "key": "JORDANSAMRANI",
       "primaryPosition": "Centre",
-      "gamesPlayed": 1,
-      "seasonAverage": 17,
-      "last3Average": 17,
-      "lastGameScore": 17,
-      "scoreVolatility": 0,
-      "homeAverage": 17,
+      "gamesPlayed": 2,
+      "currentPrice": 295000,
+      "priceImpliedProjection": 23,
+      "seasonAverage": 19.5,
+      "last3Average": 19.5,
+      "lastGameScore": 22,
+      "scoreVolatility": 2.5,
+      "homeAverage": 22,
       "awayAverage": 17
     },
     "JOECHAN": {
       "playerName": "Joe Chan",
       "key": "JOECHAN",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 56.5,
-      "last3Average": 56.5,
-      "lastGameScore": 44,
-      "scoreVolatility": 12.5,
-      "homeAverage": 69,
-      "awayAverage": 44
+      "gamesPlayed": 4,
+      "currentPrice": 554000,
+      "priceImpliedProjection": 43.3,
+      "seasonAverage": 58.8,
+      "last3Average": 55.3,
+      "lastGameScore": 39,
+      "scoreVolatility": 18,
+      "homeAverage": 76,
+      "awayAverage": 41.5
     },
     "DALLINWATENEZELEZNIAK": {
       "playerName": "Dallin Watene-Zelezniak",
       "key": "DALLINWATENEZELEZNIAK",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 29,
-      "last3Average": 29,
-      "lastGameScore": 40,
-      "scoreVolatility": 11,
-      "homeAverage": 29,
-      "awayAverage": 29
+      "gamesPlayed": 4,
+      "currentPrice": 324000,
+      "priceImpliedProjection": 25.3,
+      "seasonAverage": 25.3,
+      "last3Average": 27.7,
+      "lastGameScore": 15,
+      "scoreVolatility": 9.8,
+      "homeAverage": 24.3,
+      "awayAverage": 28
+    },
+    "TRISTANHOPE": {
+      "playerName": "Tristan Hope",
+      "key": "TRISTANHOPE",
+      "primaryPosition": null,
+      "gamesPlayed": 1,
+      "currentPrice": 242000,
+      "priceImpliedProjection": 18.9,
+      "seasonAverage": 13,
+      "last3Average": 13,
+      "lastGameScore": 13,
+      "scoreVolatility": 0,
+      "homeAverage": 13,
+      "awayAverage": 13
     },
     "MATTDOOREY": {
       "playerName": "Matt Doorey",
       "key": "MATTDOOREY",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 13.5,
-      "last3Average": 13.5,
-      "lastGameScore": 15,
-      "scoreVolatility": 1.5,
-      "homeAverage": 13.5,
-      "awayAverage": 13.5
+      "gamesPlayed": 4,
+      "currentPrice": 253000,
+      "priceImpliedProjection": 19.8,
+      "seasonAverage": 17.3,
+      "last3Average": 19,
+      "lastGameScore": 19,
+      "scoreVolatility": 4.1,
+      "homeAverage": 23,
+      "awayAverage": 15.3
     },
     "SAMTUIVAITI": {
       "playerName": "Sam Tuivaiti",
       "key": "SAMTUIVAITI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 24,
-      "last3Average": 24,
-      "lastGameScore": 24,
-      "scoreVolatility": 0,
-      "homeAverage": 24,
-      "awayAverage": 24
+      "gamesPlayed": 3,
+      "currentPrice": 314000,
+      "priceImpliedProjection": 24.5,
+      "seasonAverage": 27.3,
+      "last3Average": 27.3,
+      "lastGameScore": 23,
+      "scoreVolatility": 5.4,
+      "homeAverage": 35,
+      "awayAverage": 23.5
     },
     "LUKELAULILII": {
       "playerName": "Luke Laulilii",
       "key": "LUKELAULILII",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 58,
-      "last3Average": 58,
-      "lastGameScore": 58,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 346000,
+      "priceImpliedProjection": 27,
+      "seasonAverage": 37.3,
+      "last3Average": 37.3,
+      "lastGameScore": 33,
+      "scoreVolatility": 15.4,
       "homeAverage": 58,
-      "awayAverage": 58
+      "awayAverage": 27
     },
     "ATIVALULISATI": {
       "playerName": "Ativalu Lisati",
       "key": "ATIVALULISATI",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 2,
+      "currentPrice": 427000,
+      "priceImpliedProjection": 33.4,
       "seasonAverage": 70.5,
       "last3Average": 70.5,
       "lastGameScore": 67,
@@ -3300,6 +4268,8 @@
       "key": "LUKESOMMERTON",
       "primaryPosition": null,
       "gamesPlayed": 1,
+      "currentPrice": 242000,
+      "priceImpliedProjection": 18.9,
       "seasonAverage": 12,
       "last3Average": 12,
       "lastGameScore": 12,
@@ -3311,19 +4281,23 @@
       "playerName": "Kurtis Morrin",
       "key": "KURTISMORRIN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 24.5,
-      "last3Average": 24.5,
-      "lastGameScore": 30,
-      "scoreVolatility": 5.5,
-      "homeAverage": 24.5,
-      "awayAverage": 24.5
+      "gamesPlayed": 4,
+      "currentPrice": 291000,
+      "priceImpliedProjection": 22.7,
+      "seasonAverage": 25.5,
+      "last3Average": 27.7,
+      "lastGameScore": 23,
+      "scoreVolatility": 4.7,
+      "homeAverage": 23,
+      "awayAverage": 26.3
     },
     "KAIODONNELL": {
       "playerName": "Kai O'Donnell",
       "key": "KAIODONNELL",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 2,
+      "currentPrice": 298000,
+      "priceImpliedProjection": 23.3,
       "seasonAverage": 26.5,
       "last3Average": 26.5,
       "lastGameScore": 17,
@@ -3335,11 +4309,27 @@
       "playerName": "Jayden Sullivan",
       "key": "JAYDENSULLIVAN",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
+      "gamesPlayed": 3,
+      "currentPrice": 253000,
+      "priceImpliedProjection": 19.8,
+      "seasonAverage": 15.3,
+      "last3Average": 15.3,
+      "lastGameScore": 6,
+      "scoreVolatility": 7.4,
+      "homeAverage": 6,
+      "awayAverage": 20
+    },
+    "MANAIAWAITERE": {
+      "playerName": "Manaia Waitere",
+      "key": "MANAIAWAITERE",
+      "primaryPosition": "Centre",
+      "gamesPlayed": 1,
+      "currentPrice": 250000,
+      "priceImpliedProjection": 19.5,
       "seasonAverage": 20,
       "last3Average": 20,
-      "lastGameScore": 24,
-      "scoreVolatility": 4,
+      "lastGameScore": 20,
+      "scoreVolatility": 0,
       "homeAverage": 20,
       "awayAverage": 20
     },
@@ -3347,19 +4337,37 @@
       "playerName": "Noah Martin",
       "key": "NOAHMARTIN",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 70,
-      "last3Average": 70,
-      "lastGameScore": 60,
-      "scoreVolatility": 10,
-      "homeAverage": 70,
+      "gamesPlayed": 4,
+      "currentPrice": 540000,
+      "priceImpliedProjection": 42.2,
+      "seasonAverage": 61,
+      "last3Average": 54.7,
+      "lastGameScore": 53,
+      "scoreVolatility": 11.5,
+      "homeAverage": 52,
       "awayAverage": 70
+    },
+    "FREDDYLUSSICK": {
+      "playerName": "Freddy Lussick",
+      "key": "FREDDYLUSSICK",
+      "primaryPosition": null,
+      "gamesPlayed": 2,
+      "currentPrice": 239000,
+      "priceImpliedProjection": 18.7,
+      "seasonAverage": 18,
+      "last3Average": 18,
+      "lastGameScore": 26,
+      "scoreVolatility": 8,
+      "homeAverage": 26,
+      "awayAverage": 10
     },
     "JACKHETHERINGTON": {
       "playerName": "Jack Hetherington",
       "key": "JACKHETHERINGTON",
       "primaryPosition": "Prop",
       "gamesPlayed": 1,
+      "currentPrice": 252000,
+      "priceImpliedProjection": 19.7,
       "seasonAverage": 21,
       "last3Average": 21,
       "lastGameScore": 21,
@@ -3371,67 +4379,79 @@
       "playerName": "Moses Leo",
       "key": "MOSESLEO",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 48,
-      "last3Average": 48,
-      "lastGameScore": 28,
-      "scoreVolatility": 20,
-      "homeAverage": 68,
-      "awayAverage": 28
+      "gamesPlayed": 4,
+      "currentPrice": 349000,
+      "priceImpliedProjection": 27.3,
+      "seasonAverage": 30.8,
+      "last3Average": 18.3,
+      "lastGameScore": 11,
+      "scoreVolatility": 22.4,
+      "homeAverage": 42,
+      "awayAverage": 19.5
     },
     "ROYCEHUNT": {
       "playerName": "Royce Hunt",
       "key": "ROYCEHUNT",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 13,
-      "last3Average": 13,
-      "lastGameScore": 13,
-      "scoreVolatility": 0,
+      "gamesPlayed": 3,
+      "currentPrice": 251000,
+      "priceImpliedProjection": 19.6,
+      "seasonAverage": 21.7,
+      "last3Average": 21.7,
+      "lastGameScore": 31,
+      "scoreVolatility": 7.4,
       "homeAverage": 13,
-      "awayAverage": 13
+      "awayAverage": 26
     },
     "TALLYNDASILVA": {
       "playerName": "Tallyn Da Silva",
       "key": "TALLYNDASILVA",
       "primaryPosition": null,
-      "gamesPlayed": 2,
-      "seasonAverage": 16.5,
-      "last3Average": 16.5,
-      "lastGameScore": 10,
-      "scoreVolatility": 6.5,
-      "homeAverage": 16.5,
-      "awayAverage": 16.5
+      "gamesPlayed": 4,
+      "currentPrice": 271000,
+      "priceImpliedProjection": 21.2,
+      "seasonAverage": 22.3,
+      "last3Average": 22,
+      "lastGameScore": 12,
+      "scoreVolatility": 13.5,
+      "homeAverage": 44,
+      "awayAverage": 15
     },
     "CAMERONMURRAY": {
       "playerName": "Cameron Murray",
       "key": "CAMERONMURRAY",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 54.5,
-      "last3Average": 54.5,
-      "lastGameScore": 54,
-      "scoreVolatility": 0.5,
-      "homeAverage": 54.5,
+      "gamesPlayed": 3,
+      "currentPrice": 709000,
+      "priceImpliedProjection": 55.4,
+      "seasonAverage": 52.7,
+      "last3Average": 52.7,
+      "lastGameScore": 49,
+      "scoreVolatility": 2.6,
+      "homeAverage": 49,
       "awayAverage": 54.5
     },
     "JONAHPEZET": {
       "playerName": "Jonah Pezet",
       "key": "JONAHPEZET",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 24.5,
-      "last3Average": 24.5,
-      "lastGameScore": 35,
-      "scoreVolatility": 10.5,
-      "homeAverage": 24.5,
-      "awayAverage": 24.5
+      "gamesPlayed": 4,
+      "currentPrice": 359000,
+      "priceImpliedProjection": 28,
+      "seasonAverage": 25.5,
+      "last3Average": 29.3,
+      "lastGameScore": 27,
+      "scoreVolatility": 7.5,
+      "homeAverage": 26,
+      "awayAverage": 25.3
     },
     "HOHEPAPURU": {
       "playerName": "Hohepa Puru",
       "key": "HOHEPAPURU",
       "primaryPosition": "Prop",
       "gamesPlayed": 1,
+      "currentPrice": 244000,
+      "priceImpliedProjection": 19.1,
       "seasonAverage": 14,
       "last3Average": 14,
       "lastGameScore": 14,
@@ -3443,43 +4463,23 @@
       "playerName": "Daniel Atkinson",
       "key": "DANIELATKINSON",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 2,
-      "seasonAverage": 51.5,
-      "last3Average": 51.5,
-      "lastGameScore": 44,
-      "scoreVolatility": 7.5,
+      "gamesPlayed": 4,
+      "currentPrice": 511000,
+      "priceImpliedProjection": 39.9,
+      "seasonAverage": 41.8,
+      "last3Average": 36,
+      "lastGameScore": 25,
+      "scoreVolatility": 12.2,
       "homeAverage": 44,
-      "awayAverage": 59
+      "awayAverage": 41
     },
-    "ARAMAHAU": {
-      "playerName": "Arama Hau",
-      "key": "ARAMAHAU",
-      "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 37,
-      "last3Average": 37,
-      "lastGameScore": 35,
-      "scoreVolatility": 2,
-      "homeAverage": 37,
-      "awayAverage": 37
-    },
-    "TUIKAMIKAMICA": {
-      "playerName": "Tui Kamikamica",
-      "key": "TUIKAMIKAMICA",
+    "KAIDENLAHRS": {
+      "playerName": "Kaiden Lahrs",
+      "key": "KAIDENLAHRS",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 28,
-      "last3Average": 28,
-      "lastGameScore": 30,
-      "scoreVolatility": 2,
-      "homeAverage": 26,
-      "awayAverage": 30
-    },
-    "SONILUKE": {
-      "playerName": "Soni Luke",
-      "key": "SONILUKE",
-      "primaryPosition": null,
       "gamesPlayed": 1,
+      "currentPrice": 243000,
+      "priceImpliedProjection": 19,
       "seasonAverage": 14,
       "last3Average": 14,
       "lastGameScore": 14,
@@ -3487,35 +4487,83 @@
       "homeAverage": 14,
       "awayAverage": 14
     },
+    "ARAMAHAU": {
+      "playerName": "Arama Hau",
+      "key": "ARAMAHAU",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 4,
+      "currentPrice": 447000,
+      "priceImpliedProjection": 34.9,
+      "seasonAverage": 53.3,
+      "last3Average": 58,
+      "lastGameScore": 87,
+      "scoreVolatility": 20.5,
+      "homeAverage": 87,
+      "awayAverage": 42
+    },
+    "TUIKAMIKAMICA": {
+      "playerName": "Tui Kamikamica",
+      "key": "TUIKAMIKAMICA",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 4,
+      "currentPrice": 282000,
+      "priceImpliedProjection": 22,
+      "seasonAverage": 22.8,
+      "last3Average": 21.7,
+      "lastGameScore": 14,
+      "scoreVolatility": 6,
+      "homeAverage": 23.5,
+      "awayAverage": 22
+    },
+    "SONILUKE": {
+      "playerName": "Soni Luke",
+      "key": "SONILUKE",
+      "primaryPosition": null,
+      "gamesPlayed": 3,
+      "currentPrice": 250000,
+      "priceImpliedProjection": 19.5,
+      "seasonAverage": 10,
+      "last3Average": 10,
+      "lastGameScore": 4,
+      "scoreVolatility": 4.3,
+      "homeAverage": 8,
+      "awayAverage": 14
+    },
     "FETALAIGAPAUGA": {
       "playerName": "Fetalaiga Pauga",
       "key": "FETALAIGAPAUGA",
       "primaryPosition": "Centre",
-      "gamesPlayed": 2,
-      "seasonAverage": 34.5,
-      "last3Average": 34.5,
-      "lastGameScore": 28,
-      "scoreVolatility": 6.5,
-      "homeAverage": 28,
+      "gamesPlayed": 3,
+      "currentPrice": 374000,
+      "priceImpliedProjection": 29.2,
+      "seasonAverage": 30.3,
+      "last3Average": 30.3,
+      "lastGameScore": 22,
+      "scoreVolatility": 7.9,
+      "homeAverage": 25,
       "awayAverage": 41
     },
     "PASAMISAULO": {
       "playerName": "Pasami Saulo",
       "key": "PASAMISAULO",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 24,
-      "last3Average": 24,
-      "lastGameScore": 27,
-      "scoreVolatility": 3,
-      "homeAverage": 21,
-      "awayAverage": 27
+      "gamesPlayed": 4,
+      "currentPrice": 282000,
+      "priceImpliedProjection": 22,
+      "seasonAverage": 25.8,
+      "last3Average": 27.3,
+      "lastGameScore": 39,
+      "scoreVolatility": 8.6,
+      "homeAverage": 18.5,
+      "awayAverage": 33
     },
     "KALANIGOING": {
       "playerName": "Kalani Going",
       "key": "KALANIGOING",
       "primaryPosition": "Prop",
       "gamesPlayed": 2,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
       "seasonAverage": 12,
       "last3Average": 12,
       "lastGameScore": 15,
@@ -3527,55 +4575,79 @@
       "playerName": "Brandon Wakeham",
       "key": "BRANDONWAKEHAM",
       "primaryPosition": "Halfback",
-      "gamesPlayed": 1,
-      "seasonAverage": 19,
-      "last3Average": 19,
-      "lastGameScore": 19,
-      "scoreVolatility": 0,
-      "homeAverage": 19,
-      "awayAverage": 19
+      "gamesPlayed": 2,
+      "currentPrice": 317000,
+      "priceImpliedProjection": 24.8,
+      "seasonAverage": 15,
+      "last3Average": 15,
+      "lastGameScore": 11,
+      "scoreVolatility": 4,
+      "homeAverage": 15,
+      "awayAverage": 15
     },
     "THOMASFLEGLER": {
       "playerName": "Thomas Flegler",
       "key": "THOMASFLEGLER",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 33,
-      "last3Average": 33,
-      "lastGameScore": 20,
-      "scoreVolatility": 13,
+      "gamesPlayed": 3,
+      "currentPrice": 481000,
+      "priceImpliedProjection": 37.6,
+      "seasonAverage": 34.7,
+      "last3Average": 34.7,
+      "lastGameScore": 38,
+      "scoreVolatility": 10.9,
       "homeAverage": 33,
-      "awayAverage": 33
+      "awayAverage": 38
     },
     "BENTALTY": {
       "playerName": "Ben Talty",
       "key": "BENTALTY",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 16,
-      "last3Average": 16,
-      "lastGameScore": 13,
-      "scoreVolatility": 3,
-      "homeAverage": 16,
-      "awayAverage": 16
+      "gamesPlayed": 4,
+      "currentPrice": 281000,
+      "priceImpliedProjection": 22,
+      "seasonAverage": 20.5,
+      "last3Average": 21,
+      "lastGameScore": 30,
+      "scoreVolatility": 6.1,
+      "homeAverage": 20.7,
+      "awayAverage": 20
+    },
+    "JOCKMADDEN": {
+      "playerName": "Jock Madden",
+      "key": "JOCKMADDEN",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 380000,
+      "priceImpliedProjection": 29.7,
+      "seasonAverage": 56,
+      "last3Average": 56,
+      "lastGameScore": 56,
+      "scoreVolatility": 0,
+      "homeAverage": 56,
+      "awayAverage": 56
     },
     "MORGANKNOWLES": {
       "playerName": "Morgan Knowles",
       "key": "MORGANKNOWLES",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 39,
-      "last3Average": 39,
-      "lastGameScore": 32,
-      "scoreVolatility": 7,
+      "gamesPlayed": 4,
+      "currentPrice": 526000,
+      "priceImpliedProjection": 41.1,
+      "seasonAverage": 39.3,
+      "last3Average": 37,
+      "lastGameScore": 38,
+      "scoreVolatility": 5.1,
       "homeAverage": 39,
-      "awayAverage": 39
+      "awayAverage": 39.5
     },
     "BRENTWOOLF": {
       "playerName": "Brent Woolf",
       "key": "BRENTWOOLF",
       "primaryPosition": null,
       "gamesPlayed": 1,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
       "seasonAverage": 15,
       "last3Average": 15,
       "lastGameScore": 15,
@@ -3583,15 +4655,31 @@
       "homeAverage": 15,
       "awayAverage": 15
     },
+    "HUGOSAVALA": {
+      "playerName": "Hugo Savala",
+      "key": "HUGOSAVALA",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 421000,
+      "priceImpliedProjection": 32.9,
+      "seasonAverage": 9,
+      "last3Average": 9,
+      "lastGameScore": 9,
+      "scoreVolatility": 0,
+      "homeAverage": 9,
+      "awayAverage": 9
+    },
     "SETUTU": {
       "playerName": "Setu Tu",
       "key": "SETUTU",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 29,
-      "last3Average": 29,
-      "lastGameScore": 16,
-      "scoreVolatility": 13,
+      "gamesPlayed": 3,
+      "currentPrice": 302000,
+      "priceImpliedProjection": 23.6,
+      "seasonAverage": 33.3,
+      "last3Average": 33.3,
+      "lastGameScore": 42,
+      "scoreVolatility": 12.3,
       "homeAverage": 16,
       "awayAverage": 42
     },
@@ -3599,43 +4687,51 @@
       "playerName": "Heilum Luki",
       "key": "HEILUMLUKI",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 63.5,
-      "last3Average": 63.5,
-      "lastGameScore": 59,
-      "scoreVolatility": 4.5,
-      "homeAverage": 63.5,
+      "gamesPlayed": 4,
+      "currentPrice": 546000,
+      "priceImpliedProjection": 42.7,
+      "seasonAverage": 59.3,
+      "last3Average": 56.3,
+      "lastGameScore": 56,
+      "scoreVolatility": 5.4,
+      "homeAverage": 55,
       "awayAverage": 63.5
     },
     "TOMCHESTER": {
       "playerName": "Tom Chester",
       "key": "TOMCHESTER",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 57,
-      "last3Average": 57,
-      "lastGameScore": 67,
-      "scoreVolatility": 10,
-      "homeAverage": 57,
+      "gamesPlayed": 3,
+      "currentPrice": 393000,
+      "priceImpliedProjection": 30.7,
+      "seasonAverage": 45.7,
+      "last3Average": 45.7,
+      "lastGameScore": 23,
+      "scoreVolatility": 18,
+      "homeAverage": 23,
       "awayAverage": 57
     },
     "PAULBRYAN": {
       "playerName": "Paul Bryan",
       "key": "PAULBRYAN",
       "primaryPosition": "Prop",
-      "gamesPlayed": 1,
-      "seasonAverage": 15,
-      "last3Average": 15,
-      "lastGameScore": 15,
-      "scoreVolatility": 0,
-      "homeAverage": 15,
-      "awayAverage": 15
+      "gamesPlayed": 2,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
+      "seasonAverage": 9,
+      "last3Average": 9,
+      "lastGameScore": 3,
+      "scoreVolatility": 6,
+      "homeAverage": 9,
+      "awayAverage": 9
     },
     "ASHTONWARD": {
       "playerName": "Ashton Ward",
       "key": "ASHTONWARD",
       "primaryPosition": "Halfback",
       "gamesPlayed": 1,
+      "currentPrice": 381000,
+      "priceImpliedProjection": 29.8,
       "seasonAverage": 14,
       "last3Average": 14,
       "lastGameScore": 14,
@@ -3643,11 +4739,41 @@
       "homeAverage": 14,
       "awayAverage": 14
     },
+    "LUKEHANSON": {
+      "playerName": "Luke Hanson",
+      "key": "LUKEHANSON",
+      "primaryPosition": "Halfback",
+      "gamesPlayed": 1,
+      "currentPrice": 252000,
+      "priceImpliedProjection": 19.7,
+      "seasonAverage": 39,
+      "last3Average": 39,
+      "lastGameScore": 39,
+      "scoreVolatility": 0,
+      "homeAverage": 39,
+      "awayAverage": 39
+    },
+    "FAALETINOTAVANA": {
+      "playerName": "Faaletino Tavana",
+      "key": "FAALETINOTAVANA",
+      "primaryPosition": "Fullback",
+      "gamesPlayed": 1,
+      "currentPrice": 233000,
+      "priceImpliedProjection": 18.2,
+      "seasonAverage": 21,
+      "last3Average": 21,
+      "lastGameScore": 21,
+      "scoreVolatility": 0,
+      "homeAverage": 21,
+      "awayAverage": 21
+    },
     "PRESTONCONN": {
       "playerName": "Preston Conn",
       "key": "PRESTONCONN",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 1,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
       "seasonAverage": 5,
       "last3Average": 5,
       "lastGameScore": 5,
@@ -3659,43 +4785,65 @@
       "playerName": "Ryan Couchman",
       "key": "RYANCOUCHMAN",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 58.5,
-      "last3Average": 58.5,
-      "lastGameScore": 59,
-      "scoreVolatility": 0.5,
+      "gamesPlayed": 3,
+      "currentPrice": 433000,
+      "priceImpliedProjection": 33.8,
+      "seasonAverage": 56.3,
+      "last3Average": 56.3,
+      "lastGameScore": 52,
+      "scoreVolatility": 3.1,
       "homeAverage": 59,
-      "awayAverage": 58
+      "awayAverage": 55
     },
     "FLETCHERHUNT": {
       "playerName": "Fletcher Hunt",
       "key": "FLETCHERHUNT",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 1,
-      "seasonAverage": 51,
-      "last3Average": 51,
-      "lastGameScore": 51,
-      "scoreVolatility": 0,
-      "homeAverage": 51,
-      "awayAverage": 51
+      "gamesPlayed": 3,
+      "currentPrice": 385000,
+      "priceImpliedProjection": 30.1,
+      "seasonAverage": 43,
+      "last3Average": 43,
+      "lastGameScore": 42,
+      "scoreVolatility": 6.2,
+      "homeAverage": 36,
+      "awayAverage": 46.5
     },
     "BILLYPHILLIPS": {
       "playerName": "Billy Phillips",
       "key": "BILLYPHILLIPS",
       "primaryPosition": "2nd Row",
-      "gamesPlayed": 2,
-      "seasonAverage": 28.5,
-      "last3Average": 28.5,
-      "lastGameScore": 32,
-      "scoreVolatility": 3.5,
-      "homeAverage": 32,
-      "awayAverage": 25
+      "gamesPlayed": 4,
+      "currentPrice": 298000,
+      "priceImpliedProjection": 23.3,
+      "seasonAverage": 27.3,
+      "last3Average": 28,
+      "lastGameScore": 35,
+      "scoreVolatility": 6.9,
+      "homeAverage": 33.5,
+      "awayAverage": 21
+    },
+    "MORGANGANNON": {
+      "playerName": "Morgan Gannon",
+      "key": "MORGANGANNON",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 1,
+      "currentPrice": 409000,
+      "priceImpliedProjection": 32,
+      "seasonAverage": -1,
+      "last3Average": -1,
+      "lastGameScore": -1,
+      "scoreVolatility": 0,
+      "homeAverage": -1,
+      "awayAverage": -1
     },
     "ANGUSHINCHEY": {
       "playerName": "Angus Hinchey",
       "key": "ANGUSHINCHEY",
       "primaryPosition": "2nd Row",
       "gamesPlayed": 1,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
       "seasonAverage": 5,
       "last3Average": 5,
       "lastGameScore": 5,
@@ -3703,41 +4851,103 @@
       "homeAverage": 5,
       "awayAverage": 5
     },
+    "OLIVERPASCOE": {
+      "playerName": "Oliver Pascoe",
+      "key": "OLIVERPASCOE",
+      "primaryPosition": null,
+      "gamesPlayed": 1,
+      "currentPrice": 237000,
+      "priceImpliedProjection": 18.5,
+      "seasonAverage": 25,
+      "last3Average": 25,
+      "lastGameScore": 25,
+      "scoreVolatility": 0,
+      "homeAverage": 25,
+      "awayAverage": 25
+    },
+    "SIMIONELAIAFI": {
+      "playerName": "Simione Laiafi",
+      "key": "SIMIONELAIAFI",
+      "primaryPosition": "Prop",
+      "gamesPlayed": 1,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
+      "seasonAverage": 11,
+      "last3Average": 11,
+      "lastGameScore": 11,
+      "scoreVolatility": 0,
+      "homeAverage": 11,
+      "awayAverage": 11
+    },
+    "HAYDENBUCHANAN": {
+      "playerName": "Hayden Buchanan",
+      "key": "HAYDENBUCHANAN",
+      "primaryPosition": "Centre",
+      "gamesPlayed": 1,
+      "currentPrice": 334000,
+      "priceImpliedProjection": 26.1,
+      "seasonAverage": 13,
+      "last3Average": 13,
+      "lastGameScore": 13,
+      "scoreVolatility": 0,
+      "homeAverage": 13,
+      "awayAverage": 13
+    },
+    "FRANCISMANULELEUA": {
+      "playerName": "Francis Manuleleua",
+      "key": "FRANCISMANULELEUA",
+      "primaryPosition": "2nd Row",
+      "gamesPlayed": 1,
+      "currentPrice": 230000,
+      "priceImpliedProjection": 18,
+      "seasonAverage": 11,
+      "last3Average": 11,
+      "lastGameScore": 11,
+      "scoreVolatility": 0,
+      "homeAverage": 11,
+      "awayAverage": 11
+    },
     "COOPERCLARKE": {
       "playerName": "Cooper Clarke",
       "key": "COOPERCLARKE",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 29.5,
-      "last3Average": 29.5,
-      "lastGameScore": 23,
-      "scoreVolatility": 6.5,
-      "homeAverage": 36,
-      "awayAverage": 23
+      "gamesPlayed": 4,
+      "currentPrice": 289000,
+      "priceImpliedProjection": 22.6,
+      "seasonAverage": 25.8,
+      "last3Average": 22.3,
+      "lastGameScore": 19,
+      "scoreVolatility": 6.3,
+      "homeAverage": 30.5,
+      "awayAverage": 21
     },
     "SIALETILIFAEAMANI": {
       "playerName": "Sialetili Faeamani",
       "key": "SIALETILIFAEAMANI",
       "primaryPosition": "Fullback",
-      "gamesPlayed": 2,
-      "seasonAverage": 32,
-      "last3Average": 32,
-      "lastGameScore": 33,
-      "scoreVolatility": 1,
-      "homeAverage": 32,
-      "awayAverage": 32
+      "gamesPlayed": 4,
+      "currentPrice": 299000,
+      "priceImpliedProjection": 23.4,
+      "seasonAverage": 27,
+      "last3Average": 25.7,
+      "lastGameScore": 18,
+      "scoreVolatility": 5.8,
+      "homeAverage": 18,
+      "awayAverage": 30
     },
     "COOPERBAI": {
       "playerName": "Cooper Bai",
       "key": "COOPERBAI",
       "primaryPosition": "Prop",
-      "gamesPlayed": 2,
-      "seasonAverage": 25,
-      "last3Average": 25,
-      "lastGameScore": 32,
-      "scoreVolatility": 7,
-      "homeAverage": 25,
-      "awayAverage": 25
+      "gamesPlayed": 4,
+      "currentPrice": 278000,
+      "priceImpliedProjection": 21.7,
+      "seasonAverage": 24,
+      "last3Average": 26,
+      "lastGameScore": 27,
+      "scoreVolatility": 5.8,
+      "homeAverage": 27,
+      "awayAverage": 23
     }
   },
   "leaguePositionAverages": {
@@ -4176,6 +5386,13 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 67,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
       }
     ],
     "TERRELLMAY": [
@@ -4184,6 +5401,29 @@
         "score": 62,
         "opponent": "Cowboys",
         "team": "Tigers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 61,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 51,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
+      }
+    ],
+    "JOERODDY": [
+      {
+        "round": 4,
+        "score": 21,
+        "opponent": "Sharks",
+        "team": "Raiders",
         "isHome": true
       }
     ],
@@ -4199,6 +5439,20 @@
         "round": 2,
         "score": 92,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 60,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 75,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -4217,6 +5471,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 57,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 67,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "HUDSONYOUNG": [
@@ -4233,6 +5501,36 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 71,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 48,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
+      }
+    ],
+    "JAYDENCAMPBELL": [
+      {
+        "round": 3,
+        "score": 78,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 71,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "ISAAHYEO": [
@@ -4247,6 +5545,20 @@
         "round": 2,
         "score": 54,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 65,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 53,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -4265,6 +5577,20 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 58,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "JOSEPHTAPINE": [
@@ -4281,6 +5607,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 57,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "LATRELLMITCHELL": [
@@ -4297,6 +5637,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 56,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "DYLANLUCAS": [
@@ -4313,6 +5660,20 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 59,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 62,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "JACOBPRESTON": [
@@ -4320,6 +5681,20 @@
         "round": 1,
         "score": 74,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 55,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -4331,6 +5706,13 @@
         "opponent": "Cowboys",
         "team": "Knights",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "ISAIYAKATOA": [
@@ -4347,6 +5729,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 48,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "KEAONKOLOAMATANGI": [
@@ -4363,6 +5759,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "NICHOLASHYNES": [
@@ -4377,6 +5780,20 @@
         "round": 2,
         "score": 39,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 63,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 69,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -4397,6 +5814,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 53,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 69,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "TOBYCOUCHMAN": [
@@ -4413,6 +5844,13 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "JAMALFOGARTY": [
@@ -4427,6 +5865,13 @@
         "round": 2,
         "score": 49,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -4445,6 +5890,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 76,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 51,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "JAMESTEDESCO": [
@@ -4461,6 +5920,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 55,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 26,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "PATRICKCARRIGAN": [
@@ -4475,6 +5948,20 @@
         "round": 2,
         "score": 57,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 51,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 66,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -4493,6 +5980,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "LINDSAYSMITH": [
@@ -4507,6 +6008,20 @@
         "round": 2,
         "score": 36,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 41,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -4525,6 +6040,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "DALYCHERRYEVANS": [
@@ -4540,6 +6069,29 @@
         "score": 59,
         "opponent": "Rabbitohs",
         "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 64,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
+      }
+    ],
+    "LUKEMETCALF": [
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Tigers",
+        "team": "Warriors",
         "isHome": true
       }
     ],
@@ -4557,6 +6109,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "JACOBKIRAZ": [
@@ -4564,6 +6130,20 @@
         "round": 1,
         "score": 61,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 17,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -4582,6 +6162,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 44,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "REECEWALSH": [
@@ -4596,6 +6190,20 @@
         "round": 2,
         "score": 69,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 82,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -4614,6 +6222,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 34,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 32,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "HARRYGRANT": [
@@ -4628,6 +6250,20 @@
         "round": 2,
         "score": 72,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 47,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -4646,6 +6282,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 51,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "MAXKING": [
@@ -4653,6 +6303,20 @@
         "round": 1,
         "score": 54,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 37,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -4671,6 +6335,13 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "CAMERONMUNSTER": [
@@ -4685,6 +6356,20 @@
         "round": 2,
         "score": 46,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 57,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 36,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -4703,6 +6388,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 38,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "NAUFAHUWHYTE": [
@@ -4719,6 +6418,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 61,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "SCOTTDRINKWATER": [
@@ -4735,6 +6448,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 66,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 56,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "JACKWILLIAMS": [
@@ -4749,6 +6476,20 @@
         "round": 2,
         "score": 52,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 53,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 36,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -4767,6 +6508,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 77,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "DAMIENCOOK": [
@@ -4783,6 +6538,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 35,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 60,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "VILIAMEKIKAU": [
@@ -4790,6 +6559,20 @@
         "round": 1,
         "score": 74,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 56,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -4808,6 +6591,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 48,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "KLIRO": [
@@ -4822,6 +6619,20 @@
         "round": 2,
         "score": 32,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 46,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 28,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -4840,6 +6651,20 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 81,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 50,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "CONNORWATSON": [
@@ -4856,6 +6681,36 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 45,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 69,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
+      }
+    ],
+    "TRENTLOIERO": [
+      {
+        "round": 3,
+        "score": 56,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 44,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "HAMISOTABUAIFIDOW": [
@@ -4872,6 +6727,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 34,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 40,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "JACKDEBELIN": [
@@ -4904,6 +6773,20 @@
         "opponent": "Sharks",
         "team": "Panthers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 65,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 22,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
       }
     ],
     "MARKNAWAQANITAWASE": [
@@ -4920,6 +6803,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 68,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "JORDANRIKI": [
@@ -4934,6 +6831,20 @@
         "round": 2,
         "score": 41,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 78,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 54,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -4977,6 +6888,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 54,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "ISAIAHPAPALII": [
@@ -4991,6 +6909,20 @@
         "round": 2,
         "score": 62,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 46,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 59,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -5009,6 +6941,29 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 42,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 38,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
+      }
+    ],
+    "MOALAGRAHAMTAUFA": [
+      {
+        "round": 3,
+        "score": 11,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "JMAINEHOPGOOD": [
@@ -5018,6 +6973,13 @@
         "opponent": "Storm",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 10,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
       }
     ],
     "JUNIORPAULO": [
@@ -5032,6 +6994,20 @@
         "round": 2,
         "score": 32,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 41,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -5050,6 +7026,13 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 29,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
       }
     ],
     "MITCHELLMOSES": [
@@ -5066,6 +7049,36 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 68,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
+      }
+    ],
+    "MITCHELLBARNETT": [
+      {
+        "round": 3,
+        "score": 34,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 32,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "TANAHBOYD": [
@@ -5080,6 +7093,20 @@
         "round": 2,
         "score": 76,
         "opponent": "Raiders",
+        "team": "Warriors",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 86,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 58,
+        "opponent": "Tigers",
         "team": "Warriors",
         "isHome": true
       }
@@ -5098,6 +7125,20 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 32,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "BRADMANBEST": [
@@ -5114,6 +7155,20 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 35,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 43,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "APISAIKOROISAU": [
@@ -5123,6 +7178,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "JAHROMEHUGHES": [
@@ -5137,6 +7206,20 @@
         "round": 2,
         "score": 55,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 73,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 66,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -5155,6 +7238,36 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 55,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
+      }
+    ],
+    "REECEROBSON": [
+      {
+        "round": 3,
+        "score": 49,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 40,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "STEFANOUTOIKAMANU": [
@@ -5169,6 +7282,20 @@
         "round": 2,
         "score": 66,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 59,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -5187,6 +7314,20 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 65,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "TOMSTARLING": [
@@ -5203,6 +7344,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 33,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "ALEXTWAL": [
@@ -5212,6 +7367,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 61,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 78,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "BRAIDONBURNS": [
@@ -5228,6 +7397,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 68,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "SIUAWONG": [
@@ -5244,6 +7427,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 55,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 59,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "SAMWALKER": [
@@ -5260,6 +7457,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 26,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "REUBENCOTTER": [
@@ -5269,6 +7480,20 @@
         "opponent": "Knights",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 38,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 22,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "JOSHCURRAN": [
@@ -5276,6 +7501,20 @@
         "round": 1,
         "score": 11,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 2,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -5294,6 +7533,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 33,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "JAKECLIFFORD": [
@@ -5310,6 +7563,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 70,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "GEHAMATSHIBASAKI": [
@@ -5326,6 +7593,13 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 30,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "MAXPLATH": [
@@ -5335,6 +7609,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "ROGERTUIVASASHECK": [
@@ -5351,6 +7639,20 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 22,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "ADAMDOUEIHI": [
@@ -5360,6 +7662,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 47,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 75,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "BRITONNIKORA": [
@@ -5376,6 +7692,13 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 55,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
       }
     ],
     "KITIONEKAUTOGA": [
@@ -5390,6 +7713,20 @@
         "round": 2,
         "score": 31,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 63,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 60,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -5410,6 +7747,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 58,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 57,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "REUBENGARRICK": [
@@ -5424,6 +7775,13 @@
         "round": 2,
         "score": 31,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -5442,6 +7800,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "MATTBURTON": [
@@ -5449,6 +7814,20 @@
         "round": 1,
         "score": 47,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 73,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 66,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -5467,6 +7846,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 29,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "PETERMAMOUZELOS": [
@@ -5483,6 +7876,29 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 31,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
+      }
+    ],
+    "TEIGWILTON": [
+      {
+        "round": 3,
+        "score": 16,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "LACHLANGALVIN": [
@@ -5490,6 +7906,20 @@
         "round": 1,
         "score": 70,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 54,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -5508,6 +7938,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 19,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 15,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "BRIANTOO": [
@@ -5522,6 +7966,20 @@
         "round": 2,
         "score": 54,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 8,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -5540,6 +7998,20 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 14,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 51,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "NATBUTCHER": [
@@ -5556,6 +8028,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "KALYNPONGA": [
@@ -5588,6 +8074,13 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 16,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
       }
     ],
     "TOMTRBOJEVIC": [
@@ -5602,6 +8095,13 @@
         "round": 2,
         "score": 57,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 55,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -5620,6 +8120,29 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 35,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
+      }
+    ],
+    "JAMIEHUMPHREYS": [
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "STEPHENCRICHTON": [
@@ -5627,6 +8150,20 @@
         "round": 1,
         "score": 41,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 47,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 32,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -5638,6 +8175,13 @@
         "opponent": "Dragons",
         "team": "Bulldogs",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
       }
     ],
     "MITCHKENNY": [
@@ -5654,6 +8198,20 @@
         "opponent": "Sharks",
         "team": "Panthers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 34,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 19,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
       }
     ],
     "ALEXSEYFARTH": [
@@ -5663,6 +8221,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 13,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 17,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "SAMUELAFAINU": [
@@ -5672,6 +8244,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 65,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "PAULALAMOTI": [
@@ -5686,6 +8272,20 @@
         "round": 2,
         "score": 31,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 38,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -5704,6 +8304,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 60,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "PHILLIPSAMI": [
@@ -5720,6 +8327,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 40,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 47,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "TOMGILBERT": [
@@ -5736,6 +8357,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 33,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "LUKEGARNER": [
@@ -5752,6 +8387,36 @@
         "opponent": "Sharks",
         "team": "Panthers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 23,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 16,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
+      }
+    ],
+    "JACOBLIDDLE": [
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "JAKESIMPKIN": [
@@ -5768,6 +8433,22 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 37,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
+      }
+    ],
+    "CODYHOPWOOD": [
+      {
+        "round": 4,
+        "score": 15,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "MURRAYTAULAGI": [
@@ -5784,6 +8465,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 54,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "ETHANSTRANGE": [
@@ -5800,6 +8495,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 42,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "CHRISTIANTUIPULOTU": [
@@ -5816,6 +8525,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 18,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "BRIANKELLY": [
@@ -5823,6 +8546,13 @@
         "round": 1,
         "score": 35,
         "opponent": "Storm",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 60,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -5841,6 +8571,20 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 30,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "JOSIAHKARAPANI": [
@@ -5855,6 +8599,20 @@
         "round": 2,
         "score": 21,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 21,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -5873,6 +8631,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "THOMASJENKINS": [
@@ -5887,6 +8652,20 @@
         "round": 2,
         "score": 31,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 80,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 75,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -5905,6 +8684,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 7,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "MOSESLEOTA": [
@@ -5919,6 +8712,20 @@
         "round": 2,
         "score": 31,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 49,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 37,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -5946,6 +8753,20 @@
         "opponent": "Dragons",
         "team": "Bulldogs",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 66,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 32,
+        "opponent": "Knights",
+        "team": "Bulldogs",
+        "isHome": true
       }
     ],
     "MATCROKER": [
@@ -5960,6 +8781,20 @@
         "round": 2,
         "score": 34,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 53,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -5978,6 +8813,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 68,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "ETHANBULLEMOR": [
@@ -6003,6 +8845,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 31,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 52,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "PHOENIXCROSSLAND": [
@@ -6017,6 +8873,20 @@
         "round": 2,
         "score": 31,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 52,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -6035,6 +8905,20 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 41,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 16,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "ISAIAHIONGI": [
@@ -6049,6 +8933,20 @@
         "round": 2,
         "score": 67,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 24,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 21,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -6067,6 +8965,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "KODINIKORIMA": [
@@ -6083,6 +8988,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 46,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "SCOTTSORENSEN": [
@@ -6099,6 +9018,20 @@
         "opponent": "Sharks",
         "team": "Panthers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 14,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
       }
     ],
     "KELMATUILAGI": [
@@ -6108,6 +9041,36 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 47,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
+      }
+    ],
+    "LIAMMARTIN": [
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
       }
     ],
     "JOSHADDOCARR": [
@@ -6115,6 +9078,20 @@
         "round": 2,
         "score": 13,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 40,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 45,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -6133,6 +9110,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 34,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 13,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "CHRISRANDALL": [
@@ -6149,6 +9140,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 40,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "MORGANSMITHIES": [
@@ -6165,6 +9170,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "DANIELTUPOU": [
@@ -6181,6 +9200,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 20,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 45,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "JAROMELUAI": [
@@ -6190,6 +9223,13 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "DYLANBROWN": [
@@ -6222,6 +9262,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 36,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "KULIKEFUFINEFEUIAKI": [
@@ -6238,6 +9285,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 55,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 76,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "CHARNZENICOLLKLOKSTAD": [
@@ -6252,6 +9313,13 @@
         "round": 2,
         "score": 32,
         "opponent": "Raiders",
+        "team": "Warriors",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 40,
+        "opponent": "Tigers",
         "team": "Warriors",
         "isHome": true
       }
@@ -6270,6 +9338,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 65,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 73,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "JAKEAVERILLO": [
@@ -6286,6 +9368,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 62,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 66,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "CASEYMCLEAN": [
@@ -6300,6 +9396,20 @@
         "round": 2,
         "score": 44,
         "opponent": "Sharks",
+        "team": "Panthers",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 71,
+        "opponent": "Eels",
         "team": "Panthers",
         "isHome": true
       }
@@ -6318,6 +9428,20 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 54,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "JESSERAMIEN": [
@@ -6334,6 +9458,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 37,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "JOSHPAPALII": [
@@ -6343,6 +9481,13 @@
         "opponent": "Sea Eagles",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "MATHEWFEAGAI": [
@@ -6391,6 +9536,20 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 36,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "GRIFFINNEAME": [
@@ -6407,6 +9566,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 19,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "RYLEYSMITH": [
@@ -6423,6 +9596,20 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 42,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 22,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
       }
     ],
     "HEAMASIMAKASINI": [
@@ -6432,6 +9619,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 37,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 29,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "SIONEKATOA": [
@@ -6446,6 +9647,20 @@
         "round": 2,
         "score": 45,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 35,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 38,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -6464,6 +9679,20 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 40,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
       }
     ],
     "XAVIERWILLISON": [
@@ -6478,6 +9707,20 @@
         "round": 2,
         "score": 37,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 21,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 50,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -6496,6 +9739,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 63,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "SAVELIOTAMALE": [
@@ -6512,6 +9769,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 57,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 50,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "KAEOWEEKES": [
@@ -6528,6 +9799,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 58,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "SUALAUVIFAALOGO": [
@@ -6542,6 +9827,20 @@
         "round": 2,
         "score": 80,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 54,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -6560,6 +9859,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "BENHUNT": [
@@ -6574,6 +9880,20 @@
         "round": 2,
         "score": 25,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 16,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -6592,6 +9912,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 40,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "TEVITATATOLA": [
@@ -6608,6 +9942,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 45,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "DAVIDFIFITA": [
@@ -6624,6 +9965,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 51,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "COENHESS": [
@@ -6640,6 +9988,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "SIOSIUATAUKEIAHO": [
@@ -6665,6 +10027,13 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 51,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "KOBEHETHERINGTON": [
@@ -6679,6 +10048,13 @@
         "round": 2,
         "score": 16,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 63,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -6697,6 +10073,36 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 17,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
+      }
+    ],
+    "ENARITUALA": [
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 52,
+        "opponent": "Knights",
+        "team": "Bulldogs",
+        "isHome": true
       }
     ],
     "THOMASHAZELTON": [
@@ -6711,6 +10117,20 @@
         "round": 2,
         "score": 22,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 36,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -6729,6 +10149,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 48,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "SAMUELHEALEY": [
@@ -6743,6 +10177,20 @@
         "round": 2,
         "score": 20,
         "opponent": "Raiders",
+        "team": "Warriors",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 21,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 12,
+        "opponent": "Tigers",
         "team": "Warriors",
         "isHome": true
       }
@@ -6761,6 +10209,20 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 31,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 10,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "JACOBSAIFITI": [
@@ -6775,6 +10237,20 @@
         "round": 2,
         "score": 41,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 38,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 67,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -6793,6 +10269,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "CONNELLYLEMUELU": [
@@ -6809,6 +10299,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 68,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 58,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "DYLANWALKER": [
@@ -6823,6 +10327,20 @@
         "round": 2,
         "score": 23,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 37,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -6850,6 +10368,29 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 24,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 13,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
+      }
+    ],
+    "LYHKANKINGTOGIA": [
+      {
+        "round": 4,
+        "score": 0,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "JAKETRBOJEVIC": [
@@ -6864,6 +10405,13 @@
         "round": 2,
         "score": 38,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 24,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -6882,6 +10430,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 8,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 28,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "HAMISHSTEWART": [
@@ -6898,6 +10460,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 51,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 71,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "CAMPBELLGRAHAM": [
@@ -6930,6 +10506,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 52,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 39,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "EGANBUTCHER": [
@@ -6946,6 +10536,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 31,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 2,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "THOMASCANT": [
@@ -6955,6 +10559,20 @@
         "opponent": "Cowboys",
         "team": "Knights",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 19,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 15,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "DOMINICYOUNG": [
@@ -6969,6 +10587,20 @@
         "round": 2,
         "score": 51,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 25,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 75,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -6987,6 +10619,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 39,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "TAINETUAUPIKI": [
@@ -6994,6 +10640,20 @@
         "round": 2,
         "score": 38,
         "opponent": "Raiders",
+        "team": "Warriors",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 39,
+        "opponent": "Tigers",
         "team": "Warriors",
         "isHome": true
       }
@@ -7012,6 +10672,20 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 50,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "BILLYBURNS": [
@@ -7026,6 +10700,20 @@
         "round": 2,
         "score": 23,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 38,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 44,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -7044,6 +10732,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "OREGONKAUFUSI": [
@@ -7058,6 +10753,20 @@
         "round": 2,
         "score": 25,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 20,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -7076,6 +10785,20 @@
         "opponent": "Sharks",
         "team": "Panthers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
       }
     ],
     "DEMITRICVAIMAUGA": [
@@ -7092,6 +10815,13 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 29,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
       }
     ],
     "LUCIANOLEILUA": [
@@ -7108,6 +10838,20 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 57,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "KLESEHAAS": [
@@ -7124,6 +10868,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "KURTCAPEWELL": [
@@ -7149,6 +10907,13 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
       }
     ],
     "WILLWARBRICK": [
@@ -7163,6 +10928,20 @@
         "round": 2,
         "score": 58,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 76,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -7183,6 +10962,22 @@
         "opponent": "Dragons",
         "team": "Bulldogs",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 8,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      }
+    ],
+    "FRANCISMOLO": [
+      {
+        "round": 4,
+        "score": 28,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "COREYWADDELL": [
@@ -7190,6 +10985,13 @@
         "round": 1,
         "score": 16,
         "opponent": "Raiders",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 25,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -7208,6 +11010,13 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 18,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
       }
     ],
     "SEBASTIANKRIS": [
@@ -7224,6 +11033,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 23,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 38,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "WILLIAMKENNEDY": [
@@ -7240,6 +11063,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 44,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "DEINEMARINER": [
@@ -7254,6 +11091,20 @@
         "round": 2,
         "score": 22,
         "opponent": "Eels",
+        "team": "Broncos",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Dolphins",
         "team": "Broncos",
         "isHome": true
       }
@@ -7274,6 +11125,22 @@
         "isHome": true
       }
     ],
+    "GRANTANDERSON": [
+      {
+        "round": 3,
+        "score": 18,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 14,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
+      }
+    ],
     "BRAYDONTRINDALL": [
       {
         "round": 1,
@@ -7288,6 +11155,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 50,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 53,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "WILLPENISINI": [
@@ -7299,11 +11180,34 @@
         "isHome": false
       }
     ],
+    "CHARLIEGUYMER": [
+      {
+        "round": 3,
+        "score": -1,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      }
+    ],
     "SITILITUPOUNIUA": [
       {
         "round": 1,
         "score": 35,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 47,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -7322,6 +11226,20 @@
         "opponent": "Sea Eagles",
         "team": "Knights",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 32,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 55,
+        "opponent": "Bulldogs",
+        "team": "Knights",
+        "isHome": false
       }
     ],
     "AUBLIXTAWHA": [
@@ -7338,6 +11256,13 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "BILLYSMITH": [
@@ -7345,6 +11270,13 @@
         "round": 1,
         "score": 44,
         "opponent": "Warriors",
+        "team": "Roosters",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 13,
+        "opponent": "Sea Eagles",
         "team": "Roosters",
         "isHome": false
       }
@@ -7363,6 +11295,20 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 43,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "COREYJENSEN": [
@@ -7379,6 +11325,20 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 41,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 54,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "RAYSTONE": [
@@ -7388,6 +11348,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 20,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 26,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "SEANKEPPIE": [
@@ -7397,6 +11371,22 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
+      }
+    ],
+    "TYSONGAMBLE": [
+      {
+        "round": 3,
+        "score": 47,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
       }
     ],
     "JACKWIGHTON": [
@@ -7413,6 +11403,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 24,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "SUNIATURUVA": [
@@ -7422,6 +11419,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 24,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 46,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "TYRANWISHART": [
@@ -7438,6 +11449,20 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 26,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 12,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "FONUAPOLE": [
@@ -7447,6 +11472,36 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 41,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 30,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
+      }
+    ],
+    "SIULAGITUIMALATUBROWN": [
+      {
+        "round": 3,
+        "score": 1,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 9,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "SALESIFOKETI": [
@@ -7463,6 +11518,20 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 13,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "ADAMPOMPEY": [
@@ -7479,6 +11548,13 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 7,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
       }
     ],
     "KURTMANN": [
@@ -7486,6 +11562,20 @@
         "round": 1,
         "score": 33,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -7497,6 +11587,20 @@
         "opponent": "Dragons",
         "team": "Bulldogs",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 35,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 44,
+        "opponent": "Knights",
+        "team": "Bulldogs",
+        "isHome": true
       }
     ],
     "JERALSKELTON": [
@@ -7506,6 +11610,13 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 18,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "ETHANSANDERS": [
@@ -7522,6 +11633,29 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 52,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 43,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
+      }
+    ],
+    "THOMASFLETCHER": [
+      {
+        "round": 3,
+        "score": 0,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "JOSHKERR": [
@@ -7537,6 +11671,29 @@
         "score": 29,
         "opponent": "Storm",
         "team": "Dragons",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 18,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 29,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
+      }
+    ],
+    "SEANOSULLIVAN": [
+      {
+        "round": 4,
+        "score": 15,
+        "opponent": "Knights",
+        "team": "Bulldogs",
         "isHome": true
       }
     ],
@@ -7554,6 +11711,29 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 16,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
+      }
+    ],
+    "LATUFAINU": [
+      {
+        "round": 4,
+        "score": 17,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "BAILEYHAYWARD": [
@@ -7561,6 +11741,20 @@
         "round": 1,
         "score": 46,
         "opponent": "Dragons",
+        "team": "Bulldogs",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 23,
+        "opponent": "Knights",
         "team": "Bulldogs",
         "isHome": true
       }
@@ -7579,6 +11773,29 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 58,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
+      }
+    ],
+    "LUCAMORETTI": [
+      {
+        "round": 4,
+        "score": 17,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
       }
     ],
     "ORYNKEELEY": [
@@ -7595,6 +11812,22 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      }
+    ],
+    "ZACLAYBUTT": [
+      {
+        "round": 4,
+        "score": 34,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "SAMUELSTONESTREET": [
@@ -7609,6 +11842,20 @@
         "round": 2,
         "score": 36,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 38,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -7627,6 +11874,20 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 19,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 26,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
       }
     ],
     "BRONSONGARLICK": [
@@ -7643,6 +11904,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 14,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "ALECMACDONALD": [
@@ -7651,6 +11919,36 @@
         "score": 0,
         "opponent": "Eels",
         "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 30,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
+      }
+    ],
+    "MARATANIUKORE": [
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Tigers",
+        "team": "Warriors",
         "isHome": true
       }
     ],
@@ -7668,6 +11966,20 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 26,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 45,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
       }
     ],
     "ALILEIATAUA": [
@@ -7683,6 +11995,22 @@
         "score": 50,
         "opponent": "Raiders",
         "team": "Warriors",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 40,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      }
+    ],
+    "LIPOIHOPOI": [
+      {
+        "round": 4,
+        "score": 7,
+        "opponent": "Knights",
+        "team": "Bulldogs",
         "isHome": true
       }
     ],
@@ -7702,6 +12030,29 @@
         "opponent": "Dragons",
         "team": "Bulldogs",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 27,
+        "opponent": "Raiders",
+        "team": "Bulldogs",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Knights",
+        "team": "Bulldogs",
+        "isHome": true
+      }
+    ],
+    "TYRELLSLOAN": [
+      {
+        "round": 4,
+        "score": 24,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "SIONEFAINU": [
@@ -7711,6 +12062,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 38,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "THOMASMIKAELE": [
@@ -7720,6 +12085,13 @@
         "opponent": "Knights",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "FELISEKAUFUSI": [
@@ -7736,6 +12108,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 20,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "NATHANBROWN": [
@@ -7768,6 +12154,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "JASONSAAB": [
@@ -7782,6 +12175,13 @@
         "round": 2,
         "score": 4,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -7800,6 +12200,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 43,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "TOBYRUDOLF": [
@@ -7814,6 +12228,20 @@
         "round": 2,
         "score": 23,
         "opponent": "Panthers",
+        "team": "Sharks",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 30,
+        "opponent": "Raiders",
         "team": "Sharks",
         "isHome": false
       }
@@ -7832,6 +12260,20 @@
         "opponent": "Panthers",
         "team": "Sharks",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 18,
+        "opponent": "Dolphins",
+        "team": "Sharks",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 18,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "TANNERSTOWERSSMITH": [
@@ -7848,6 +12290,29 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 41,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
+      }
+    ],
+    "BLAKELAWRIE": [
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 51,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "BRADSCHNEIDER": [
@@ -7864,6 +12329,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 20,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 2,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "KEANOKINI": [
@@ -7880,6 +12359,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 49,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 39,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "JACOBLABAN": [
@@ -7894,6 +12387,20 @@
         "round": 2,
         "score": 35,
         "opponent": "Raiders",
+        "team": "Warriors",
+        "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 50,
+        "opponent": "Tigers",
         "team": "Warriors",
         "isHome": true
       }
@@ -7921,6 +12428,13 @@
         "opponent": "Titans",
         "team": "Sharks",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 15,
+        "opponent": "Raiders",
+        "team": "Sharks",
+        "isHome": false
       }
     ],
     "HARRISONGRAHAM": [
@@ -7928,6 +12442,13 @@
         "round": 2,
         "score": 22,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -7962,6 +12483,13 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 23,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "TUKIMIHIASIMPKINS": [
@@ -7971,6 +12499,13 @@
         "opponent": "Sharks",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 11,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
       }
     ],
     "JOASHPAPALII": [
@@ -7978,6 +12513,13 @@
         "round": 1,
         "score": 1,
         "opponent": "Storm",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 11,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -7996,6 +12538,36 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 33,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 49,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
+      }
+    ],
+    "BRENDANPIAKURA": [
+      {
+        "round": 3,
+        "score": 25,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 23,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
       }
     ],
     "JORDANSAMRANI": [
@@ -8005,6 +12577,13 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
       }
     ],
     "JOECHAN": [
@@ -8019,6 +12598,20 @@
         "round": 2,
         "score": 44,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 83,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 39,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -8037,6 +12630,29 @@
         "opponent": "Raiders",
         "team": "Warriors",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 28,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 15,
+        "opponent": "Tigers",
+        "team": "Warriors",
+        "isHome": true
+      }
+    ],
+    "TRISTANHOPE": [
+      {
+        "round": 3,
+        "score": 13,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "MATTDOOREY": [
@@ -8053,6 +12669,20 @@
         "opponent": "Broncos",
         "team": "Eels",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 23,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 19,
+        "opponent": "Panthers",
+        "team": "Eels",
+        "isHome": false
       }
     ],
     "SAMTUIVAITI": [
@@ -8060,6 +12690,20 @@
         "round": 2,
         "score": 24,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 35,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 23,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -8071,6 +12715,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 21,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 33,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "ATIVALULISATI": [
@@ -8112,6 +12770,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 30,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 23,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "KAIODONNELL": [
@@ -8144,6 +12816,22 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 6,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
+      }
+    ],
+    "MANAIAWAITERE": [
+      {
+        "round": 4,
+        "score": 20,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "NOAHMARTIN": [
@@ -8160,6 +12848,36 @@
         "opponent": "Warriors",
         "team": "Raiders",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 51,
+        "opponent": "Bulldogs",
+        "team": "Raiders",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 53,
+        "opponent": "Sharks",
+        "team": "Raiders",
+        "isHome": true
+      }
+    ],
+    "FREDDYLUSSICK": [
+      {
+        "round": 3,
+        "score": 10,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 26,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
       }
     ],
     "JACKHETHERINGTON": [
@@ -8185,6 +12903,20 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 16,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 11,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "ROYCEHUNT": [
@@ -8194,6 +12926,20 @@
         "opponent": "Cowboys",
         "team": "Tigers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 21,
+        "opponent": "Rabbitohs",
+        "team": "Tigers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 31,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "TALLYNDASILVA": [
@@ -8208,6 +12954,20 @@
         "round": 2,
         "score": 10,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 44,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 12,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -8226,6 +12986,13 @@
         "opponent": "Roosters",
         "team": "Rabbitohs",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 49,
+        "opponent": "Tigers",
+        "team": "Rabbitohs",
+        "isHome": true
       }
     ],
     "JONAHPEZET": [
@@ -8240,6 +13007,20 @@
         "round": 2,
         "score": 35,
         "opponent": "Broncos",
+        "team": "Eels",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 26,
+        "opponent": "Dragons",
+        "team": "Eels",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Panthers",
         "team": "Eels",
         "isHome": false
       }
@@ -8267,6 +13048,29 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 25,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
+      }
+    ],
+    "KAIDENLAHRS": [
+      {
+        "round": 3,
+        "score": 14,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "ARAMAHAU": [
@@ -8283,6 +13087,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 52,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 87,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "TUIKAMIKAMICA": [
@@ -8299,6 +13117,20 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 21,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 14,
+        "opponent": "Cowboys",
+        "team": "Storm",
+        "isHome": false
       }
     ],
     "SONILUKE": [
@@ -8308,6 +13140,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 12,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 4,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "FETALAIGAPAUGA": [
@@ -8324,6 +13170,13 @@
         "opponent": "Rabbitohs",
         "team": "Roosters",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 22,
+        "opponent": "Panthers",
+        "team": "Roosters",
+        "isHome": true
       }
     ],
     "PASAMISAULO": [
@@ -8338,6 +13191,20 @@
         "round": 2,
         "score": 27,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 16,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 39,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -8365,6 +13232,13 @@
         "opponent": "Knights",
         "team": "Sea Eagles",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 11,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
       }
     ],
     "THOMASFLEGLER": [
@@ -8381,6 +13255,13 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 38,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "BENTALTY": [
@@ -8397,6 +13278,29 @@
         "opponent": "Eels",
         "team": "Broncos",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 20,
+        "opponent": "Storm",
+        "team": "Broncos",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 30,
+        "opponent": "Dolphins",
+        "team": "Broncos",
+        "isHome": true
+      }
+    ],
+    "JOCKMADDEN": [
+      {
+        "round": 4,
+        "score": 56,
+        "opponent": "Warriors",
+        "team": "Tigers",
+        "isHome": false
       }
     ],
     "MORGANKNOWLES": [
@@ -8413,6 +13317,20 @@
         "opponent": "Titans",
         "team": "Dolphins",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 41,
+        "opponent": "Sharks",
+        "team": "Dolphins",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 38,
+        "opponent": "Broncos",
+        "team": "Dolphins",
+        "isHome": false
       }
     ],
     "BRENTWOOLF": [
@@ -8422,6 +13340,15 @@
         "opponent": "Rabbitohs",
         "team": "Dolphins",
         "isHome": true
+      }
+    ],
+    "HUGOSAVALA": [
+      {
+        "round": 4,
+        "score": 9,
+        "opponent": "Sea Eagles",
+        "team": "Roosters",
+        "isHome": false
       }
     ],
     "SETUTU": [
@@ -8438,6 +13365,13 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 42,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "HEILUMLUKI": [
@@ -8454,6 +13388,20 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 54,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 56,
+        "opponent": "Storm",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "TOMCHESTER": [
@@ -8470,6 +13418,13 @@
         "opponent": "Tigers",
         "team": "Cowboys",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 23,
+        "opponent": "Titans",
+        "team": "Cowboys",
+        "isHome": true
       }
     ],
     "PAULBRYAN": [
@@ -8477,6 +13432,13 @@
         "round": 2,
         "score": 15,
         "opponent": "Knights",
+        "team": "Sea Eagles",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 3,
+        "opponent": "Roosters",
         "team": "Sea Eagles",
         "isHome": true
       }
@@ -8487,6 +13449,24 @@
         "score": 14,
         "opponent": "Dolphins",
         "team": "Rabbitohs",
+        "isHome": false
+      }
+    ],
+    "LUKEHANSON": [
+      {
+        "round": 3,
+        "score": 39,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
+      }
+    ],
+    "FAALETINOTAVANA": [
+      {
+        "round": 4,
+        "score": 21,
+        "opponent": "Warriors",
+        "team": "Tigers",
         "isHome": false
       }
     ],
@@ -8513,6 +13493,13 @@
         "opponent": "Storm",
         "team": "Dragons",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 52,
+        "opponent": "Eels",
+        "team": "Dragons",
+        "isHome": false
       }
     ],
     "FLETCHERHUNT": [
@@ -8520,6 +13507,20 @@
         "round": 2,
         "score": 51,
         "opponent": "Sea Eagles",
+        "team": "Knights",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 36,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 42,
+        "opponent": "Bulldogs",
         "team": "Knights",
         "isHome": false
       }
@@ -8538,6 +13539,29 @@
         "opponent": "Sharks",
         "team": "Panthers",
         "isHome": true
+      },
+      {
+        "round": 3,
+        "score": 17,
+        "opponent": "Roosters",
+        "team": "Panthers",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 35,
+        "opponent": "Eels",
+        "team": "Panthers",
+        "isHome": true
+      }
+    ],
+    "MORGANGANNON": [
+      {
+        "round": 3,
+        "score": -1,
+        "opponent": "Knights",
+        "team": "Warriors",
+        "isHome": false
       }
     ],
     "ANGUSHINCHEY": [
@@ -8547,6 +13571,42 @@
         "opponent": "Dragons",
         "team": "Storm",
         "isHome": false
+      }
+    ],
+    "OLIVERPASCOE": [
+      {
+        "round": 4,
+        "score": 25,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
+      }
+    ],
+    "SIMIONELAIAFI": [
+      {
+        "round": 4,
+        "score": 11,
+        "opponent": "Roosters",
+        "team": "Sea Eagles",
+        "isHome": true
+      }
+    ],
+    "HAYDENBUCHANAN": [
+      {
+        "round": 4,
+        "score": 13,
+        "opponent": "Titans",
+        "team": "Dragons",
+        "isHome": false
+      }
+    ],
+    "FRANCISMANULELEUA": [
+      {
+        "round": 3,
+        "score": 11,
+        "opponent": "Warriors",
+        "team": "Knights",
+        "isHome": true
       }
     ],
     "COOPERCLARKE": [
@@ -8561,6 +13621,20 @@
         "round": 2,
         "score": 23,
         "opponent": "Dragons",
+        "team": "Storm",
+        "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 25,
+        "opponent": "Broncos",
+        "team": "Storm",
+        "isHome": true
+      },
+      {
+        "round": 4,
+        "score": 19,
+        "opponent": "Cowboys",
         "team": "Storm",
         "isHome": false
       }
@@ -8579,6 +13653,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 26,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 18,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ],
     "COOPERBAI": [
@@ -8595,6 +13683,20 @@
         "opponent": "Dolphins",
         "team": "Titans",
         "isHome": false
+      },
+      {
+        "round": 3,
+        "score": 19,
+        "opponent": "Cowboys",
+        "team": "Titans",
+        "isHome": false
+      },
+      {
+        "round": 4,
+        "score": 27,
+        "opponent": "Dragons",
+        "team": "Titans",
+        "isHome": true
       }
     ]
   }

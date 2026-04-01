@@ -4,16 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>crowdIQ</title>
+  <meta name="description" content="Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://crowdiq.live/">
+  <meta property="og:site_name" content="crowdIQ">
+  <meta property="og:title" content="crowdIQ">
+  <meta property="og:description" content="Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.">
+  <meta property="og:image" content="https://crowdiq.live/social-preview.svg">
+  <meta property="og:image:type" content="image/svg+xml">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="crowdIQ">
+  <meta name="twitter:description" content="Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.">
+  <meta name="twitter:image" content="https://crowdiq.live/social-preview.svg">
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=2.2">
 </head>
 <body>
   <div class="app-shell">
     <div class="mobile-frame">
-      <section id="auth-gate" class="auth-gate">
+      <section id="auth-gate" class="auth-gate is-hidden" aria-hidden="true">
         <div class="auth-card">
           <div class="auth-ticker" aria-hidden="true">
             <div id="auth-ticker-marquee" class="auth-ticker-marquee"></div>
@@ -26,14 +40,17 @@
                 </div>
               </div>
             </div>
-            <button id="auth-header-signup" class="auth-header-signup" type="button">Sign Up</button>
+            <div class="auth-header-actions">
+              <button id="auth-header-signup" class="auth-header-signup" type="button">Sign Up</button>
+              <button id="auth-close" class="auth-close-button" type="button" aria-label="Close">✕</button>
+            </div>
           </header>
           <section class="auth-copy auth-hero">
             <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
             <p class="auth-hero-subtitle">Back your opinion on NRL fantasy projections</p>
             <div class="auth-live-signal">
               <span class="auth-live-dot" aria-hidden="true"></span>
-              <span id="auth-live-badge">Market live &middot; Round 3</span>
+              <span id="auth-live-badge">Market live &middot; Round 4</span>
             </div>
           </section>
           <section class="auth-hero-cta-wrap">
@@ -47,7 +64,7 @@
               <div id="auth-phone-mockup" class="auth-phone-mockup">
                 <div class="auth-phone-status">
                   <span class="auth-phone-status-dot" aria-hidden="true"></span>
-                  <span>Round 3</span>
+                  <span>Round 4</span>
                 </div>
                 <div class="auth-phone-section-head">
                   <div>
@@ -80,11 +97,11 @@
                   <article class="auth-phone-market-row">
                     <div class="auth-phone-market-copy">
                       <strong>Daly Cherry-Evans</strong>
-                      <span>Sea Eagles &middot; Halfback</span>
+                      <span>Roosters &middot; Five-Eighth</span>
                     </div>
                     <div class="auth-phone-market-metrics">
-                      <span>49.5 pts</span>
-                      <strong class="is-down">↓ 1.0 today</strong>
+                      <span>43.0 pts</span>
+                      <strong class="is-up">↑ 0.5 today</strong>
                     </div>
                   </article>
                 </div>
@@ -113,7 +130,7 @@
           <div class="brand-copy">
             <div class="brand-title-row">
               <h1 class="brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
-              <span class="beta-badge">Beta 2.0</span>
+              <span class="beta-badge">Beta 2.2</span>
             </div>
           </div>
         </div>
@@ -139,6 +156,7 @@
 
       <section class="screen active" data-screen="home">
         <div class="screen-scroll">
+          <section id="home-guest-hero" class="home-guest-hero is-hidden"></section>
           <section class="home-hub">
             <div class="home-hub-head">
               <div>
@@ -148,10 +166,19 @@
               <p class="home-carousel-hint">Swipe or tap a view</p>
             </div>
             <div id="home-featured-slate"></div>
+            <div id="home-games-strip"></div>
             <div id="home-prize-pool-banner"></div>
             <div id="home-carousel-nav" class="home-carousel-nav" aria-label="Home market insight views"></div>
             <div class="home-carousel-shell">
               <div id="home-carousel" class="home-carousel" aria-label="Home market insight categories">
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="value">
+              <div id="home-best-value" class="home-leaderboard-list"></div>
+            </section>
+
+            <section class="section-block home-section-block home-carousel-section" data-home-panel="overpriced">
+              <div id="home-most-overpriced" class="home-leaderboard-list"></div>
+            </section>
+
             <section class="section-block home-section-block home-carousel-section" data-home-panel="gainers">
               <div id="home-biggest-gainers" class="home-leaderboard-list"></div>
             </section>
@@ -167,17 +194,13 @@
             <section class="section-block home-section-block home-carousel-section" data-home-panel="projected">
               <div id="home-top-projected" class="home-leaderboard-list"></div>
             </section>
-
-            <section class="section-block home-section-block home-carousel-section" data-home-panel="value">
-              <div id="home-best-value" class="home-leaderboard-list"></div>
-            </section>
-
-            <section class="section-block home-section-block home-carousel-section" data-home-panel="leaderboard">
-              <div id="home-user-leaderboard" class="home-leaderboard-list"></div>
-            </section>
               </div>
             </div>
             <div id="home-carousel-meta" class="home-carousel-meta"></div>
+          </section>
+          <div id="home-unauth-bottom"></div>
+          <section class="section-block home-section-block home-leaderboard-snapshot-block">
+            <div id="home-user-leaderboard" class="home-leaderboard-list"></div>
           </section>
         </div>
       </section>
@@ -233,13 +256,17 @@
             </div>
             <div id="account-view-switch" class="account-view-switch">
               <button class="account-view-tab active" type="button" data-account-view="portfolio">Portfolio</button>
-              <button class="account-view-tab" type="button" data-account-view="leaderboard">Leaderboard</button>
+              <button class="account-view-tab" type="button" data-account-view="wallet">Wallet</button>
             </div>
           </section>
 
           <div id="account-portfolio-view" class="account-view-panel active">
             <section class="hero-strip portfolio-strip premium-portfolio-strip portfolio-mode-hero">
               <div id="portfolio-summary" class="portfolio-summary-grid"></div>
+            </section>
+
+            <section class="section-block profile-prize-pool-block">
+              <div id="portfolio-prize-pool-card"></div>
             </section>
 
             <section class="section-block portfolio-controls-block">
@@ -284,37 +311,81 @@
             </section>
           </div>
 
-          <div id="account-leaderboard-view" class="account-view-panel">
-            <section class="hero-strip portfolio-strip premium-leaderboard-strip">
+          <div id="account-wallet-view" class="account-view-panel">
+            <section class="hero-strip portfolio-strip wallet-strip">
               <div class="leaderboard-title-row">
                 <div>
-                  <p class="eyebrow">crowdIQ</p>
-                  <h2>Leaderboard</h2>
+                  <p class="eyebrow">Wallet</p>
+                  <h2>Balance & Activity</h2>
                 </div>
               </div>
-              <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
+              <div id="wallet-summary" class="portfolio-summary-grid"></div>
             </section>
 
-            <section class="section-block leaderboard-controls-block">
-              <div class="section-heading compact-heading leaderboard-controls-heading">
+            <section class="section-block wallet-actions-block">
+              <div class="section-heading compact-heading">
                 <div>
-                  <p class="eyebrow">View and sort</p>
-                  <h3>Community rankings</h3>
+                  <p class="eyebrow">Actions</p>
+                  <h3>Deposit or withdraw</h3>
                 </div>
               </div>
-              <div class="leaderboard-controls">
-                <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
-                <div class="leaderboard-scope-row">
-                  <button class="portfolio-chip active" type="button">All time</button>
-                  <button class="portfolio-chip leaderboard-static-chip" type="button">Global</button>
+              <div class="wallet-actions-card">
+                <label class="wallet-amount-field">
+                  Amount
+                  <input id="wallet-amount-input" type="number" min="1" step="1" placeholder="25">
+                </label>
+                <div class="wallet-amount-presets" id="wallet-amount-presets">
+                  <button class="portfolio-chip" type="button" data-wallet-amount="10">$10</button>
+                  <button class="portfolio-chip" type="button" data-wallet-amount="25">$25</button>
+                  <button class="portfolio-chip" type="button" data-wallet-amount="50">$50</button>
+                  <button class="portfolio-chip" type="button" data-wallet-amount="100">$100</button>
                 </div>
+                <div class="wallet-action-row">
+                  <button id="wallet-deposit-button" class="primary-button" type="button">Deposit Funds</button>
+                  <button id="wallet-withdraw-button" class="secondary-button" type="button">Withdraw</button>
+                </div>
+                <p id="wallet-feedback" class="feedback wallet-feedback" aria-live="polite"></p>
+                <p class="section-meta wallet-helper-copy">Funds only leave your wallet when a trade matches. Withdrawals are demo-only and stop here.</p>
               </div>
             </section>
 
-            <section class="section-block leaderboard-list-block">
-              <div id="leaderboard-list" class="list-stack"></div>
+            <section class="section-block wallet-transactions-block">
+              <div class="section-heading compact-heading">
+                <div>
+                  <p class="eyebrow">History</p>
+                  <h3>Transaction feed</h3>
+                </div>
+              </div>
+              <div id="wallet-filters" class="portfolio-chip-row"></div>
+              <div id="wallet-transaction-list" class="wallet-transaction-list"></div>
             </section>
           </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="leaderboard">
+        <div id="leaderboard-screen-scroll" class="screen-scroll">
+          <section class="hero-strip portfolio-strip premium-leaderboard-strip dedicated-leaderboard-strip">
+            <div class="leaderboard-page-head">
+              <button id="leaderboard-back-button" class="leaderboard-back-button" type="button" aria-label="Back to home">‹</button>
+              <div>
+                <h2>Leaderboard</h2>
+                <p class="section-meta">crowdIQ community rankings</p>
+              </div>
+            </div>
+            <div id="leaderboard-summary" class="leaderboard-summary-grid"></div>
+          </section>
+
+          <section class="section-block leaderboard-controls-block">
+            <div class="leaderboard-controls">
+              <div id="leaderboard-sort-chips" class="portfolio-chip-row"></div>
+              <div id="leaderboard-time-chips" class="portfolio-chip-row"></div>
+            </div>
+          </section>
+
+          <section class="section-block leaderboard-list-block dedicated-leaderboard-list-block">
+            <div id="leaderboard-list" class="list-stack"></div>
+          </section>
         </div>
       </section>
 
@@ -355,6 +426,19 @@
 
       <section class="admin-panel">
         <div class="admin-grid">
+          <form id="admin-round-form" class="stack-form">
+            <div>
+              <p class="panel-label">Active round</p>
+              <p id="admin-round-summary" class="section-meta">Choose which round admin tools and Prize Pool views should target.</p>
+            </div>
+            <label>
+              Round
+              <select id="admin-round-select" name="roundNumber"></select>
+            </label>
+            <button class="secondary-button" type="submit">Switch round</button>
+            <p id="admin-round-feedback" class="feedback" aria-live="polite"></p>
+          </form>
+
           <form id="opening-line-form" class="stack-form">
             <div>
               <p class="panel-label">Line management</p>
@@ -598,20 +682,21 @@
   <template id="market-row-template">
     <button class="market-row" type="button">
       <div class="player-block">
-        <div class="player-copy">
+        <div class="card-row market-row-main">
           <strong class="player-name"></strong>
-          <div class="player-subrow">
-            <span class="player-meta"></span>
-            <span class="season-average"></span>
-          </div>
+          <strong class="projection-line"></strong>
         </div>
-      </div>
-      <div class="projection-block">
-        <strong class="projection-line"></strong>
-        <div class="projection-support">
-          <span class="projection-move"></span>
-          <span class="market-confidence-slot"></span>
-          <span class="projection-average"></span>
+        <div class="card-row market-row-secondary">
+          <div class="player-subrow">
+            <span class="match-centre-team-pill"></span>
+            <span class="player-meta"></span>
+            <span class="season-average" hidden></span>
+          </div>
+          <div class="projection-support">
+            <span class="projection-move"></span>
+            <span class="market-confidence-slot"></span>
+            <span class="projection-average" hidden></span>
+          </div>
         </div>
         <div class="comparison-track" aria-hidden="true">
           <span class="comparison-fill"></span>
@@ -646,8 +731,10 @@
 
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
-  <script src="./lib/derived-fantasy-data.js"></script>
-  <script src="./seed-data.js"></script>
-  <script src="./app.js"></script>
+  <div id="onboarding-overlay"></div>
+  <script src="./lib/derived-fantasy-data.js?v=2.2"></script>
+  <script src="lib/onboarding-modal.js"></script>
+  <script src="./seed-data.js?v=2.2"></script>
+  <script src="./app.js?v=2.2"></script>
 </body>
 </html>
