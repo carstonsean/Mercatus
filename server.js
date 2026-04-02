@@ -18,6 +18,7 @@ const {fetchSupabaseRuntimeState,persistSupabaseRuntimeState}=require("./lib/sup
 
 const PORT=process.env.PORT?Number(process.env.PORT):8000;
 const STARTING_BANKROLL=200;
+const MAX_SINGLE_BID=10;
 const PRESSURE_STEP=2;
 const BOT_PRESSURE_MULTIPLIER=1;
 const LINE_STEP=1;
@@ -270,6 +271,9 @@ async function handleApi(req,res,url){
     if(!market||!Number.isFinite(stake)||stake<=0||(side!=="OVER"&&side!=="UNDER")){
       return json(res,400,{error:"Invalid trade payload."});
     }
+    if(stake>MAX_SINGLE_BID){
+      return json(res,400,{error:`Single bids are capped at ${formatCurrency(MAX_SINGLE_BID)}.`});
+    }
     if(isMarketLocked(market)){
       return json(res,400,{error:"That market is locked."});
     }
@@ -433,6 +437,29 @@ async function handleApi(req,res,url){
     syncPrizePoolState(state);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
   }
+  if(req.method==="POST"&&url.pathname==="/api/contact"){
+    const body=await parseJson(req);
+    const email=String(body.email||"").trim();
+    const message=String(body.message||"").trim();
+    const userName=String(body.userName||"").trim();
+    if(!email||!/\S+@\S+\.\S+/.test(email)){
+      return json(res,400,{error:"Enter a valid email address."});
+    }
+    if(!message){
+      return json(res,400,{error:"Enter a message before sending."});
+    }
+    const contactMessage={
+      id:randomUUID(),
+      email,
+      message,
+      userName:userName||null,
+      submittedAt:new Date().toISOString(),
+      status:"NEW"
+    };
+    state.contactMessages=[contactMessage,...(Array.isArray(state.contactMessages)?state.contactMessages:[])].slice(0,250);
+    await persistStateSnapshot(useSupabase);
+    return json(res,200,{state,contactMessage,message:"Message received."});
+  }
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/config"){
     const body=await parseJson(req);
     state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:createBotRoster(normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG))};
@@ -510,6 +537,7 @@ function buildFreshState(){
     activeRoundLabel:buildRoundLabel(activeRoundNumber),
     forceOpenGameIds:[],
     walletTransactions:[],
+    contactMessages:[],
     lastSettlementBatch:null,
     roundMetricsHistory:[],
     prizePool:buildFreshPrizePoolState(),
@@ -795,6 +823,19 @@ function normalizeState(rawState,options={}){
     activeRoundLabel:buildRoundLabel(activeRoundNumber),
     forceOpenGameIds:[],
     walletTransactions,
+    contactMessages:Array.isArray(rawState.contactMessages)
+      ? rawState.contactMessages
+          .filter((entry)=>entry&&entry.id)
+          .map((entry)=>({
+            id:String(entry.id),
+            email:String(entry.email||"").trim(),
+            message:String(entry.message||"").trim(),
+            userName:entry.userName?String(entry.userName):null,
+            submittedAt:entry.submittedAt||new Date().toISOString(),
+            status:String(entry.status||"NEW")
+          }))
+          .filter((entry)=>entry.email&&entry.message)
+      : [],
     lastSettlementBatch:rawState.lastSettlementBatch||null,
     roundMetricsHistory:Array.isArray(rawState.roundMetricsHistory)?cloneValue(rawState.roundMetricsHistory):[],
     prizePool:normalizePrizePoolState(rawState.prizePool),

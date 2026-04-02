@@ -3915,12 +3915,12 @@ label {
 .quick-take-action {
   flex: 1 1 0;
   min-height: 52px;
-  padding: 0 14px;
+  padding: 0 12px;
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(12,16,22,0.72);
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 800;
   transition: transform 220ms ease-out, border-color 220ms ease-out, background 220ms ease-out, opacity 220ms ease-out;
 }
@@ -3938,6 +3938,19 @@ label {
 .quick-take-under {
   border-color: rgba(255,77,77,0.18);
   background: linear-gradient(180deg, rgba(255,77,77,0.12), rgba(12,16,22,0.76));
+}
+
+.quick-take-skip {
+  flex: 0.78 1 0;
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: rgba(245,247,251,0.88);
+}
+
+.stake-cap-note {
+  display: block;
+  margin-top: 8px;
+  opacity: 0.72;
 }
 
 .quick-take-action:disabled {
@@ -7099,6 +7112,35 @@ label {
 
 .admin-dashboard-card .section-meta {
   margin: 0;
+}
+
+.admin-contact-card {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(16, 23, 34, 0.72);
+  display: grid;
+  gap: 10px;
+}
+
+.admin-contact-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: start;
+}
+
+.admin-contact-user {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.admin-contact-message {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
 }
 
 .table-wrap {
