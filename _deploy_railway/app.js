@@ -10,6 +10,7 @@ const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
 const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
 const AUTH_TOKEN_KEY = "authToken";
 const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
+const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 2500;
@@ -42,7 +43,8 @@ const APP_MODAL_TITLES = {
   "prize-pool-info": "Prize Pool",
   "market-confidence-info": "Market Confidence",
   "home-value-leaderboard": "Top Value Players",
-  "home-projected-leaderboard": "Top Projected Players"
+  "home-projected-leaderboard": "Top Projected Players",
+  "challenge-friends": "Challenge Friends"
 };
 const SHAREABLE_CONTENT_TEMPLATES = [
   {
@@ -216,6 +218,23 @@ const uiState = {
   prizePoolInterchangeDividerSeenDraftId: "",
   appMenuOpen: false,
   activeAppModal: "",
+  challengeModalStep: "select",
+  challengeSelectedTradeIds: [],
+  challengeCreatePending: false,
+  challengeCreateError: "",
+  challengeCreatedUrl: "",
+  challengeCreatedTradeCount: 0,
+  challengeExcludedTradeCount: 0,
+  challengeCopyStateUntil: 0,
+  challengeRouteShareId: "",
+  challengeRouteLoading: false,
+  challengeRouteError: "",
+  challengeRouteSession: null,
+  challengeRouteIndex: 0,
+  challengeRouteReview: [],
+  challengeRouteAcceptPending: false,
+  challengeRouteMatchedUntil: 0,
+  challengeRouteAcceptError: "",
   contactEmailDraft: "",
   contactMessageDraft: "",
   contactFormSubmitted: false,
@@ -242,6 +261,7 @@ const elements = {
   authClose: document.getElementById("auth-close"),
   authHeaderSignup: document.getElementById("auth-header-signup"),
   authHeroEntry: document.getElementById("auth-hero-entry"),
+  challengeRoute: document.getElementById("challenge-route"),
   appFrame: document.querySelector(".mobile-frame"),
   headerBalance: document.getElementById("header-balance"),
   headerMenuButton: document.getElementById("header-menu-button"),
@@ -285,6 +305,7 @@ const elements = {
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
   portfolioPrizePoolCard: document.getElementById("portfolio-prize-pool-card"),
+  portfolioChallengeEntry: document.getElementById("portfolio-challenge-entry"),
   portfolioFilters: document.getElementById("portfolio-filters"),
   portfolioSortButton: document.getElementById("portfolio-sort-button"),
   portfolioList: document.getElementById("portfolio-list"),
@@ -374,6 +395,7 @@ init();
 async function init() {
   bindEvents();
   resetHowItWorksToolbarDismissal();
+  syncChallengeRouteFromLocation();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (savedUserName) {
     elements.userName.value = savedUserName;
@@ -393,6 +415,7 @@ async function init() {
   }
   normalizeNavigationState();
   syncSelectedMarket();
+  await maybeLoadChallengeRoute();
   renderAll();
   if (savedUserName) {
     renderAuthGate(false);
@@ -402,6 +425,11 @@ async function init() {
 }
 
 function bindEvents() {
+  window.addEventListener("popstate", async () => {
+    syncChallengeRouteFromLocation();
+    await maybeLoadChallengeRoute();
+    renderAll();
+  });
   window.addEventListener("pageshow", () => {
     handlePageResume();
   });
@@ -763,6 +791,7 @@ async function completeLogin(userName) {
     dismissGuestHero();
     startLiveSync();
     elements.authFeedback.textContent = "";
+    redirectToPendingChallengeIfNeeded();
   } catch (error) {
     localStorage.removeItem(USER_NAME_KEY);
     elements.authFeedback.textContent = error.message;

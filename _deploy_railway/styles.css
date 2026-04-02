@@ -1602,6 +1602,574 @@ button {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.app-chrome-host {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  pointer-events: none;
+}
+
+.app-menu-overlay,
+.app-modal-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.app-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  animation: appChromeFadeIn 180ms ease;
+}
+
+.app-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.app-menu-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: clamp(240px, 34vw, 320px);
+  max-width: calc(100vw - 24px);
+  min-height: 100dvh;
+  padding: 18px 20px 24px;
+  background: #1A1A2E;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.32);
+  animation: appMenuSlideIn 220ms ease;
+}
+
+.app-menu-close,
+.app-modal-close {
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app-menu-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 14px;
+}
+
+.app-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px;
+  color: #ffffff;
+  text-align: left;
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  border-radius: 14px;
+}
+
+.app-menu-item-icon {
+  flex: 0 0 auto;
+  width: 24px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.app-menu-item[data-app-modal-target="how-it-works"] .app-menu-item-icon {
+  color: #f4c84e;
+}
+
+.app-menu-item[data-app-modal-target="leaderboard"] .app-menu-item-icon {
+  color: #f6c343;
+}
+
+.app-menu-item[data-app-modal-target="contact-us"] .app-menu-item-icon {
+  color: #68d9ff;
+}
+
+.app-menu-account-header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 0 20px;
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 14px;
+}
+
+.app-menu-account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.app-menu-account-subtext {
+  color: #8f93a5;
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+.app-menu-item:hover,
+.app-menu-item:focus-visible,
+.app-menu-account-header:hover,
+.app-menu-account-header:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.app-menu-footer {
+  margin-top: auto;
+  padding-top: 22px;
+  padding-bottom: 8px;
+}
+
+.app-menu-signup-button {
+  width: 100%;
+  min-height: 50px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #36df98, #f8c04e);
+  color: #111111;
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.app-menu-divider {
+  width: 100%;
+  height: 1px;
+  margin: 0 0 10px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-modal-overlay {
+  background: #0D0D1A;
+}
+
+.app-modal-overlay-card {
+  display: grid;
+  place-items: center;
+  padding: 48px 20px;
+  background: transparent;
+}
+
+.info-card-modal {
+  position: relative;
+  width: min(85vw, 420px);
+  max-height: min(78dvh, 760px);
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 16px;
+  background: #1A1A2E;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+}
+
+.info-card-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  margin-left: 0;
+}
+
+.info-card-modal-topbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-right: 44px;
+}
+
+.info-card-modal-kicker {
+  color: #888888;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.info-card-modal-illustration {
+  margin: 4px 0 24px;
+}
+
+.info-card-modal-title {
+  margin: 0 0 16px;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1.14;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.info-card-modal-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.info-rule-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.info-rule-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.info-rule-label {
+  color: #888888;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.info-card-modal-copy p {
+  margin: 0;
+  color: #CCCCCC;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.info-preview-card {
+  border-radius: 16px;
+  background: #ffffff;
+  color: #111111;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.info-preview-prize-pool-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0 8px;
+  color: #f3d75c;
+}
+
+.info-preview-prize-pool-icon i {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.info-preview-payout {
+  display: grid;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  text-align: center;
+  background: #f6f7fb;
+}
+
+.info-preview-payout-rank {
+  color: #6f7585;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.info-preview-payout strong {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.info-preview-payout span:last-child {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.info-preview-payout-gold {
+  background: #fff5d8;
+}
+
+.info-preview-payout-silver {
+  background: #edf1f7;
+}
+
+.info-preview-payout-bronze {
+  background: #f7e6da;
+}
+
+.info-preview-confidence-dials {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 18px;
+  margin: 4px 0 24px;
+}
+
+.info-preview-confidence-dial-group {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.market-confidence.market-confidence-preview {
+  color: inherit;
+}
+
+.market-confidence.market-confidence-preview .market-confidence-dial {
+  width: 34px;
+  height: 21px;
+}
+
+.market-confidence.market-confidence-preview .market-confidence-needle {
+  height: 12px;
+}
+
+.info-preview-confidence-dial-group.low {
+  color: #ff7b7b;
+}
+
+.info-preview-confidence-dial-group.mid {
+  color: var(--gold);
+}
+
+.info-preview-confidence-dial-group.high {
+  color: var(--green);
+}
+
+.info-preview-confidence-caption {
+  color: #888888;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.app-modal-shell {
+  position: absolute;
+  inset: 0;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.app-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 13, 26, 0.96);
+}
+
+.app-modal-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.app-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-modal-shell-flow {
+  height: 100dvh;
+}
+
+.app-modal-body-flow {
+  min-height: 0;
+  display: block;
+  padding: 24px 20px 40px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-modal-flow-section + .app-modal-flow-section {
+  margin-top: 32px;
+  padding-top: 32px;
+  border-top: 1px solid #2A2A3E;
+}
+
+.app-modal-flow-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.app-modal-flow-accent {
+  flex: 0 0 auto;
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: #00C853;
+}
+
+.app-modal-flow-section h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-modal-flow-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.app-modal-settings-section .eyebrow {
+  margin-bottom: 10px;
+}
+
+.app-modal-settings-heading {
+  margin-bottom: 8px;
+}
+
+.app-modal-settings-heading h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-modal-settings-subtext {
+  margin: 0 0 16px;
+}
+
+.account-settings-form {
+  display: grid;
+}
+
+.account-settings-field {
+  display: grid;
+  gap: 8px;
+}
+
+.account-settings-field span {
+  color: #9aa4b2;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.account-settings-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1A1A2E;
+  color: #ffffff;
+  font-size: 0.96rem;
+  font-weight: 500;
+}
+
+.account-settings-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.account-settings-action-button {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+  background: #1A1A2E;
+  color: #ffffff;
+  border-radius: 14px;
+}
+
+.app-modal-flow-section p {
+  margin: 0;
+  color: #CCCCCC;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+@keyframes appChromeFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes appMenuSlideIn {
+  from {
+    opacity: 0.92;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.contact-form {
+  display: grid;
+  gap: 16px;
+}
+
+.contact-form-field {
+  display: grid;
+  gap: 8px;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.contact-form-field input,
+.contact-form-field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 12, 18, 0.88);
+  color: #ffffff;
+  font-size: 0.96rem;
+  font-weight: 500;
+  resize: vertical;
+}
+
+.contact-form-field textarea {
+  min-height: 120px;
+}
+
+.contact-form-field input::placeholder,
+.contact-form-field textarea::placeholder {
+  color: #8f93a5;
+}
+
+.contact-submit-button {
+  background: linear-gradient(135deg, #77e7a4 0%, #f3d75c 100%);
+  color: #111111;
+}
+
+.contact-confirmation {
+  color: #CCCCCC;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .screen {
   display: none;
 }
