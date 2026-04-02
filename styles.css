@@ -1418,6 +1418,12 @@ button {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.app-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
@@ -1554,6 +1560,46 @@ button {
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.header-menu-button,
+.icon-tap-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 160ms ease, opacity 160ms ease;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.08);
+}
+
+.header-menu-button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(23, 31, 44, 0.96), rgba(13, 19, 28, 0.96));
+  box-shadow: 0 8px 20px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.header-menu-button svg {
+  width: 18px;
+  height: 18px;
+  overflow: visible;
+}
+
+.header-menu-button line {
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.header-menu-button:hover,
+.header-menu-button:focus-visible,
+.icon-tap-button:hover,
+.icon-tap-button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .screen {
