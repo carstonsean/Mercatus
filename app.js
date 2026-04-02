@@ -164,6 +164,9 @@ let popularFeaturedMarketIds = [];
 let popularFeaturedRoundNumber = null;
 let popularFeaturedRequest = null;
 let appChromeRenderKey = "";
+let isStakeInputInteractionActive = false;
+let pendingRenderAfterStakeInput = false;
+const MAX_SINGLE_BID = 10;
 
 const uiState = {
   activeScreen: "home",
@@ -216,6 +219,7 @@ const uiState = {
   contactEmailDraft: "",
   contactMessageDraft: "",
   contactFormSubmitted: false,
+  contactFormFeedback: "",
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
@@ -347,6 +351,7 @@ const elements = {
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
+  adminContactList: document.getElementById("admin-contact-list"),
   adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
   adminTradeControls: document.getElementById("admin-trade-controls"),
@@ -719,6 +724,7 @@ function applySharedSnapshot(response) {
     ...nextState,
     markets: preservedMarkets,
     walletTransactions: Array.isArray(nextState.walletTransactions) ? nextState.walletTransactions : (state.walletTransactions || []),
+    contactMessages: Array.isArray(nextState.contactMessages) ? nextState.contactMessages : (state.contactMessages || []),
     activeRoundNumber: nextActiveRoundNumber,
     activeRoundLabel: nextState.activeRoundLabel || roundLabelForNumber(nextActiveRoundNumber)
   };
@@ -1127,6 +1133,10 @@ async function refreshSharedState() {
     if (nextRenderSignature === previousRenderSignature) {
       return;
     }
+    if (isStakeInputInteractionActive) {
+      pendingRenderAfterStakeInput = true;
+      return;
+    }
     if (isScrollInteractionActive) {
       pendingRenderAfterScroll = true;
       return;
@@ -1177,6 +1187,7 @@ function renderAll() {
   safelyRender("admin shell", renderAdminShell);
   safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
+  safelyRender("admin contact inbox", renderAdminContactInbox);
   safelyRender("admin markets", renderAdminMarkets);
   safelyRender("bot simulation", renderBotSimulation);
   safelyRender("admin table", renderAdminTable);
@@ -1338,14 +1349,15 @@ function renderAppChrome() {
   });
   chromeHost.querySelector("#contact-us-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    uiState.contactFormSubmitted = true;
-    renderAppChrome();
+    submitContactForm();
   });
   chromeHost.querySelector("#contact-email-input")?.addEventListener("input", (event) => {
     uiState.contactEmailDraft = event.target.value;
+    uiState.contactFormFeedback = "";
   });
   chromeHost.querySelector("#contact-message-input")?.addEventListener("input", (event) => {
     uiState.contactMessageDraft = event.target.value;
+    uiState.contactFormFeedback = "";
   });
   chromeHost.querySelectorAll("[data-full-leaderboard-market-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1680,7 +1692,8 @@ function appModalContentMarkup(modalKey) {
             >${escapeHtml(uiState.contactMessageDraft)}</textarea>
           </label>
           <button class="primary-button contact-submit-button" type="submit">Send Message</button>
-          ${uiState.contactFormSubmitted ? `<p class="contact-confirmation">Thanks for reaching out — we'll get back to you soon.</p>` : ""}
+          ${uiState.contactFormSubmitted ? `<p class="contact-confirmation">Thanks for reaching out. Your message is now in the admin inbox.</p>` : ""}
+          ${uiState.contactFormFeedback ? `<p class="feedback">${escapeHtml(uiState.contactFormFeedback)}</p>` : ""}
         </form>
       </section>
     `;
@@ -1796,6 +1809,8 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
         uiState.focusStakeMarketId = "";
         window.requestAnimationFrame(() => {
           const stakeInput = panel.querySelector("#stake-input");
+          if (!stakeInput) return;
+          isStakeInputInteractionActive = true;
           stakeInput?.focus();
           stakeInput?.select();
         });
@@ -1904,7 +1919,7 @@ function marketDetailMarkup(market) {
     : isLocked
       ? "Trading closed at kickoff for this match."
       : "Fills against waiting orders first, then shifts the projection if needed.";
-  return `<div class="trade-ticket trade-ticket-compact trade-ticket-quick quick-take-card player-card-shell ${controlsDisabled ? "is-locked" : ""}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(market)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Match Centre</span></div><div class="quick-take-header"><div><h3>${market.playerName}</h3><p>${market.team} | ${market.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence, true)}</div></div><div class="trade-ticket-metric-row"><div class="trade-ticket-projection-block"><div class="quick-take-line trade-ticket-projection">${market.currentLine.toFixed(1)}</div><span class="quick-take-move trade-ticket-projection-delta ${movement.className}">${movement.arrow} ${movement.label}</span></div><div class="trade-ticket-metric-meta"><span class="trade-ticket-next-mid">Next mid ${nextLine.toFixed(1)}</span></div></div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : isGuest ? `<span>Read-only until you sign up</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${controlsDisabled ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" step="1" value="${stakeDraft}" required ${controlsDisabled ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(stakeDraft * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${controlsDisabled ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${controlsDisabled ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${controlsDisabled ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${controlsDisabled ? "disabled" : ""}>MAX</button></div></div></div><div class="trade-note-row"><span class="trade-label">Execution</span><button type="button" class="trade-note-button" data-trade-note-toggle aria-label="Explain execution">ⓘ</button><span class="trade-note-popover" role="note">${executionCopy}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : isGuest ? "Sign up to trade" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : isGuest ? "Browse every player market now. Sign up to place a position." : ""}</p></form></div>`;
+  return `<div class="trade-ticket trade-ticket-compact trade-ticket-quick quick-take-card player-card-shell ${controlsDisabled ? "is-locked" : ""}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(market)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Match Centre</span></div><div class="quick-take-header"><div><h3>${market.playerName}</h3><p>${market.team} | ${market.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${status.className}">${status.label}</span>${marketConfidenceMarkup(metrics.confidence, true)}</div></div><div class="trade-ticket-metric-row"><div class="trade-ticket-projection-block"><div class="quick-take-line trade-ticket-projection">${market.currentLine.toFixed(1)}</div><span class="quick-take-move trade-ticket-projection-delta ${movement.className}">${movement.arrow} ${movement.label}</span></div><div class="trade-ticket-metric-meta"><span class="trade-ticket-next-mid">Next mid ${nextLine.toFixed(1)}</span></div></div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : isGuest ? `<span>Read-only until you sign up</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><form id="trade-form" class="trade-form-grid trade-ticket-form ${isPending ? "is-pending" : ""} ${controlsDisabled ? "is-locked" : ""}"><div class="trade-actions"><button type="button" class="trade-button trade-over ${side === "OVER" ? "active" : ""}" data-side="OVER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Over</span><span class="trade-button-price">${currentPair.overLine.toFixed(1)}</span></button><button type="button" class="trade-button trade-under ${side === "UNDER" ? "active" : ""}" data-side="UNDER" ${controlsDisabled ? "disabled" : ""}><span class="trade-button-label">Under</span><span class="trade-button-price">${currentPair.underLine.toFixed(1)}</span></button></div><div class="stake-section"><div class="stake-row compact-stake-row"><label><span class="trade-label">Stake</span><input id="stake-input" name="stake" type="number" min="1" max="${MAX_SINGLE_BID}" step="1" inputmode="numeric" enterkeyhint="done" value="${Math.min(stakeDraft, MAX_SINGLE_BID)}" required ${controlsDisabled ? "disabled" : ""}></label><div class="stake-preview"><span class="trade-label">Return</span><strong id="stake-return">${formatStake(Math.min(stakeDraft, MAX_SINGLE_BID) * 2)}</strong></div></div><div class="stake-module-head"><span class="trade-label">Quick add</span><div class="quick-stakes"><button type="button" class="quick-stake-button" data-stake-add="5" ${controlsDisabled ? "disabled" : ""}>+5</button><button type="button" class="quick-stake-button" data-stake-add="10" ${controlsDisabled ? "disabled" : ""}>+10</button><button type="button" class="quick-stake-button" data-stake-add="25" ${controlsDisabled ? "disabled" : ""}>+25</button><button type="button" class="quick-stake-button" data-stake-max="true" ${controlsDisabled ? "disabled" : ""}>MAX 10</button></div></div><p class="trade-label stake-cap-note">Single bids are capped at ${formatStake(MAX_SINGLE_BID)}.</p></div><div class="trade-note-row"><span class="trade-label">Execution</span><button type="button" class="trade-note-button" data-trade-note-toggle aria-label="Explain execution">ⓘ</button><span class="trade-note-popover" role="note">${executionCopy}</span></div><button class="primary-button trade-confirm-button ${isPending ? "is-loading" : ""}" type="submit" ${isPending || isLocked ? "disabled" : ""}>${isPending ? "Placing..." : isLocked ? "Locked" : isGuest ? "Sign up to trade" : "Confirm position"}</button><p id="trade-feedback" class="feedback" aria-live="polite">${isPending ? "Submitting trade..." : isLocked ? "This market locked at kickoff." : isGuest ? "Browse every player market now. Sign up to place a position." : ""}</p></form></div>`;
 }
 
 function bindTradeSheetEvents(panel, marketId) {
@@ -1944,9 +1959,9 @@ function bindTradeSheetEvents(panel, marketId) {
   panel.querySelectorAll(".quick-stake-button").forEach((button) =>
     button.addEventListener("click", () => {
       if (button.dataset.stakeMax) {
-        stakeInput.value = String(Math.max(1, Math.floor(getUserCash(currentUserName()))));
+        stakeInput.value = String(normalizeStakeInputValue(Math.max(1, Math.floor(Math.min(getUserCash(currentUserName()), MAX_SINGLE_BID)))));
       } else {
-        stakeInput.value = String((Number(stakeInput.value) || 0) + Number(button.dataset.stakeAdd || 0));
+        stakeInput.value = String(normalizeStakeInputValue((Number(stakeInput.value) || 0) + Number(button.dataset.stakeAdd || 0)));
       }
       uiState.stakeDrafts[marketId] = Number(stakeInput.value) || 0;
       stakeReturn.textContent = formatStake((Number(stakeInput.value) || 0) * 2);
@@ -1954,7 +1969,27 @@ function bindTradeSheetEvents(panel, marketId) {
   );
 
   stakeInput.addEventListener("input", () => {
-    uiState.stakeDrafts[marketId] = Number(stakeInput.value) || 0;
+    isStakeInputInteractionActive = true;
+    const normalizedStake = normalizeStakeInputValue(stakeInput.value);
+    if (String(normalizedStake) !== String(stakeInput.value)) {
+      stakeInput.value = String(normalizedStake);
+    }
+    uiState.stakeDrafts[marketId] = normalizedStake;
+    stakeReturn.textContent = formatStake(normalizedStake * 2);
+  });
+
+  stakeInput.addEventListener("focus", () => {
+    isStakeInputInteractionActive = true;
+  });
+
+  stakeInput.addEventListener("blur", () => {
+    isStakeInputInteractionActive = false;
+    uiState.stakeDrafts[marketId] = normalizeStakeInputValue(stakeInput.value);
+    if (pendingRenderAfterStakeInput) {
+      pendingRenderAfterStakeInput = false;
+      applyLiveStateRender();
+      return;
+    }
     stakeReturn.textContent = formatStake((Number(stakeInput.value) || 0) * 2);
   });
 
@@ -2005,7 +2040,12 @@ async function submitTrade(marketId, stake, panel) {
     feedback.textContent = "Enter a valid stake.";
     return;
   }
+  if (stake > MAX_SINGLE_BID) {
+    feedback.textContent = `Single bids are capped at ${formatStake(MAX_SINGLE_BID)}.`;
+    return;
+  }
   uiState.pendingTradeMarketId = marketId;
+  isStakeInputInteractionActive = false;
   renderAll();
   try {
     const response = await executeTrade(marketId, stake, tradeSide);
@@ -2651,13 +2691,16 @@ function renderQuickTake() {
   const isLocked = isMarketLocked(current);
   const teamColors = TEAM_COLORS[current.team] ?? TEAM_COLORS[normalizeTeamName(current.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
   const nextColors = next ? TEAM_COLORS[next.team] ?? TEAM_COLORS[normalizeTeamName(next.team)] ?? { primary: "#101722", secondary: "#68d9ff" } : null;
-  elements.quickPickDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span><span class="quick-take-mini-context">${matchupContext(next).label}</span></div></article>` : ""}<article class="quick-take-card is-front player-card-shell ${isPending || isLocked ? "is-locked" : ""}" data-market-id="${current.id}" data-card-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(current)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Pick</span><span class="quick-take-counter">${queue.length - activeIndex} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${isLocked ? "status-locked" : "status-open"}">${isLocked ? "Locked" : "Open"}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "UNDER" ? "Submitting..." : isLocked ? "Locked" : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "OVER" ? "Submitting..." : isLocked ? "Locked" : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
+  elements.quickPickDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span><span class="quick-take-mini-context">${matchupContext(next).label}</span></div></article>` : ""}<article class="quick-take-card is-front player-card-shell ${isPending || isLocked ? "is-locked" : ""}" data-market-id="${current.id}" data-card-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(current)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Pick</span><span class="quick-take-counter">${queue.length - activeIndex} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${isLocked ? "status-locked" : "status-open"}">${isLocked ? "Locked" : "Open"}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "UNDER" ? "Submitting..." : isLocked ? "Locked" : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-skip" type="button" data-quick-skip="true" ${isPending ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "SKIP" ? "Skipping..." : "Skip"}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "OVER" ? "Submitting..." : isLocked ? "Locked" : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
   const activeCard = elements.quickPickDeck.querySelector(".quick-take-card.is-front");
   activeCard?.querySelectorAll("[data-quick-side]").forEach((button) =>
     button.addEventListener("click", async () => {
       await submitQuickTake(current.id, button.dataset.quickSide, activeCard);
     })
   );
+  activeCard?.querySelector("[data-quick-skip]")?.addEventListener("click", () => {
+    skipQuickTake(current.id, activeCard);
+  });
 }
 
 async function submitQuickTake(marketId, side, card) {
@@ -4129,7 +4172,8 @@ function renderAdminDashboard() {
     adminDashboardCard("Available liquidity", formatStake(summary.availableLiquidity), `${summary.pendingTrades} unmatched orders still waiting to match`),
     adminDashboardCard("Market lean", marketLeanLabel(summary.netPressure), `${formatStake(summary.overPressure)} over vs ${formatStake(summary.underPressure)} under`),
     adminDashboardCard("Bot share", `${summary.botShare}%`, `${summary.botTrades} of ${summary.totalTrades} trades came from bots`),
-    adminDashboardCard("Needs action", String(summary.marketsNeedingAction), `${summary.activeMarkets} open markets, ${summary.resolvedMarkets} resolved`)
+    adminDashboardCard("Needs action", String(summary.marketsNeedingAction), `${summary.activeMarkets} open markets, ${summary.resolvedMarkets} resolved`),
+    adminDashboardCard("Contact inbox", String(summary.contactMessageCount), `${summary.newContactMessageCount} new messages waiting for review`)
   ];
   if (summary.latestRoundMetrics) {
     const metrics = summary.latestRoundMetrics;
@@ -4142,6 +4186,56 @@ function renderAdminDashboard() {
     );
   }
   elements.adminDashboard.innerHTML = cards.join("");
+}
+
+function skipQuickTake(marketId, card) {
+  const activeCardId = getActiveQuickTakeMarketId();
+  if (!marketId || marketId !== activeCardId || uiState.quickPickPendingRequestId) return;
+  uiState.quickPickPendingCardId = marketId;
+  uiState.quickPickPendingSide = "SKIP";
+  renderQuickTake();
+  card?.classList.add("is-exit-under");
+  window.setTimeout(() => {
+    uiState.quickPickPendingCardId = "";
+    uiState.quickPickPendingSide = "";
+    moveQuickTakeToBack(marketId);
+    renderQuickTake();
+  }, 120);
+}
+
+async function submitContactForm() {
+  try {
+    const response = await api("/api/contact", {
+      userName: currentUserName(),
+      email: uiState.contactEmailDraft,
+      message: uiState.contactMessageDraft
+    });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
+    uiState.contactFormSubmitted = true;
+    uiState.contactFormFeedback = "";
+    uiState.contactMessageDraft = "";
+    renderAppChrome();
+    renderAdminDashboard();
+    renderAdminContactInbox();
+  } catch (error) {
+    uiState.contactFormSubmitted = false;
+    uiState.contactFormFeedback = error.message;
+    renderAppChrome();
+  }
+}
+
+function renderAdminContactInbox() {
+  if (!elements.adminContactList) return;
+  const messages = getContactMessages();
+  if (!messages.length) {
+    elements.adminContactList.innerHTML = `<div class="section-meta">No contact messages have been submitted yet.</div>`;
+    return;
+  }
+  elements.adminContactList.innerHTML = messages
+    .map(
+      (entry) => `<article class="admin-contact-card"><div class="admin-contact-card-head"><div><strong>${escapeHtml(entry.email)}</strong>${entry.userName ? `<span class="admin-contact-user">Signed in as ${escapeHtml(entry.userName)}</span>` : `<span class="admin-contact-user">Guest submission</span>`}</div><span class="status-chip status-open">${escapeHtml(entry.status || "NEW")}</span></div><p class="admin-contact-message">${escapeHtml(entry.message)}</p><p class="section-meta">${formatContactTimestamp(entry.submittedAt)}</p></article>`
+    )
+    .join("");
 }
 
 function renderBotSimulation() {
@@ -4302,6 +4396,7 @@ function getAdminDashboardSummary() {
   const resolvedMarkets = adminRoundMarkets.length - activeMarkets;
   const marketsNeedingAction = adminRoundMarkets.filter((market) => adminMarketRank(market) >= 300).length;
   const botShare = allTrades.length ? Math.round((botTrades / allTrades.length) * 100) : 0;
+  const contactMessages = getContactMessages();
 
   return {
     totalTrades: allTrades.length,
@@ -4319,6 +4414,8 @@ function getAdminDashboardSummary() {
     activeMarkets,
     resolvedMarkets,
     marketsNeedingAction,
+    contactMessageCount: contactMessages.length,
+    newContactMessageCount: contactMessages.filter((entry) => (entry.status || "NEW") === "NEW").length,
     latestRoundMetrics
   };
 }
@@ -4819,6 +4916,42 @@ function restoreQuickTakeMarket(marketId) {
   uiState.quickPickSeenMarketIds = uiState.quickPickSeenMarketIds.filter((id) => id !== marketId);
   uiState.quickPickMarketIds = [marketId, ...uiState.quickPickMarketIds.filter((id) => id !== marketId)];
   uiState.quickPickActiveIndex = 0;
+}
+
+function moveQuickTakeToBack(marketId) {
+  if (!marketId) return;
+  const remainingQueue = uiState.quickPickMarketIds.filter((id) => id !== marketId);
+  uiState.quickPickMarketIds = [...remainingQueue, marketId];
+  uiState.quickPickActiveIndex = 0;
+  syncQuickTakeQueue();
+}
+
+function normalizeStakeInputValue(value) {
+  const nextValue = Math.floor(Number(value) || 0);
+  if (!Number.isFinite(nextValue) || nextValue <= 0) {
+    return 1;
+  }
+  return Math.min(MAX_SINGLE_BID, nextValue);
+}
+
+function getContactMessages() {
+  return Array.isArray(state.contactMessages)
+    ? state.contactMessages.slice().sort((left, right) => new Date(right.submittedAt || 0) - new Date(left.submittedAt || 0))
+    : [];
+}
+
+function formatContactTimestamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Received recently";
+  }
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function getUserTrades(userName) {
