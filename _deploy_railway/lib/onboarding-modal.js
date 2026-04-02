@@ -78,10 +78,6 @@
     }
 
     function bindEvents() {
-      shadowRoot.querySelector("[data-action='skip']")?.addEventListener("click", () => {
-        options?.onSkip?.();
-      });
-
       shadowRoot.querySelector("[data-action='back']")?.addEventListener("click", () => {
         if (typeof activeStep !== "number" || activeStep <= 0) return;
         activeStep -= 1;
@@ -151,15 +147,10 @@
       return `
         <header class="pm-topbar">
           <span class="pm-kicker">HOW IT WORKS</span>
-          <button class="pm-skip" type="button" data-action="skip">Skip</button>
         </header>
-        <div class="pm-copy">
-          <h2 class="pm-title" id="pm-title">${slide.title}</h2>
-          <p class="pm-body">${slide.body}</p>
-        </div>
-        <div class="pm-hero-card">
-          ${slide.hero()}
-        </div>
+        ${slide.hero()}
+        <h2 class="pm-title pm-slide-title" id="pm-title">${slide.title}</h2>
+        <p class="pm-body pm-slide-body">${slide.body}</p>
         <div class="pm-pagination" aria-label="Onboarding progress">
           ${SLIDES.map((_, dotIndex) => `<span class="pm-dot ${dotIndex === index ? "is-active" : ""}" aria-hidden="true"></span>`).join("")}
         </div>
@@ -190,7 +181,7 @@
             </button>
             <p class="pm-signup-feedback" data-signup-feedback>${escapeHtml(signupFeedback)}</p>
           </form>
-          <button class="pm-login-link" type="button" data-action="login">Already have an account? <span>Log in</span></button>
+          <button class="pm-login-link" type="button" data-action="login">Continue browsing as guest</button>
         </div>
       `;
     }
@@ -227,54 +218,89 @@
     };
   }
 
-  function createProjectionHero() {
+  function createProjectionCardMarkup(extraClassName) {
     return `
-      <div class="pm-market-card">
+      <article class="pm-market-card pm-floating-card ${extraClassName || ""}">
         <div class="pm-market-head">
           <div class="pm-market-copy">
             <span class="pm-live-label">LIVE MARKET</span>
             <strong class="pm-player-name">Nathan Cleary</strong>
-            <span class="pm-player-meta">Panthers · Halfback</span>
+            <span class="pm-player-meta">Panthers &middot; Halfback</span>
           </div>
-          <span class="pm-projection-pill">↑ 58.7</span>
+          <span class="pm-projection-pill">&uarr; 58.7</span>
         </div>
-        <div class="pm-market-metric">
+        <div class="pm-market-divider"></div>
+        <div class="pm-market-footer">
           <span class="pm-metric-label">PROJECTION</span>
           <strong class="pm-metric-value">58.5</strong>
         </div>
+      </article>
+    `;
+  }
+
+  function createProjectionHero() {
+    return `
+      <div class="pm-hero-scene pm-hero-scene-projection" aria-hidden="true">
+        ${createProjectionCardMarkup("pm-market-card-back pm-market-card-left")}
+        ${createProjectionCardMarkup("pm-market-card-back pm-market-card-right")}
+        ${createProjectionCardMarkup("pm-market-card-front")}
       </div>
     `;
   }
 
   function createTradeHero() {
     return `
-      <div class="pm-trade-stack">
-        <article class="pm-trade-ticket pm-trade-ticket-over">
+      <div class="pm-hero-scene pm-hero-scene-trade" aria-hidden="true">
+        <article class="pm-trade-ticket pm-floating-card pm-trade-ticket-over">
           <span class="pm-trade-label">Pick</span>
           <strong class="pm-trade-title">OVER 58.5</strong>
           <button class="pm-ticket-button pm-ticket-button-over" type="button" tabindex="-1">Over 58.5</button>
         </article>
-        <article class="pm-trade-ticket pm-trade-ticket-under">
+        <article class="pm-trade-ticket pm-floating-card pm-trade-ticket-under">
           <span class="pm-trade-label">Pick</span>
-          <strong class="pm-trade-title">UNDER 58.5</strong>
+          <strong class="pm-trade-title">UNDER <span class="pm-trade-number">58.5</span></strong>
           <button class="pm-ticket-button pm-ticket-button-under" type="button" tabindex="-1">Under 58.5</button>
         </article>
       </div>
     `;
   }
 
+  function createResultCardMarkup(extraClassName) {
+    return `
+      <article class="pm-receipt-card pm-floating-card ${extraClassName || ""}">
+        <div class="pm-receipt-head">
+          <span class="pm-receipt-kicker">MARKET CLOSED</span>
+          <strong class="pm-receipt-player">Nathan Cleary</strong>
+          <span class="pm-receipt-meta">Panthers &middot; Halfback</span>
+        </div>
+        <div class="pm-receipt-divider"></div>
+        <div class="pm-receipt-row">
+          <span class="pm-receipt-label">Projection</span>
+          <strong class="pm-receipt-value">58.5</strong>
+        </div>
+        <div class="pm-receipt-row">
+          <span class="pm-receipt-label">Your Pick</span>
+          <strong class="pm-receipt-value pm-receipt-value-pick">Over</strong>
+        </div>
+        <div class="pm-receipt-row">
+          <span class="pm-receipt-label">Actual Score</span>
+          <strong class="pm-receipt-value pm-receipt-value-score">63</strong>
+        </div>
+        <div class="pm-receipt-divider pm-receipt-divider-bottom"></div>
+        <div class="pm-receipt-status">
+          <span class="pm-receipt-status-icon">&#10003;</span>
+          <span class="pm-receipt-status-label">Win</span>
+        </div>
+      </article>
+    `;
+  }
+
   function createResultHero() {
     return `
-      <div class="pm-result-card">
-        <span class="pm-metric-label">RESULT</span>
-        <div class="pm-result-row pm-result-row-win">
-          <span>OVER ✓</span>
-          <strong>+$10.00</strong>
-        </div>
-        <div class="pm-result-row pm-result-row-loss">
-          <span>UNDER ✗</span>
-          <strong>-$5.00</strong>
-        </div>
+      <div class="pm-hero-scene pm-hero-scene-receipt" aria-hidden="true">
+        ${createResultCardMarkup("pm-receipt-card-back pm-receipt-card-left")}
+        ${createResultCardMarkup("pm-receipt-card-back pm-receipt-card-right")}
+        ${createResultCardMarkup("pm-receipt-card-front")}
       </div>
     `;
   }
@@ -357,7 +383,7 @@
       .pm-topbar {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 12px;
         margin-bottom: 18px;
       }
@@ -370,22 +396,6 @@
         text-transform: uppercase;
       }
 
-      .pm-skip {
-        appearance: none;
-        border: 0;
-        background: transparent;
-        color: #ffffff;
-        font-size: 14px;
-        font-weight: 600;
-        padding: 0;
-        cursor: pointer;
-      }
-
-      .pm-copy {
-        display: grid;
-        gap: 16px;
-      }
-
       .pm-title {
         margin: 0;
         color: #ffffff;
@@ -396,6 +406,10 @@
         letter-spacing: -0.03em;
       }
 
+      .pm-slide-title {
+        margin-bottom: 16px;
+      }
+
       .pm-body {
         margin: 0;
         color: rgba(255, 255, 255, 0.85);
@@ -404,14 +418,22 @@
         text-align: left;
       }
 
-      .pm-hero-card {
-        margin-top: 24px;
+      .pm-slide-body {
         margin-bottom: 22px;
-        padding: 16px;
+      }
+
+      .pm-hero-scene {
+        position: relative;
+        margin: 4px 0 24px;
+        overflow: visible;
+      }
+
+      .pm-floating-card {
+        background: #ffffff;
+        color: #111111;
         border-radius: 16px;
-        background: #0D0D1A;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        overflow: hidden;
+        padding: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       }
 
       .pm-pagination {
@@ -468,13 +490,44 @@
       }
 
       .pm-button-primary {
-        background: linear-gradient(90deg, #00C853 0%, #C8F400 100%);
+        background: linear-gradient(135deg, #36df98, #f8c04e);
         color: #0D0D1A;
       }
 
+      .pm-hero-scene-projection {
+        height: 214px;
+      }
+
       .pm-market-card {
+        position: absolute;
+        top: 34px;
+        left: 50%;
+        width: min(100%, 292px);
         display: grid;
-        gap: 18px;
+        gap: 16px;
+        transform: translateX(-50%);
+      }
+
+      .pm-market-card-back {
+        z-index: 1;
+        opacity: 0.92;
+      }
+
+      .pm-market-card-left {
+        left: 38px;
+        transform: rotate(-10deg) scale(0.92);
+        transform-origin: center;
+      }
+
+      .pm-market-card-right {
+        left: auto;
+        right: 38px;
+        transform: rotate(10deg) scale(0.92);
+        transform-origin: center;
+      }
+
+      .pm-market-card-front {
+        z-index: 2;
       }
 
       .pm-market-head {
@@ -498,14 +551,14 @@
       }
 
       .pm-player-name {
-        color: #ffffff;
+        color: #111111;
         font-size: 18px;
         font-weight: 800;
         line-height: 1.15;
       }
 
       .pm-player-meta {
-        color: rgba(255, 255, 255, 0.56);
+        color: #666666;
         font-size: 12px;
       }
 
@@ -513,27 +566,30 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 34px;
-        padding: 0 12px;
+        min-height: 28px;
+        padding: 0 10px;
         border-radius: 999px;
-        background: rgba(0, 200, 83, 0.18);
-        color: #00C853;
-        font-size: 14px;
-        font-weight: 800;
+        background: #00C853;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
         white-space: nowrap;
       }
 
-      .pm-market-metric {
-        display: grid;
-        gap: 8px;
-        padding: 14px 14px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+      .pm-market-divider {
+        height: 1px;
+        background: rgba(17, 17, 17, 0.1);
+      }
+
+      .pm-market-footer {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
       }
 
       .pm-metric-label {
-        color: rgba(255, 255, 255, 0.5);
+        color: #666666;
         font-size: 10px;
         font-weight: 800;
         letter-spacing: 0.1em;
@@ -541,47 +597,43 @@
       }
 
       .pm-metric-value {
-        color: #ffffff;
-        font-size: 32px;
+        color: #111111;
+        font-size: 28px;
         line-height: 1;
         font-weight: 800;
         letter-spacing: -0.05em;
       }
 
-      .pm-trade-stack {
-        position: relative;
-        height: 148px;
+      .pm-hero-scene-trade {
+        height: 218px;
       }
 
       .pm-trade-ticket {
         position: absolute;
-        top: 18px;
-        width: 178px;
-        padding: 14px;
-        border-radius: 16px;
-        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.28);
+        width: 168px;
+        min-height: 166px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
       }
 
       .pm-trade-ticket-over {
-        left: 14px;
-        z-index: 2;
-        background: #f5f6fa;
-        color: #0D0D1A;
-        transform: rotate(-7deg);
+        left: 18px;
+        bottom: 8px;
+        z-index: 1;
+        transform: rotate(-12deg);
       }
 
       .pm-trade-ticket-under {
-        right: 10px;
-        top: 10px;
-        background: #f5f6fa;
-        color: #0D0D1A;
-        transform: rotate(8deg);
+        right: 18px;
+        top: 8px;
+        z-index: 2;
+        transform: rotate(12deg);
       }
 
       .pm-trade-label {
         display: block;
-        margin-bottom: 8px;
-        color: rgba(13, 13, 26, 0.42);
+        color: #8a8a8a;
         font-size: 10px;
         font-weight: 800;
         letter-spacing: 0.1em;
@@ -590,56 +642,155 @@
 
       .pm-trade-title {
         display: block;
-        margin-bottom: 18px;
+        margin: 0;
+        color: #111111;
         font-size: 22px;
-        line-height: 1;
+        line-height: 1.02;
         font-weight: 800;
         letter-spacing: -0.04em;
       }
 
+      .pm-trade-number {
+        color: #FF3D3D;
+      }
+
       .pm-ticket-button {
         width: 100%;
-        min-height: 40px;
+        min-height: 42px;
+        margin-top: auto;
         border: 0;
-        border-radius: 10px;
+        border-radius: 8px;
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
+        color: #ffffff;
+        pointer-events: none;
       }
 
       .pm-ticket-button-over {
-        background: linear-gradient(90deg, #2ed47a 0%, #40d77c 100%);
-        color: #ffffff;
+        background: #00C853;
       }
 
       .pm-ticket-button-under {
-        background: rgba(255, 77, 77, 0.16);
-        color: #ff6b6b;
+        background: #FF3D3D;
       }
 
-      .pm-result-card {
+      .pm-hero-scene-receipt {
+        height: 248px;
+        padding-bottom: 8px;
+      }
+
+      .pm-receipt-card {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        width: min(100%, 262px);
+        padding: 10px 16px;
         display: grid;
-        gap: 12px;
+        gap: 0;
+        transform: translateX(-50%);
       }
 
-      .pm-result-row {
+      .pm-receipt-card-back {
+        z-index: 1;
+        opacity: 0.92;
+      }
+
+      .pm-receipt-card-left {
+        left: 38px;
+        transform: rotate(-10deg) scale(0.92);
+        transform-origin: center;
+      }
+
+      .pm-receipt-card-right {
+        left: auto;
+        right: 38px;
+        transform: rotate(10deg) scale(0.92);
+        transform-origin: center;
+      }
+
+      .pm-receipt-card-front {
+        z-index: 2;
+      }
+
+      .pm-receipt-head {
+        display: grid;
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      .pm-receipt-kicker {
+        color: #888888;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .pm-receipt-player {
+        color: #111111;
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .pm-receipt-meta {
+        color: #666666;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .pm-receipt-divider {
+        height: 1px;
+        margin: 0 0 8px;
+        background: rgba(17, 17, 17, 0.1);
+      }
+
+      .pm-receipt-divider-bottom {
+        margin: 8px 0 14px;
+      }
+
+      .pm-receipt-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        min-height: 48px;
-        padding: 0 14px;
-        border-radius: 12px;
-        font-size: 15px;
-        font-weight: 700;
+        gap: 12px;
+        min-height: 38px;
       }
 
-      .pm-result-row-win {
-        background: rgba(0, 200, 83, 0.12);
-        color: #59e28f;
+      .pm-receipt-label {
+        color: #5f5f5f;
+        font-size: 13px;
+        font-weight: 500;
       }
 
-      .pm-result-row-loss {
-        background: rgba(255, 77, 77, 0.12);
-        color: #ff7d7d;
+      .pm-receipt-value {
+        color: #111111;
+        font-size: 18px;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .pm-receipt-value-pick {
+        color: #00C853;
+      }
+
+      .pm-receipt-value-score {
+        font-size: 20px;
+      }
+
+      .pm-receipt-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .pm-receipt-status-icon,
+      .pm-receipt-status-label {
+        color: #00C853;
+        font-size: 16px;
+        line-height: 1;
+        font-weight: 800;
       }
 
       .pm-signup-shell {
@@ -714,12 +865,78 @@
           font-size: 25px;
         }
 
-        .pm-trade-stack {
-          height: 138px;
+        .pm-hero-scene-projection {
+          height: 202px;
+        }
+
+        .pm-market-card {
+          width: min(100%, 274px);
+        }
+
+        .pm-market-card-left {
+          left: 24px;
+        }
+
+        .pm-market-card-right {
+          right: 24px;
+        }
+
+        .pm-hero-scene-trade {
+          height: 204px;
         }
 
         .pm-trade-ticket {
-          width: 160px;
+          width: 156px;
+          min-height: 154px;
+        }
+
+        .pm-trade-ticket-over {
+          left: 10px;
+        }
+
+        .pm-trade-ticket-under {
+          right: 10px;
+        }
+
+        .pm-hero-scene-receipt {
+          height: 236px;
+        }
+
+        .pm-receipt-card {
+          width: min(100%, 286px);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .pm-hero-scene-receipt {
+          height: 246px;
+        }
+
+        .pm-receipt-card {
+          padding: 12px 16px;
+          max-height: 240px;
+          overflow: hidden;
+        }
+
+        .pm-receipt-player {
+          font-size: 18px;
+        }
+
+        .pm-receipt-label {
+          font-size: 12px;
+        }
+
+        .pm-receipt-value,
+        .pm-receipt-value-score {
+          font-size: 14px;
+        }
+
+        .pm-receipt-row {
+          min-height: 0;
+        }
+
+        .pm-receipt-row + .pm-receipt-row {
+          margin-top: 8px;
         }
       }
     `;

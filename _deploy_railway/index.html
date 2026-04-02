@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="./styles.css?v=2.2">
 </head>
 <body>
+  <div id="onboarding-overlay" aria-hidden="true"></div>
   <div class="app-shell">
     <div class="mobile-frame">
       <section id="auth-gate" class="auth-gate is-hidden" aria-hidden="true">
@@ -509,6 +510,17 @@
       <section class="admin-panel">
         <div class="section-heading compact-heading">
           <div>
+            <p class="eyebrow">Inbox</p>
+            <h3>Contact messages</h3>
+            <p class="section-meta">Messages submitted from the Contact Us form appear here.</p>
+          </div>
+        </div>
+        <div id="admin-contact-list" class="admin-market-list"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="section-heading compact-heading">
+          <div>
             <p class="eyebrow">Bot simulation</p>
             <h3>Quick Pick bots</h3>
           </div>
@@ -731,9 +743,8 @@
 
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
-  <div id="onboarding-overlay"></div>
   <script src="./lib/derived-fantasy-data.js?v=2.2"></script>
-  <script src="lib/onboarding-modal.js"></script>
+  <script src="./lib/onboarding-modal.js?v=2.2"></script>
   <script src="./seed-data.js?v=2.2"></script>
   <script src="./app.js?v=2.2"></script>
 </body>
