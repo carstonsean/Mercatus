@@ -8,6 +8,8 @@ const DEFAULT_USER_NAME = "Demo Trader";
 const USER_NAME_KEY = "mercatus-user-name";
 const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
 const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
+const AUTH_TOKEN_KEY = "authToken";
+const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 2500;
@@ -32,6 +34,105 @@ const BOT_BEHAVIOUR_PRESETS = {
   MARKET_MAKER: { crowdStyle: 50, liquidityStyle: 88, fadeStyle: 55, frequencyStyle: 58, edgeStyle: 28 },
   PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
 };
+const APP_MODAL_TITLES = {
+  "how-it-works": "How It Works",
+  "account-settings": "Account Settings",
+  leaderboard: "Leaderboard",
+  "contact-us": "Contact Us",
+  "prize-pool-info": "Prize Pool",
+  "market-confidence-info": "Market Confidence",
+  "home-value-leaderboard": "Top Value Players",
+  "home-projected-leaderboard": "Top Projected Players"
+};
+const SHAREABLE_CONTENT_TEMPLATES = [
+  {
+    id: "player-spotlight",
+    name: "Player Spotlight",
+    description: "One player. Full crowd data and form.",
+    requiresPlayer: true
+  },
+  {
+    id: "value-alert",
+    name: "Value Alert",
+    description: "One player. Their value gap front and centre.",
+    requiresPlayer: true
+  },
+  {
+    id: "match-preview",
+    name: "Match Preview",
+    description: "One game. Top projected players per side.",
+    requiresMatch: true
+  },
+  {
+    id: "round-rankings-value",
+    name: "Round Rankings (Value)",
+    description: "Top 5 value picks this round."
+  },
+  {
+    id: "round-rankings-projected",
+    name: "Round Rankings (Projected)",
+    description: "Top 5 projected players this round."
+  }
+];
+const SHAREABLE_ASPECT_RATIOS = [
+  { id: "1:1", label: "1:1" },
+  { id: "3:4", label: "3:4" },
+  { id: "9:16", label: "9:16" }
+];
+const SHAREABLE_THEMES = [
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" }
+];
+const HOW_IT_WORKS_SECTIONS = [
+  {
+    title: "Trading Basics",
+    paragraphs: [
+      "Each player market on CrowdIQ is a live fantasy projection. You take a position by choosing whether a player will finish Over or Under the listed line, then entering your stake before the market locks at kickoff.",
+      "If your order is matched, it becomes a live position in your portfolio. If it is only partially matched, the unmatched portion stays available until it is matched or removed."
+    ]
+  },
+  {
+    title: "Market Confidence",
+    paragraphs: [
+      "Market Confidence shows how much real crowd activity is behind a projection. It increases when more traders participate, more positions are matched, and more volume flows through the market.",
+      "A higher confidence score means the line has stronger crowd involvement, while a lower score suggests the market is still light and may move more easily. It is a read on activity, not a prediction guarantee."
+    ]
+  },
+  {
+    title: "Quick Pick",
+    paragraphs: [
+      "Quick Pick is the fastest way to get involved in live markets. Instead of opening a full trade ticket, you are shown one open player market at a time and can instantly choose Over or Under with a fixed $1 stake.",
+      "It is designed for speed, so you can move through active opportunities quickly while still following the same market rules as the main trading screens."
+    ]
+  },
+  {
+    title: "Prize Pool",
+    paragraphs: [
+      "The Prize Pool is CrowdIQ's weekly contest mode. You pay the entry fee, receive a lineup of players, and make an Over or Under call on each one.",
+      "As matches are completed and picks settle, your correct percentage and rank update against the rest of the field. The highest-ranked entries share the prize pool."
+    ]
+  },
+  {
+    title: "How Matches Work",
+    paragraphs: [
+      "Markets stay open only until kickoff, then they lock automatically. Once a player's real fantasy score is known, the market settles and matched positions are graded as wins or losses based on the line you entered.",
+      "Your portfolio shows whether a position is matched, unmatched, partially matched, or settled, so you can always see what is still live and what has already resolved."
+    ]
+  }
+];
+const MARKET_CONFIDENCE_EXPLANATION = "Market confidence estimates how trustworthy the projection is based on crowd participation. More matched trades, volume, and unique traders lift it, with diminishing returns as activity builds.";
+const PRIZE_POOL_EXPLANATION_PARAGRAPHS = [
+  "Starting 13: one player per position, randomly assigned.",
+  "Interchange 4: randomly assigned, any position. Replaces any starting player who does not play due to injury or non-selection.",
+  "Tiebreak: if two users finish with equal correct %, the user with more correct interchange picks wins.",
+  "Substitution order: first interchange replaces first unavailable starting player, in the order they were assigned."
+];
+const PRIZE_POOL_EXPLANATION_LABELS = [
+  "STARTING 13",
+  "INTERCHANGE 4",
+  "TIEBREAK",
+  "SUBSTITUTION ORDER"
+];
 
 const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
 
@@ -58,10 +159,11 @@ let prizePoolJarSurging = false;
 let prizePoolJarSurgeTimer = null;
 let prizePoolShareFitFrame = null;
 let authFocusTimer = null;
+let onboardingPopupTimer = null;
 let popularFeaturedMarketIds = [];
 let popularFeaturedRoundNumber = null;
 let popularFeaturedRequest = null;
-let onboardingPopupTimer = null;
+let appChromeRenderKey = "";
 
 const uiState = {
   activeScreen: "home",
@@ -79,6 +181,14 @@ const uiState = {
   focusStakeMarketId: "",
   searchTerm: "",
   adminOpen: false,
+  adminShareableView: "main",
+  adminShareableTemplateId: "",
+  adminShareableAspectRatio: "1:1",
+  adminShareableTheme: "dark",
+  adminShareablePlayerQuery: "",
+  adminShareableSelectedMarketId: "",
+  adminShareableSelectedGameId: "",
+  adminShareableOutputOpen: false,
   portfolioFilter: "ALL",
   portfolioSort: "MOST_RECENT",
   walletFilter: "ALL",
@@ -101,10 +211,11 @@ const uiState = {
   prizePoolInterchangeRulesExpanded: false,
   prizePoolShareOpen: false,
   prizePoolInterchangeDividerSeenDraftId: "",
-  onboardingOpen: false,
-  onboardingSlideIndex: 0,
-  onboardingHasScheduled: false,
-  onboardingHasRendered: false,
+  appMenuOpen: false,
+  activeAppModal: "",
+  contactEmailDraft: "",
+  contactMessageDraft: "",
+  contactFormSubmitted: false,
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
@@ -120,13 +231,17 @@ const elements = {
   authLiveBadge: document.getElementById("auth-live-badge"),
   authHeroCtaCopy: document.getElementById("auth-hero-cta-copy"),
   authPhoneMockup: document.getElementById("auth-phone-mockup"),
+  onboardingOverlay: document.getElementById("onboarding-overlay"),
+  howItWorksNavShell: document.getElementById("how-it-works-nav-shell"),
+  howItWorksNavButton: document.getElementById("how-it-works-nav-button"),
+  howItWorksNavDismiss: document.getElementById("how-it-works-nav-dismiss"),
   authClose: document.getElementById("auth-close"),
   authHeaderSignup: document.getElementById("auth-header-signup"),
   authHeroEntry: document.getElementById("auth-hero-entry"),
-  onboardingOverlay: document.getElementById("onboarding-overlay"),
   appFrame: document.querySelector(".mobile-frame"),
   headerBalance: document.getElementById("header-balance"),
-  navButtons: [...document.querySelectorAll(".nav-button")],
+  headerMenuButton: document.getElementById("header-menu-button"),
+  navButtons: [...document.querySelectorAll(".nav-button[data-screen-target]")],
   screens: [...document.querySelectorAll(".screen")],
   screenScrolls: [...document.querySelectorAll(".screen .screen-scroll")],
   homeTopProjected: document.getElementById("home-top-projected"),
@@ -184,6 +299,8 @@ const elements = {
   profileSummary: document.getElementById("profile-summary"),
   openAdminButton: document.getElementById("open-admin-button"),
   adminShell: document.getElementById("admin-shell"),
+  openShareableContentButton: document.getElementById("open-shareable-content-button"),
+  adminShareableWorkspace: document.getElementById("admin-shareable-workspace"),
   closeAdminButton: document.getElementById("close-admin-button"),
   adminRoundForm: document.getElementById("admin-round-form"),
   adminRoundSelect: document.getElementById("admin-round-select"),
@@ -241,11 +358,9 @@ const elements = {
 const onboardingModal = typeof window.createCrowdIQOnboardingModal === "function"
   ? window.createCrowdIQOnboardingModal({
       host: elements.onboardingOverlay,
-      onSkip: dismissOnboardingPopup,
-      onBack: () => goToOnboardingSlide(uiState.onboardingSlideIndex - 1),
-      onAdvance: handleOnboardingAdvance,
-      onComplete: dismissOnboardingPopup,
-      onRequestSlide: goToOnboardingSlide
+      onSkip: handleOnboardingSkip,
+      onComplete: handleOnboardingComplete,
+      onLogin: handleOnboardingLogin
     })
   : null;
 
@@ -253,6 +368,7 @@ init();
 
 async function init() {
   bindEvents();
+  resetHowItWorksToolbarDismissal();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (savedUserName) {
     elements.userName.value = savedUserName;
@@ -260,6 +376,7 @@ async function init() {
   }
   // Render immediately so the app is never a blank screen while waiting for the server
   renderAll();
+  scheduleOnboardingPopup();
   renderAuthPreview();
   syncPopularFeaturedPlayers();
   // Sync session without touching credentials on failure — completeLogin() would
@@ -277,7 +394,6 @@ async function init() {
     dismissGuestHero();
   }
   startLiveSync();
-  scheduleOnboardingPopup();
 }
 
 function bindEvents() {
@@ -321,53 +437,23 @@ function bindEvents() {
     renderSearchResults();
   });
 
-  elements.userName.addEventListener("change", async () => {
-    elements.userName.value = localStorage.getItem(USER_NAME_KEY) || currentUserName();
-  });
-
   elements.authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const userName = elements.authUsername.value.trim();
     await completeLogin(userName);
   });
 
-  elements.logoutButton.addEventListener("click", async () => {
-    stopLiveSync();
-    stopPrizePoolPolling();
-    stopKickoffTimer();
-    randomizeQuickPickOrder();
-    uiState.prizePoolSubmissionToastShown = false;
-    uiState.prizePoolShareOpen = false;
-    renderPrizePoolShareOverlay();
-    localStorage.removeItem(USER_NAME_KEY);
-    backendState = { mode: "local", user: null, dashboard: null };
-    elements.authUsername.value = "";
-    elements.authFeedback.textContent = "";
-    elements.userName.value = "";
-    uiState.activeScreen = "home";
-    uiState.activeAccountView = "portfolio";
-    renderAuthGate(false);
-    state = {
-      ...state,
-      bankrolls: {},
-      markets: authPreviewMarkets,
-      walletTransactions: [],
-      activeRoundNumber: CURRENT_ROUND_NUMBER,
-      activeRoundLabel: CURRENT_ROUND_LABEL
-    };
-    prizePoolState = null;
-    normalizeNavigationState();
-    syncSelectedMarket();
-    renderAll();
-    try {
-      await syncSession();
-      normalizeNavigationState();
-      syncSelectedMarket();
-      renderAll();
-    } catch (error) {
-      console.warn("Logout guest sync failed", error.message);
-    }
-    startLiveSync();
+  elements.howItWorksNavButton?.addEventListener("click", () => {
+    openOnboardingPopup();
+  });
+
+  elements.howItWorksNavDismiss?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    dismissHowItWorksToolbarButton();
+  });
+
+  elements.logoutButton?.addEventListener("click", async () => {
+    await handleLogout();
   });
 
   elements.portfolioSortButton.addEventListener("click", () => {
@@ -404,6 +490,9 @@ function bindEvents() {
     uiState.activeAccountView = "wallet";
     renderAll();
   });
+  elements.headerMenuButton?.addEventListener("click", () => {
+    openAppMenu();
+  });
   elements.walletAmountInput?.addEventListener("input", () => {
     uiState.walletAmountDraft = elements.walletAmountInput.value;
   });
@@ -436,14 +525,20 @@ function bindEvents() {
     scrollHomeCarouselTo(button.dataset.homePanelTarget);
   });
 
-  elements.openAdminButton.addEventListener("click", () => {
-    if (!requestAdminAccess()) return;
-    uiState.adminOpen = true;
-    renderAdminShell();
+  elements.openAdminButton?.addEventListener("click", () => {
+    handleOpenAdminTools();
   });
+  elements.openShareableContentButton?.addEventListener("click", () => {
+    openShareableContentLibrary();
+  });
+  elements.adminShareableWorkspace?.addEventListener("click", handleAdminShareableWorkspaceClick);
+  elements.adminShareableWorkspace?.addEventListener("input", handleAdminShareableWorkspaceInput);
+  elements.adminShareableWorkspace?.addEventListener("change", handleAdminShareableWorkspaceChange);
 
   elements.closeAdminButton.addEventListener("click", () => {
+    closeShareableContentOutput();
     uiState.adminOpen = false;
+    uiState.adminShareableView = "main";
     renderAdminShell();
   });
 
@@ -539,19 +634,22 @@ function bindEvents() {
   window.addEventListener("resize", schedulePrizePoolShareFit);
 
   document.addEventListener("click", (event) => {
-    const infoButton = event.target.closest(".market-confidence-info");
-    if (infoButton) {
+    const confidenceTrigger = event.target.closest(".market-confidence-trigger");
+    if (confidenceTrigger) {
       event.preventDefault();
       event.stopPropagation();
-      const confidence = infoButton.closest(".market-confidence");
-      const isOpen = confidence?.classList.contains("is-open");
-      document.querySelectorAll(".market-confidence.is-open").forEach((entry) => entry.classList.remove("is-open"));
-      if (confidence && !isOpen) confidence.classList.add("is-open");
+      openAppModal("market-confidence-info");
       return;
     }
-
-    if (!event.target.closest(".market-confidence")) {
-      document.querySelectorAll(".market-confidence.is-open").forEach((entry) => entry.classList.remove("is-open"));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (uiState.activeAppModal) {
+      closeAppModal();
+      return;
+    }
+    if (uiState.appMenuOpen) {
+      closeAppMenu();
     }
   });
 }
@@ -645,11 +743,14 @@ async function completeLogin(userName) {
   elements.authFeedback.textContent = "Entering crowdIQ...";
   elements.authUsername.disabled = true;
   try {
-    elements.userName.value = userName;
+    if (elements.userName) {
+      elements.userName.value = userName;
+    }
     localStorage.setItem(USER_NAME_KEY, userName);
     localStorage.setItem(HAS_AUTHENTICATED_KEY, "true");
     randomizeQuickPickOrder();
     await syncSession();
+    localStorage.setItem(AUTH_TOKEN_KEY, "true");
     syncSelectedMarket();
     renderAll();
     renderAuthGate(false);
@@ -668,11 +769,163 @@ function isAuthenticated() {
   return Boolean(localStorage.getItem(USER_NAME_KEY)?.trim());
 }
 
+function hasSignedUp() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) === "true";
+}
+
+function hasSeenOnboarding() {
+  return localStorage.getItem(HAS_SEEN_ONBOARDING_KEY) != null;
+}
+
+function shouldShowOnboardingPopup() {
+  return Boolean(onboardingModal)
+    && !isAuthenticated()
+    && !hasSeenOnboarding()
+    && uiState.activeScreen === "home";
+}
+
+function scheduleOnboardingPopup() {
+  if (onboardingPopupTimer || !shouldShowOnboardingPopup()) {
+    return;
+  }
+  onboardingPopupTimer = window.setTimeout(() => {
+    onboardingPopupTimer = null;
+    if (!shouldShowOnboardingPopup()) {
+      return;
+    }
+    openOnboardingPopup();
+  }, ONBOARDING_POPUP_DELAY_MS);
+}
+
+function openOnboardingPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  onboardingModal?.show();
+}
+
+function openOnboardingSignupPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  markOnboardingSeen();
+  onboardingModal?.show("signup");
+}
+
+function dismissOnboardingPopup() {
+  window.clearTimeout(onboardingPopupTimer);
+  onboardingPopupTimer = null;
+  onboardingModal?.hide();
+}
+
+function markOnboardingSeen() {
+  localStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
+}
+
+function handleOnboardingSkip() {
+  markOnboardingSeen();
+  dismissOnboardingPopup();
+}
+
+async function handleOnboardingComplete(userName) {
+  const trimmedUserName = String(userName || "").trim();
+  if (!trimmedUserName) {
+    return { ok: false, message: "Enter a username to continue." };
+  }
+  uiState.activeScreen = "home";
+  await completeLogin(trimmedUserName);
+  if (!isAuthenticated()) {
+    return { ok: false, message: elements.authFeedback?.textContent || "Something went wrong." };
+  }
+  markOnboardingSeen();
+  dismissOnboardingPopup();
+  return { ok: true };
+}
+
+function handleOnboardingLogin() {
+  markOnboardingSeen();
+  dismissOnboardingPopup();
+}
+
+function resetHowItWorksToolbarDismissal() {
+  if (!hasSignedUp()) {
+    localStorage.removeItem(DISMISSED_HOW_IT_WORKS_KEY);
+  }
+}
+
+async function handleLogout() {
+  stopLiveSync();
+  stopPrizePoolPolling();
+  stopKickoffTimer();
+  randomizeQuickPickOrder();
+  uiState.prizePoolSubmissionToastShown = false;
+  uiState.prizePoolShareOpen = false;
+  uiState.appMenuOpen = false;
+  uiState.activeAppModal = "";
+  renderPrizePoolShareOverlay();
+  renderAppChrome();
+  localStorage.removeItem(USER_NAME_KEY);
+  backendState = { mode: "local", user: null, dashboard: null };
+  elements.authUsername.value = "";
+  elements.authFeedback.textContent = "";
+  if (elements.userName) {
+    elements.userName.value = "";
+  }
+  uiState.activeScreen = "home";
+  uiState.activeAccountView = "portfolio";
+  renderAuthGate(false);
+  state = {
+    ...state,
+    bankrolls: {},
+    markets: authPreviewMarkets,
+    walletTransactions: [],
+    activeRoundNumber: CURRENT_ROUND_NUMBER,
+    activeRoundLabel: CURRENT_ROUND_LABEL
+  };
+  prizePoolState = null;
+  normalizeNavigationState();
+  syncSelectedMarket();
+  renderAll();
+  try {
+    await syncSession();
+    normalizeNavigationState();
+    syncSelectedMarket();
+    renderAll();
+  } catch (error) {
+    console.warn("Logout guest sync failed", error.message);
+  }
+  startLiveSync();
+}
+
+function handleOpenAdminTools() {
+  if (!requestAdminAccess()) return;
+  uiState.adminOpen = true;
+  renderAdminShell();
+}
+
+function shouldShowHowItWorksToolbarButton() {
+  return Boolean(elements.howItWorksNavShell)
+    && !isAuthenticated()
+    && !hasSignedUp()
+    && localStorage.getItem(DISMISSED_HOW_IT_WORKS_KEY) !== "true";
+}
+
+function renderHowItWorksToolbarButton() {
+  elements.howItWorksNavShell?.classList.toggle("is-hidden", !shouldShowHowItWorksToolbarButton());
+}
+
+function dismissHowItWorksToolbarButton() {
+  localStorage.setItem(DISMISSED_HOW_IT_WORKS_KEY, "true");
+  renderHowItWorksToolbarButton();
+}
+
 function hasAuthenticatedBefore() {
   return localStorage.getItem(HAS_AUTHENTICATED_KEY) === "true";
 }
 
 function openAuthPrompt(mode = "signup") {
+  if (onboardingModal) {
+    openOnboardingSignupPopup();
+    return;
+  }
   // If home screen is active, scroll to the inline form instead of opening overlay
   if (uiState.activeScreen === "home") {
     const inlineInput = document.getElementById("inline-auth-username");
@@ -712,7 +965,7 @@ function renderGuestHero() {
     <div class="auth-hero-inline">
       <section class="auth-copy auth-hero">
         <p class="eyebrow">crowdIQ Live</p>
-        <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
+        <h2 class="auth-hero-title">The crowd<br>sets the projection.</h2>
         <p class="auth-hero-subtitle">Browse live NRL fantasy player projections before you sign up to trade.</p>
         <div class="auth-live-signal">
           <span class="auth-live-dot" aria-hidden="true"></span>
@@ -727,43 +980,7 @@ function renderGuestHero() {
 function renderGuestUnauthBottom() {
   const container = elements.homeUnauthBottom;
   if (!container) return;
-  const howItWorksHTML = `<section class="home-unauth-section home-unauth-info-wrap"><button class="home-unauth-info-button" id="home-open-onboarding" type="button"><span class="home-unauth-info-copy"><span class="home-unauth-info-label">How it works</span><strong>See how crowdIQ works</strong></span><i class="ph-fill ph-info" aria-hidden="true"></i></button></section>`;
-
-  if (isAuthenticated()) {
-    container.innerHTML = howItWorksHTML;
-    container.querySelector("#home-open-onboarding")?.addEventListener("click", () => {
-      openOnboardingPopup();
-    });
-    return;
-  }
-
-  const conversionCtaHTML = `<section class="home-unauth-section home-unauth-conversion-cta"><form class="stack-form auth-form" id="inline-auth-form"><label class="auth-field-label">CHOOSE YOUR USERNAME<input id="inline-auth-username" name="inlineAuthUsername" type="text" maxlength="24" placeholder="Johnny" required></label><button class="primary-button auth-submit-button" type="submit">Enter the Market</button><p id="inline-auth-feedback" class="feedback" aria-live="polite"></p></form></section>`;
-
-  container.innerHTML = howItWorksHTML + conversionCtaHTML;
-
-  container.querySelector("#home-open-onboarding")?.addEventListener("click", () => {
-    openOnboardingPopup();
-  });
-
-  const form = container.querySelector("#inline-auth-form");
-  const input = container.querySelector("#inline-auth-username");
-  const feedback = container.querySelector("#inline-auth-feedback");
-  form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const userName = input?.value.trim();
-    if (!userName) {
-      if (feedback) feedback.textContent = "Enter a username to continue.";
-      return;
-    }
-    if (feedback) feedback.textContent = "Entering crowdIQ...";
-    if (input) input.disabled = true;
-    if (elements.authUsername) elements.authUsername.value = userName;
-    await completeLogin(userName);
-    if (!isAuthenticated() && feedback) {
-      feedback.textContent = elements.authFeedback?.textContent || "Something went wrong.";
-    }
-    if (input) input.disabled = false;
-  });
+  container.innerHTML = "";
 }
 
 function dismissGuestHero() {
@@ -937,113 +1154,13 @@ async function handlePageResume() {
   applyLiveStateRender();
 }
 
-function hasSeenOnboarding() {
-  return localStorage.getItem(HAS_SEEN_ONBOARDING_KEY) != null;
-}
-
-function isOnboardingPreviewRequested() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const value = (params.get("onboarding") || "").toLowerCase();
-    return value === "1" || value === "true" || value === "preview";
-  } catch (error) {
-    return false;
-  }
-}
-
-function shouldShowOnboardingPopup() {
-  if (isOnboardingPreviewRequested()) {
-    return true;
-  }
-  const authPromptClosed = !elements.authGate || elements.authGate.classList.contains("is-hidden");
-  return !isAuthenticated() && uiState.activeScreen === "home" && authPromptClosed;
-}
-
-function scheduleOnboardingPopup() {
-  if (onboardingPopupTimer || uiState.onboardingHasScheduled || uiState.onboardingHasRendered || uiState.onboardingOpen || !shouldShowOnboardingPopup()) {
-    return;
-  }
-  uiState.onboardingHasScheduled = true;
-  onboardingPopupTimer = window.setTimeout(() => {
-    onboardingPopupTimer = null;
-    uiState.onboardingHasScheduled = false;
-    if (!shouldShowOnboardingPopup()) {
-      return;
-    }
-    uiState.onboardingOpen = true;
-    uiState.onboardingHasRendered = true;
-    uiState.onboardingSlideIndex = 0;
-    renderOnboardingOverlay();
-  }, ONBOARDING_POPUP_DELAY_MS);
-}
-
-function openOnboardingPopup() {
-  window.clearTimeout(onboardingPopupTimer);
-  onboardingPopupTimer = null;
-  uiState.onboardingHasScheduled = false;
-  uiState.onboardingHasRendered = true;
-  uiState.onboardingOpen = true;
-  uiState.onboardingSlideIndex = 0;
-  renderOnboardingOverlay();
-}
-
-function renderOnboardingOverlay() {
-  if (!onboardingModal) return;
-  if (!uiState.onboardingOpen) {
-    onboardingModal.hide();
-    return;
-  }
-  const isVisible = elements.onboardingOverlay?.dataset.state === "visible" || elements.onboardingOverlay?.dataset.state === "mounted";
-  if (isVisible) {
-    onboardingModal.update(uiState.onboardingSlideIndex);
-    return;
-  }
-  onboardingModal.show(uiState.onboardingSlideIndex);
-}
-
-function updateOnboardingOverlayState() {
-  onboardingModal?.update(uiState.onboardingSlideIndex);
-}
-
-function goToOnboardingSlide(nextIndex) {
-  const clampedIndex = Math.max(0, Math.min(nextIndex, getOnboardingSlideCount() - 1));
-  if (clampedIndex === uiState.onboardingSlideIndex) {
-    updateOnboardingOverlayState();
-    return;
-  }
-  uiState.onboardingSlideIndex = clampedIndex;
-  updateOnboardingOverlayState();
-}
-
-function handleOnboardingAdvance() {
-  if (uiState.onboardingSlideIndex >= getOnboardingSlideCount() - 1) {
-    dismissOnboardingPopup();
-    return;
-  }
-  goToOnboardingSlide(uiState.onboardingSlideIndex + 1);
-}
-
-function getOnboardingSlideCount() {
-  return onboardingModal?.getSlideCount?.() || 3;
-}
-
-function dismissOnboardingPopup() {
-  window.clearTimeout(onboardingPopupTimer);
-  onboardingPopupTimer = null;
-  if (!isOnboardingPreviewRequested()) {
-    localStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
-  }
-  uiState.onboardingOpen = false;
-  uiState.onboardingSlideIndex = 0;
-  onboardingModal?.hide();
-}
-
 function renderAll() {
   normalizeNavigationState();
-  scheduleOnboardingPopup();
   safelyRender("header balance", renderHeaderBalance);
+  safelyRender("app chrome", renderAppChrome);
   safelyRender("guest hero", renderGuestHero);
   safelyRender("screens", renderScreens);
+  safelyRender("how it works toolbar", renderHowItWorksToolbarButton);
   safelyRender("team toggle", renderTeamToggle);
   safelyRender("selectors", renderSelectors);
   safelyRender("home", renderHome);
@@ -1058,10 +1175,12 @@ function renderAll() {
   safelyRender("leaderboard", renderLeaderboard);
   safelyRender("profile summary", renderProfileSummary);
   safelyRender("admin shell", renderAdminShell);
+  safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
   safelyRender("admin markets", renderAdminMarkets);
   safelyRender("bot simulation", renderBotSimulation);
   safelyRender("admin table", renderAdminTable);
+  safelyRender("shareable content output", renderShareableContentOutput);
   safelyRender("opening form", syncOpeningForm);
   safelyRender("kickoff refresh", scheduleKickoffRefresh);
   safelyRender("prize pool polling", syncPrizePoolPolling);
@@ -1070,11 +1189,503 @@ function renderAll() {
 function renderHeaderBalance() {
   if (!elements.headerBalance) return;
   if (!isAuthenticated()) {
-    elements.headerBalance.innerHTML = `<button class="header-signup-button" type="button">Sign Up Now to Trade</button>`;
+    elements.headerBalance.innerHTML = `<button class="header-signup-button" type="button">Sign Up Now</button>`;
     return;
   }
   const bankroll = getDisplayedCash(currentUserName());
   elements.headerBalance.innerHTML = `<i class="ph-fill ph-wallet header-balance-icon" aria-hidden="true"></i><span class="header-balance-label">Wallet</span><strong>${formatStake(bankroll)}</strong>`;
+}
+
+function openAppMenu() {
+  uiState.appMenuOpen = true;
+  renderAppChrome();
+}
+
+function closeAppMenu() {
+  if (!uiState.appMenuOpen) return;
+  uiState.appMenuOpen = false;
+  renderAppChrome();
+}
+
+function openAppModal(modalKey) {
+  if (!APP_MODAL_TITLES[modalKey]) return;
+  uiState.appMenuOpen = false;
+  uiState.activeAppModal = modalKey;
+  if (modalKey !== "contact-us") {
+    uiState.contactFormSubmitted = false;
+  }
+  renderAppChrome();
+}
+
+function closeAppModal() {
+  if (!uiState.activeAppModal) return;
+  uiState.activeAppModal = "";
+  renderAppChrome();
+}
+
+async function submitAccountSettingsUsername() {
+  const input = document.getElementById("account-settings-username");
+  if (!input) return;
+  const nextUserName = input.value.trim();
+  const currentName = currentUserName();
+  if (!nextUserName || nextUserName === currentName) {
+    input.value = currentName;
+    return;
+  }
+  await completeLogin(nextUserName);
+  if (isAuthenticated()) {
+    input.value = currentUserName();
+  } else {
+    input.value = currentName;
+  }
+}
+
+function handleAppMenuSignup() {
+  uiState.appMenuOpen = false;
+  renderAppChrome();
+  if (isAuthenticated()) return;
+  openAuthPrompt("signup");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function ensureAppChromeHost() {
+  let host = document.getElementById("app-chrome-host");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "app-chrome-host";
+    host.className = "app-chrome-host";
+    document.body.appendChild(host);
+  }
+  return host;
+}
+
+function renderAppChrome() {
+  const host = document.getElementById("app-chrome-host");
+  const hasVisibleChrome = uiState.appMenuOpen || Boolean(uiState.activeAppModal);
+  if (!hasVisibleChrome) {
+    if (host) host.remove();
+    document.body.classList.remove("app-chrome-open");
+    appChromeRenderKey = "";
+    return;
+  }
+
+  const renderKey = JSON.stringify({
+    menuOpen: uiState.appMenuOpen,
+    activeModal: uiState.activeAppModal,
+    contactSubmitted: uiState.contactFormSubmitted
+  });
+  const chromeHost = ensureAppChromeHost();
+  if (appChromeRenderKey === renderKey) {
+    document.body.classList.add("app-chrome-open");
+    return;
+  }
+  appChromeRenderKey = renderKey;
+  chromeHost.innerHTML = `
+    ${uiState.appMenuOpen ? appMenuMarkup() : ""}
+    ${uiState.activeAppModal ? appModalMarkup(uiState.activeAppModal) : ""}
+  `;
+
+  chromeHost.querySelector(".app-menu-backdrop")?.addEventListener("click", () => {
+    closeAppMenu();
+  });
+  chromeHost.querySelector(".app-menu-close")?.addEventListener("click", () => {
+    closeAppMenu();
+  });
+  chromeHost.querySelectorAll("[data-app-modal-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openAppModal(button.dataset.appModalTarget);
+    });
+  });
+  chromeHost.querySelectorAll("[data-app-screen-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeAppMenu();
+      if (button.dataset.appScreenTarget === "leaderboard") {
+        openFullLeaderboard();
+      }
+    });
+  });
+  chromeHost.querySelector("[data-app-signup]")?.addEventListener("click", () => {
+    handleAppMenuSignup();
+  });
+  chromeHost.querySelector(".app-modal-close")?.addEventListener("click", () => {
+    closeAppModal();
+  });
+  chromeHost.querySelector(".app-modal-backdrop")?.addEventListener("click", () => {
+    closeAppModal();
+  });
+  chromeHost.querySelector("#account-settings-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitAccountSettingsUsername();
+  });
+  chromeHost.querySelector("#account-settings-username")?.addEventListener("change", async () => {
+    await submitAccountSettingsUsername();
+  });
+  chromeHost.querySelector("#account-settings-logout")?.addEventListener("click", async () => {
+    closeAppModal();
+    await handleLogout();
+  });
+  chromeHost.querySelector("#account-settings-admin")?.addEventListener("click", () => {
+    closeAppModal();
+    handleOpenAdminTools();
+  });
+  chromeHost.querySelector("#contact-us-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    uiState.contactFormSubmitted = true;
+    renderAppChrome();
+  });
+  chromeHost.querySelector("#contact-email-input")?.addEventListener("input", (event) => {
+    uiState.contactEmailDraft = event.target.value;
+  });
+  chromeHost.querySelector("#contact-message-input")?.addEventListener("input", (event) => {
+    uiState.contactMessageDraft = event.target.value;
+  });
+  chromeHost.querySelectorAll("[data-full-leaderboard-market-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      closeAppModal();
+      openMarketFromHome(button.dataset.fullLeaderboardMarketId);
+    });
+  });
+
+  document.body.classList.add("app-chrome-open");
+}
+
+function appMenuMarkup() {
+  const signedIn = isAuthenticated();
+  const accountHeader = signedIn
+    ? `<button class="app-menu-account-header" type="button" data-app-modal-target="account-settings"><span class="app-menu-account-name">${escapeHtml(currentUserName())}</span><span class="app-menu-account-subtext">View Account Settings</span></button><div class="app-menu-divider" aria-hidden="true"></div>`
+    : "";
+  const signupRow = signedIn
+    ? ""
+    : `<div class="app-menu-footer"><div class="app-menu-divider" aria-hidden="true"></div><button class="app-menu-signup-button" type="button" data-app-signup>Sign Up Now</button></div>`;
+  return `
+    <div class="app-menu-overlay">
+      <button class="app-menu-backdrop" type="button" aria-label="Close navigation menu"></button>
+      <aside class="app-menu-panel" aria-label="App menu">
+        <button class="app-menu-close icon-tap-button" type="button" aria-label="Close navigation menu">✕</button>
+        <div class="app-menu-list">
+          ${accountHeader}
+          <button class="app-menu-item" type="button" data-app-modal-target="how-it-works"><i class="ph-fill ph-lightbulb app-menu-item-icon" aria-hidden="true"></i><span>How It Works</span></button>
+          <button class="app-menu-item" type="button" data-app-screen-target="leaderboard"><i class="ph-fill ph-trophy app-menu-item-icon" aria-hidden="true"></i><span>Leaderboard</span></button>
+          <button class="app-menu-item" type="button" data-app-modal-target="contact-us"><i class="ph-fill ph-envelope-simple app-menu-item-icon" aria-hidden="true"></i><span>Contact Us</span></button>
+          ${signupRow}
+        </div>
+      </aside>
+    </div>
+  `;
+}
+
+function appModalMarkup(modalKey) {
+  if (isHomeLeaderboardModal(modalKey)) {
+    return homeLeaderboardModalMarkup(modalKey);
+  }
+  if (isInfoCardModal(modalKey)) {
+    return infoCardModalMarkup(modalKey);
+  }
+  const isHowItWorks = modalKey === "how-it-works";
+  return `
+    <div class="app-modal-overlay">
+      <button class="app-modal-backdrop" type="button" aria-label="Close ${APP_MODAL_TITLES[modalKey]}"></button>
+      <section class="app-modal-shell ${isHowItWorks ? "app-modal-shell-flow" : ""}" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
+        <header class="app-modal-header">
+          <h2 id="app-modal-title">${APP_MODAL_TITLES[modalKey]}</h2>
+          <button class="app-modal-close icon-tap-button" type="button" aria-label="Close ${APP_MODAL_TITLES[modalKey]}">✕</button>
+        </header>
+        <div class="app-modal-body ${isHowItWorks ? "app-modal-body-flow" : ""}">
+          ${appModalContentMarkup(modalKey)}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function isInfoCardModal(modalKey) {
+  return modalKey === "prize-pool-info" || modalKey === "market-confidence-info";
+}
+
+function isHomeLeaderboardModal(modalKey) {
+  return modalKey === "home-value-leaderboard" || modalKey === "home-projected-leaderboard";
+}
+
+function homeLeaderboardModalMarkup(modalKey) {
+  const config = getHomeLeaderboardModalConfig(modalKey);
+  return `
+    <div class="app-modal-overlay home-full-leaderboard-overlay">
+      <button class="app-modal-backdrop" type="button" aria-label="Close ${config.title}"></button>
+      <section class="home-full-leaderboard-modal" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
+        <button class="app-modal-close home-full-leaderboard-close" type="button" aria-label="Close ${config.title}">✕</button>
+        <div class="home-full-leaderboard-inner">
+          <header class="home-full-leaderboard-header">
+            <div class="home-full-leaderboard-brand-row">
+              <h1 class="brand-wordmark home-full-leaderboard-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
+              <span class="home-full-leaderboard-round-badge">ROUND ${activeRoundNumber()}</span>
+            </div>
+            <div class="home-full-leaderboard-divider" aria-hidden="true"></div>
+            <div class="home-full-leaderboard-title-block">
+              <h2 id="app-modal-title">${config.title}</h2>
+              <p>${config.subtitle}</p>
+            </div>
+          </header>
+          <div class="home-full-leaderboard-list">
+            ${config.variant === "value" ? homeValueLeaderboardHeaderMarkup() : ""}
+            ${config.rows.map((row, index) => homeLeaderboardModalRowMarkup(row, index, config)).join("")}
+          </div>
+          <footer class="home-full-leaderboard-footer">
+            <span>Live crowd projections · NRL Fantasy</span>
+            <span>crowdiq.live</span>
+          </footer>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function homeValueLeaderboardHeaderMarkup() {
+  return `
+    <div class="home-full-leaderboard-value-list-header" aria-hidden="true">
+      <span></span>
+      <span class="home-full-leaderboard-value-list-labels">
+        <span>NRL Price</span>
+        <span>CrowdIQ</span>
+        <span></span>
+      </span>
+    </div>
+  `;
+}
+
+function getHomeLeaderboardModalConfig(modalKey) {
+  const homeData = getHomeLeaderboardPreviewData();
+  if (modalKey === "home-value-leaderboard") {
+    return {
+      variant: "value",
+      title: "Top Value Players",
+      subtitle: "Best projection gaps vs NRL Fantasy price",
+      rows: homeData.bestValue.slice(0, 10)
+    };
+  }
+  return {
+    variant: "projected",
+    title: "Top Projected Players",
+    subtitle: "Highest crowd projections this round",
+    rows: homeData.topProjected.slice(0, 10),
+    metricFormatter: (row) => {
+      const market = row.market || row;
+      return `<strong class="home-full-leaderboard-metric">${market.currentLine.toFixed(1)} <span>pts</span></strong>`;
+    }
+  };
+}
+
+function homeLeaderboardModalRowMarkup(row, index, config) {
+  const market = row.market || row;
+  const matchup = matchupContext(market);
+  const valueMetaMarkup = `
+    <span class="home-full-leaderboard-value-meta">
+      <span class="home-full-leaderboard-value-matchup"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${homeTeamAbbreviation(market.team)}</span><span>${escapeHtml(`vs ${homeTeamAbbreviation(matchup.opponent)}`)}</span></span>
+      <span class="home-full-leaderboard-value-position">${escapeHtml(market.position)}</span>
+    </span>
+  `;
+  return `
+    <button class="home-full-leaderboard-row" type="button" data-full-leaderboard-market-id="${market.id}">
+      <span class="home-full-leaderboard-accent" aria-hidden="true"></span>
+      <span class="home-full-leaderboard-rank ${homeRankTone(index)}">${index + 1}</span>
+      <span class="home-full-leaderboard-copy">
+        <strong>${escapeHtml(market.playerName)}</strong>
+        ${config.variant === "value"
+          ? valueMetaMarkup
+          : `<span class="home-full-leaderboard-meta"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${homeTeamAbbreviation(market.team)}</span><span>${escapeHtml(market.position)}</span></span>`}
+      </span>
+      ${config.variant === "value" ? homeValueLeaderboardMetricMarkup(row) : config.metricFormatter(row)}
+    </button>
+  `;
+}
+
+function homeValueLeaderboardMetricMarkup(row) {
+  const market = row.market || row;
+  const impliedScore = Number(row.impliedScore);
+  const valueGap = Number(row.value);
+  return `
+    <span class="home-full-leaderboard-value-columns">
+      <span class="home-full-leaderboard-value-values">
+        <span class="home-full-leaderboard-value-price">${Number.isFinite(impliedScore) ? impliedScore.toFixed(1) : "--"}</span>
+        <strong class="home-full-leaderboard-value-projection">${market.currentLine.toFixed(1)}</strong>
+        <span class="home-full-leaderboard-value-gap">${Number.isFinite(valueGap) ? formatSignedLine(Math.abs(valueGap)) : "--"}</span>
+      </span>
+    </span>
+  `;
+}
+
+function infoCardModalMarkup(modalKey) {
+  const config = modalKey === "prize-pool-info"
+    ? {
+        kicker: "PRIZE POOL",
+        title: "How the Prize Pool works.",
+        body: prizePoolInfoBodyMarkup(),
+        illustration: prizePoolInfoIllustrationMarkup()
+      }
+    : {
+        kicker: "MARKET CONFIDENCE",
+        title: "What is Market Confidence?",
+        body: `<p>${MARKET_CONFIDENCE_EXPLANATION}</p>`,
+        illustration: marketConfidenceInfoIllustrationMarkup()
+      };
+  return `
+    <div class="app-modal-overlay app-modal-overlay-card">
+      <button class="app-modal-backdrop" type="button" aria-label="Close ${APP_MODAL_TITLES[modalKey]}"></button>
+      <section class="info-card-modal" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
+        <button class="app-modal-close info-card-modal-close icon-tap-button" type="button" aria-label="Close ${APP_MODAL_TITLES[modalKey]}">✕</button>
+        <header class="info-card-modal-topbar">
+          <span class="info-card-modal-kicker">${config.kicker}</span>
+        </header>
+        <div class="info-card-modal-illustration" aria-hidden="true">
+          ${config.illustration}
+        </div>
+        <h2 class="info-card-modal-title" id="app-modal-title">${config.title}</h2>
+        <div class="info-card-modal-copy">${config.body}</div>
+      </section>
+    </div>
+  `;
+}
+
+function prizePoolInfoBodyMarkup() {
+  return PRIZE_POOL_EXPLANATION_PARAGRAPHS.map((paragraph, index) => `
+    <article class="info-rule-row">
+      <span class="info-rule-label">${PRIZE_POOL_EXPLANATION_LABELS[index]}</span>
+      <p>${paragraph}</p>
+    </article>
+  `).join("");
+}
+
+function prizePoolInfoIllustrationMarkup() {
+  return `
+    <div class="info-preview-prize-pool-icon" aria-hidden="true">
+      <i class="ph-fill ph-trophy"></i>
+    </div>
+  `;
+}
+
+function marketConfidenceInfoIllustrationMarkup() {
+  return `
+    <div class="info-preview-confidence-dials" aria-hidden="true">
+      ${marketConfidenceModalDialMarkup(0)}
+      ${marketConfidenceModalDialMarkup(50)}
+      ${marketConfidenceModalDialMarkup(100)}
+    </div>
+  `;
+}
+
+function marketConfidenceModalDialMarkup(confidence) {
+  const tone = confidence >= 70 ? "high" : confidence >= 40 ? "mid" : "low";
+  const needle = -78 + (Math.max(0, Math.min(100, confidence)) / 100) * 156;
+  return `
+    <div class="info-preview-confidence-dial-group ${tone}">
+      <span class="market-confidence market-confidence-preview ${tone}" aria-label="Market confidence ${confidence}%">
+        <span class="market-confidence-body">
+          <span class="market-confidence-dial" style="--needle-angle:${needle}deg">
+            <svg viewBox="0 0 120 76" aria-hidden="true">
+              <path class="dial-arc" d="M14 62 A46 46 0 0 1 106 62" pathLength="100" />
+              <path class="dial-tick" d="M24 58 L31 55" />
+              <path class="dial-tick" d="M38 39 L42 45" />
+              <path class="dial-tick" d="M60 30 L60 38" />
+              <path class="dial-tick" d="M82 39 L78 45" />
+              <path class="dial-tick" d="M96 58 L89 55" />
+              <text x="18" y="74">E</text>
+              <text x="98" y="74">F</text>
+            </svg>
+            <span class="market-confidence-needle"></span>
+            <span class="market-confidence-pivot"></span>
+          </span>
+        </span>
+      </span>
+      <span class="info-preview-confidence-caption">${confidence}%</span>
+    </div>
+  `;
+}
+
+function appModalContentMarkup(modalKey) {
+  if (modalKey === "how-it-works") {
+    return HOW_IT_WORKS_SECTIONS.map((section) => `
+      <section class="app-modal-flow-section">
+        <div class="app-modal-flow-heading">
+          <span class="app-modal-flow-accent" aria-hidden="true"></span>
+          <h3>${section.title}</h3>
+        </div>
+        <div class="app-modal-flow-copy">
+          ${section.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join("")}
+        </div>
+      </section>
+    `).join("");
+  }
+  if (modalKey === "account-settings") {
+    return `
+      <section class="app-modal-flow-section app-modal-settings-section">
+        <p class="eyebrow">Profile Settings</p>
+        <div class="app-modal-settings-heading">
+          <h3>Account details</h3>
+        </div>
+        <form id="account-settings-form" class="account-settings-form">
+          <label class="account-settings-field">
+            <span>Username</span>
+            <input id="account-settings-username" name="accountSettingsUsername" type="text" maxlength="24" value="${escapeHtml(currentUserName())}" placeholder="Casey">
+          </label>
+        </form>
+      </section>
+      <section class="app-modal-flow-section app-modal-settings-section">
+        <p class="eyebrow">Account Actions</p>
+        <div class="app-modal-settings-heading">
+          <h3>Account actions</h3>
+        </div>
+        <p class="section-meta app-modal-settings-subtext">Manage your session and admin access.</p>
+        <div class="account-settings-actions">
+          <button id="account-settings-logout" class="secondary-button account-settings-action-button" type="button">Log out</button>
+          <button id="account-settings-admin" class="secondary-button account-settings-action-button" type="button">Open admin tools</button>
+        </div>
+      </section>
+    `;
+  }
+  if (modalKey === "leaderboard") {
+    return `
+      <section class="app-modal-section">
+        <h3>Leaderboard</h3>
+        <p>Leaderboard coming soon.</p>
+      </section>
+    `;
+  }
+  if (modalKey === "contact-us") {
+    return `
+      <section class="app-modal-section">
+        <form id="contact-us-form" class="contact-form">
+          <label class="contact-form-field">
+            <span>Your Email</span>
+            <input
+              id="contact-email-input"
+              type="email"
+              value="${escapeHtml(uiState.contactEmailDraft)}"
+              placeholder="you@example.com"
+              autocomplete="email"
+            >
+          </label>
+          <label class="contact-form-field">
+            <span>Your Message</span>
+            <textarea
+              id="contact-message-input"
+              rows="5"
+              placeholder="How can we help?"
+            >${escapeHtml(uiState.contactMessageDraft)}</textarea>
+          </label>
+          <button class="primary-button contact-submit-button" type="submit">Send Message</button>
+          ${uiState.contactFormSubmitted ? `<p class="contact-confirmation">Thanks for reaching out — we'll get back to you soon.</p>` : ""}
+        </form>
+      </section>
+    `;
+  }
+  return "";
 }
 
 function renderScreens() {
@@ -1599,77 +2210,187 @@ function renderPortfolioPrizePoolCard() {
   });
 }
 
-function renderPositionCards(container, trades, emptyMessage) {
-  const template = document.getElementById("position-card-template");
-  container.innerHTML = "";
-  if (!trades.length) {
-    container.innerHTML = `<div class="portfolio-empty-state"><strong>No positions yet</strong><span>${emptyMessage}</span></div>`;
-    return;
-  }
-  trades.forEach((trade) => {
-      const market = findMarket(trade.marketId);
-      const card = template.content.firstElementChild.cloneNode(true);
-      const status = getTradeStatus(trade);
-      const plValue = trade.result ? trade.result.profit : market ? (market.currentLine - trade.entryLine) * (trade.side === "OVER" ? 1 : -1) : 0;
-      const timeLabel = trade.result ? `${formatTradeResultLabel(trade.result)} · ${formatTimestamp(trade.timestamp)}` : `Updated ${formatTimestamp(trade.timestamp)}`;
-      applyStatusChip(card.querySelector(".status-chip"), status);
-      card.querySelector(".position-side-badge").textContent = trade.side;
-      card.querySelector(".position-side-badge").className = `position-side-badge ${trade.side === "OVER" ? "side-over" : "side-under"}`;
-      card.querySelector(".position-title").textContent = market?.playerName ?? "Unknown player";
-      card.querySelector(".position-meta").textContent = `${market?.position ?? "Market"} Â· Line ${trade.entryLine.toFixed(1)} Â· Stake ${formatStake(trade.stake)}`;
-      card.querySelector(".position-pl-value").textContent = formatSignedStake(plValue);
-      card.querySelector(".position-pl-value").className = `position-pl-value ${plValue > 0 ? "positive" : plValue < 0 ? "negative" : ""}`;
-      card.querySelector(".position-time").textContent = timeLabel;
-      container.appendChild(card);
-    });
-}
+let activePortfolioSwipeCard = null;
+let portfolioSwipeDismissBound = false;
+const PORTFOLIO_SWIPE_ACTION_WIDTH = 80;
+const PORTFOLIO_SWIPE_OPEN_THRESHOLD = 40;
 
 function renderPortfolioPositionCards(container, trades, emptyMessage) {
-  const template = document.getElementById("position-card-template");
   container.innerHTML = "";
+  activePortfolioSwipeCard = null;
+  bindPortfolioPositionSwipeDismiss();
   if (!trades.length) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No positions yet</strong><span>${emptyMessage}</span></div>`;
     return;
   }
   trades.forEach((trade) => {
     const market = findMarket(trade.marketId);
-    const card = template.content.firstElementChild.cloneNode(true);
     const status = portfolioPositionStatus(trade);
-    const currentLine = trade.currentLine ?? market?.currentLine;
-    const plValue = trade.result ? trade.result.profit : currentLine !== undefined ? (currentLine - trade.entryLine) * (trade.side === "OVER" ? 1 : -1) : 0;
-    const timeLabel = `Updated ${formatTimestamp(trade.timestamp)}`;
-    applyStatusChip(card.querySelector(".status-chip"), status);
-    card.querySelector(".position-side-badge").textContent = trade.side;
-    card.querySelector(".position-side-badge").className = `position-side-badge ${trade.side === "OVER" ? "side-over" : "side-under"}`;
-    card.querySelector(".position-title").textContent = trade.playerName ?? market?.playerName ?? "Unknown player";
-    const lineLabel = trade.side === "OVER" ? trade.entryOverLine ?? trade.entryLine : trade.entryUnderLine ?? trade.entryLine;
-    card.querySelector(".position-meta").textContent = `${trade.position ?? market?.position ?? "Market"} | Line ${Number(lineLabel).toFixed(1)} | Stake ${formatStake(trade.stake)}`;
-    card.querySelector(".position-pl-value").textContent = formatSignedStake(plValue);
-    card.querySelector(".position-pl-value").className = `position-pl-value ${plValue > 0 ? "positive" : plValue < 0 ? "negative" : ""}`;
-    card.querySelector(".position-time").textContent = timeLabel;
-    card.classList.remove("is-win", "is-loss", "is-unmatched", "is-matched", "is-settled");
-    if (trade.result?.outcome === "WIN" || trade.status === "MATCHED") {
-      card.classList.add("is-win");
-    } else if (trade.result?.outcome === "LOSS" || trade.result?.outcome === "MIDDLE") {
-      card.classList.add("is-loss");
-    } else if (trade.status === "PENDING" || trade.status === "PARTIALLY_MATCHED") {
-      card.classList.add("is-unmatched");
-    } else if (trade.result || trade.status === "CANCELLED") {
-      card.classList.add("is-settled");
-    }
-    const actionButton = card.querySelector(".position-action");
-    if ((trade.cancelableOrderIds || []).length) {
-      actionButton.hidden = false;
-      actionButton.textContent = "Cancel";
-      actionButton.addEventListener("click", async (event) => {
+    const entryProjection = trade.side === "OVER" ? trade.entryOverLine ?? trade.entryLine : trade.entryUnderLine ?? trade.entryLine;
+    const playerName = trade.playerName ?? market?.playerName ?? "Unknown player";
+    const teamName = trade.team ?? market?.team ?? "";
+    const teamLabel = homeTeamAbbreviation(teamName);
+    const teamStyle = homeTeamPillStyle(teamName);
+    const matchup = matchupContext(market || {});
+    const kickoffLabel = formatPortfolioCardKickoff(market);
+    const projectionDirectionLabel = trade.side === "OVER" ? "Over" : "Under";
+    const projectionValueLabel = Number(entryProjection).toFixed(1);
+    const isMatched = status.label === "Matched";
+    const statusLabel = isMatched ? "MATCHED" : "UNMATCHED";
+    const cancelableOrderIds = Array.isArray(trade.cancelableOrderIds) ? trade.cancelableOrderIds : [];
+    const canSwipeToCancel = !isMatched && cancelableOrderIds.length > 0;
+    const card = document.createElement("article");
+    card.className = `portfolio-position-card ${isMatched ? "is-matched" : "is-unmatched"}${canSwipeToCancel ? " is-swipeable" : ""}`;
+    card.innerHTML = `
+      ${canSwipeToCancel ? `<button class="portfolio-position-action-button" type="button" aria-label="Cancel unmatched position"><span aria-hidden="true">✕</span></button>` : ""}
+      <div class="portfolio-position-swipe-shell">
+        <div class="portfolio-position-shell">
+          <div class="portfolio-position-status-rail ${isMatched ? "is-matched" : "is-unmatched"}">
+            <span class="portfolio-position-status-text">${statusLabel}</span>
+          </div>
+          <div class="portfolio-position-body">
+            <div class="portfolio-position-row portfolio-position-row-primary">
+              <h4 class="portfolio-position-title">${escapeHtml(playerName)}</h4>
+              <div class="portfolio-position-stake-block">
+                <span class="portfolio-position-stake-label">Stake</span>
+                <strong class="portfolio-position-stake">${formatStake(trade.stake)}</strong>
+              </div>
+            </div>
+            <div class="portfolio-position-row portfolio-position-row-secondary">
+              <div class="portfolio-position-meta-stack">
+                <div class="portfolio-position-matchup">
+                  <span class="portfolio-position-team-badge" style="${teamStyle}">${escapeHtml(teamLabel)}</span>
+                  <span class="portfolio-position-matchup-text">vs ${escapeHtml(matchup.opponent || "Opponent")}</span>
+                </div>
+                <span class="portfolio-position-kickoff">${escapeHtml(kickoffLabel)}</span>
+              </div>
+              <strong class="portfolio-position-projection"><span class="portfolio-position-projection-direction">${projectionDirectionLabel}</span> <span class="portfolio-position-projection-value">${projectionValueLabel}</span></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    if (canSwipeToCancel) {
+      const actionButton = card.querySelector(".portfolio-position-action-button");
+      actionButton?.addEventListener("click", async (event) => {
         event.stopPropagation();
-        await cancelPendingOrders(trade.cancelableOrderIds);
+        await cancelPendingOrders(cancelableOrderIds);
       });
-    } else {
-      actionButton.hidden = true;
+      bindPortfolioPositionCardSwipe(card);
     }
     container.appendChild(card);
   });
+}
+
+function bindPortfolioPositionSwipeDismiss() {
+  if (portfolioSwipeDismissBound) return;
+  document.addEventListener("pointerdown", (event) => {
+    if (!activePortfolioSwipeCard) return;
+    if (activePortfolioSwipeCard.contains(event.target)) return;
+    closePortfolioPositionSwipe(activePortfolioSwipeCard);
+  });
+  portfolioSwipeDismissBound = true;
+}
+
+function setPortfolioPositionSwipeState(card, isOpen) {
+  if (!card?.classList.contains("is-swipeable")) return;
+  const shell = card.querySelector(".portfolio-position-swipe-shell");
+  if (!shell) return;
+  if (isOpen && activePortfolioSwipeCard && activePortfolioSwipeCard !== card) {
+    closePortfolioPositionSwipe(activePortfolioSwipeCard);
+  }
+  card.classList.toggle("is-swipe-open", isOpen);
+  shell.style.transform = isOpen ? `translateX(-${PORTFOLIO_SWIPE_ACTION_WIDTH}px)` : "translateX(0px)";
+  activePortfolioSwipeCard = isOpen ? card : activePortfolioSwipeCard === card ? null : activePortfolioSwipeCard;
+}
+
+function closePortfolioPositionSwipe(card) {
+  setPortfolioPositionSwipeState(card, false);
+}
+
+function bindPortfolioPositionCardSwipe(card) {
+  const shell = card.querySelector(".portfolio-position-swipe-shell");
+  if (!shell) return;
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let startOffset = 0;
+  let currentOffset = 0;
+  let isDragging = false;
+
+  const applyOffset = (offset) => {
+    currentOffset = Math.max(-PORTFOLIO_SWIPE_ACTION_WIDTH, Math.min(0, offset));
+    shell.style.transform = `translateX(${currentOffset}px)`;
+  };
+
+  const finishGesture = () => {
+    if (pointerId !== null && shell.hasPointerCapture?.(pointerId)) {
+      shell.releasePointerCapture(pointerId);
+    }
+    const shouldOpen = currentOffset <= -PORTFOLIO_SWIPE_OPEN_THRESHOLD;
+    card.classList.remove("is-swipe-dragging");
+    setPortfolioPositionSwipeState(card, shouldOpen);
+    pointerId = null;
+    isDragging = false;
+    startOffset = 0;
+    currentOffset = shouldOpen ? -PORTFOLIO_SWIPE_ACTION_WIDTH : 0;
+  };
+
+  shell.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (activePortfolioSwipeCard && activePortfolioSwipeCard !== card) {
+      closePortfolioPositionSwipe(activePortfolioSwipeCard);
+    }
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    startOffset = card.classList.contains("is-swipe-open") ? -PORTFOLIO_SWIPE_ACTION_WIDTH : 0;
+    currentOffset = startOffset;
+    isDragging = false;
+    shell.setPointerCapture?.(pointerId);
+  });
+
+  shell.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== pointerId) return;
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+    if (!isDragging) {
+      if (Math.abs(deltaX) < 8) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) {
+        if (shell.hasPointerCapture?.(pointerId)) {
+          shell.releasePointerCapture(pointerId);
+        }
+        pointerId = null;
+        return;
+      }
+      isDragging = true;
+      card.classList.add("is-swipe-dragging");
+    }
+    event.preventDefault();
+    applyOffset(startOffset + deltaX);
+  });
+
+  shell.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== pointerId) return;
+    finishGesture();
+  });
+
+  shell.addEventListener("pointercancel", (event) => {
+    if (event.pointerId !== pointerId) return;
+    finishGesture();
+  });
+}
+
+function formatPortfolioCardKickoff(market) {
+  const game = roundGames.find((roundGame) => roundGame.id === market?.gameId);
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return game?.kickoff || "";
+  const date = new Date(kickoffAt);
+  const weekday = date.toLocaleString([], { weekday: "short" });
+  const day = date.toLocaleString([], { day: "numeric" });
+  const month = date.toLocaleString([], { month: "short" });
+  const time = date.toLocaleString([], { hour: "numeric", minute: "2-digit" });
+  return `${weekday} ${day} ${month} · ${time}`;
 }
 
 function renderPortfolioFilters() {
@@ -2094,11 +2815,10 @@ function renderPrizePool() {
         <div class="prize-pool-payout-grid">${payouts}</div>
       </section>
       <section class="section-block prize-pool-how-block">
-        <button id="prize-pool-toggle-how" class="prize-pool-collapse-button" type="button" aria-expanded="${uiState.prizePoolHowItWorksExpanded}">
-          <span>How it works</span>
-          <span aria-hidden="true">${uiState.prizePoolHowItWorksExpanded ? "−" : "+"}</span>
-        </button>
-        ${uiState.prizePoolHowItWorksExpanded ? `<div class="prize-pool-how-copy"><p>Starting 13: one player per position, randomly assigned.</p><p>Interchange 4: randomly assigned, any position. Replaces any starting player who does not play due to injury or non-selection.</p><p>Tiebreak: if two users finish with equal correct %, the user with more correct interchange picks wins.</p><p>Substitution order: first interchange replaces first unavailable starting player, in the order they were assigned.</p></div>` : ""}
+        <div class="prize-pool-info-row">
+          <span class="prize-pool-how-label">How it works</span>
+          <button id="prize-pool-info" class="prize-pool-info-button" type="button" aria-label="Explain Prize Pool">i</button>
+        </div>
       </section>
       <div class="prize-pool-sticky-cta">
         ${view.canEnter ? `<button id="prize-pool-enter" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "start" ? "Opening..." : "Enter for $10"}</button>` : `<button class="secondary-button prize-pool-cta-muted" type="button" disabled>Entry Closed</button>`}
@@ -2110,9 +2830,8 @@ function renderPrizePool() {
   elements.prizePoolShell.querySelector("#prize-pool-enter")?.addEventListener("click", async () => {
     await startPrizePoolDraft();
   });
-  elements.prizePoolShell.querySelector("#prize-pool-toggle-how")?.addEventListener("click", () => {
-    uiState.prizePoolHowItWorksExpanded = !uiState.prizePoolHowItWorksExpanded;
-    renderPrizePool();
+  elements.prizePoolShell.querySelector("#prize-pool-info")?.addEventListener("click", () => {
+    openAppModal("prize-pool-info");
   });
   animatePrizePoolDeltaValue();
 }
@@ -2649,6 +3368,7 @@ function renderProfileSummary() {
 function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
+  elements.adminShell.classList.toggle("shareable-active", uiState.adminShareableView !== "main");
   if (elements.adminRoundSelect) {
     elements.adminRoundSelect.innerHTML = getAvailableRoundOptions()
       .map((roundNumber) => `<option value="${roundNumber}">${roundLabelForNumber(roundNumber)}</option>`)
@@ -2665,6 +3385,702 @@ function renderAdminShell() {
   if (elements.undoSettlementButton) {
     elements.undoSettlementButton.disabled = !state.lastSettlementBatch;
   }
+}
+
+function openShareableContentLibrary() {
+  uiState.adminShareableView = "library";
+  uiState.adminShareableTemplateId = "";
+  uiState.adminShareablePlayerQuery = "";
+  uiState.adminShareableSelectedMarketId = "";
+  uiState.adminShareableSelectedGameId = "";
+  uiState.adminShareableAspectRatio = "1:1";
+  uiState.adminShareableTheme = "dark";
+  renderAdminShareableWorkspace();
+}
+
+function selectShareableTemplate(templateId) {
+  uiState.adminShareableTemplateId = templateId;
+  uiState.adminShareableView = "config";
+  uiState.adminShareableAspectRatio = "1:1";
+  uiState.adminShareableTheme = "dark";
+  uiState.adminShareablePlayerQuery = "";
+  uiState.adminShareableSelectedMarketId = "";
+  uiState.adminShareableSelectedGameId = "";
+  renderAdminShareableWorkspace();
+}
+
+function closeShareableContentOutput() {
+  uiState.adminShareableOutputOpen = false;
+  renderShareableContentOutput();
+}
+
+function handleAdminShareableWorkspaceClick(event) {
+  const backButton = event.target.closest("[data-shareable-back]");
+  if (backButton) {
+    if (uiState.adminShareableView === "config") {
+      uiState.adminShareableView = "library";
+    } else {
+      uiState.adminShareableView = "main";
+      uiState.adminShareableTemplateId = "";
+      uiState.adminShareablePlayerQuery = "";
+    }
+    renderAdminShareableWorkspace();
+    return;
+  }
+  const templateButton = event.target.closest("[data-shareable-template-id]");
+  if (templateButton) {
+    selectShareableTemplate(templateButton.dataset.shareableTemplateId);
+    return;
+  }
+  const ratioButton = event.target.closest("[data-shareable-aspect]");
+  if (ratioButton) {
+    uiState.adminShareableAspectRatio = ratioButton.dataset.shareableAspect;
+    renderAdminShareableWorkspace();
+    return;
+  }
+  const themeButton = event.target.closest("[data-shareable-theme]");
+  if (themeButton) {
+    uiState.adminShareableTheme = themeButton.dataset.shareableTheme;
+    renderAdminShareableWorkspace();
+    return;
+  }
+  const playerButton = event.target.closest("[data-shareable-market-id]");
+  if (playerButton) {
+    const market = findMarket(playerButton.dataset.shareableMarketId);
+    uiState.adminShareableSelectedMarketId = market?.id || "";
+    uiState.adminShareablePlayerQuery = market?.playerName || "";
+    renderAdminShareableWorkspace();
+    return;
+  }
+  const generateButton = event.target.closest("[data-shareable-generate]");
+  if (generateButton && !generateButton.disabled && isShareableContentReady()) {
+    uiState.adminShareableOutputOpen = true;
+    renderShareableContentOutput();
+  }
+}
+
+function handleAdminShareableWorkspaceInput(event) {
+  if (event.target.matches("[data-shareable-player-search]")) {
+    uiState.adminShareablePlayerQuery = event.target.value;
+    renderAdminShareableWorkspace();
+  }
+}
+
+function handleAdminShareableWorkspaceChange(event) {
+  if (event.target.matches("[data-shareable-match-select]")) {
+    uiState.adminShareableSelectedGameId = event.target.value;
+    renderAdminShareableWorkspace();
+  }
+}
+
+function renderAdminShareableWorkspace() {
+  if (!elements.adminShareableWorkspace) return;
+  elements.adminShell?.classList.toggle("shareable-active", uiState.adminShareableView !== "main");
+  if (uiState.adminShareableView === "main" || !uiState.adminOpen) {
+    elements.adminShareableWorkspace.innerHTML = "";
+    return;
+  }
+  if (uiState.adminShareableView === "library") {
+    elements.adminShareableWorkspace.innerHTML = shareableTemplateLibraryMarkup();
+    return;
+  }
+  elements.adminShareableWorkspace.innerHTML = shareableTemplateConfigMarkup();
+}
+
+function shareableTemplateLibraryMarkup() {
+  return `
+    <section class="admin-shareable-screen">
+      ${shareableWorkspaceHeaderMarkup()}
+      <div class="admin-shareable-library">
+        ${SHAREABLE_CONTENT_TEMPLATES.map((template) => `
+          <button class="admin-shareable-template-card" type="button" data-shareable-template-id="${template.id}">
+            <span class="admin-shareable-template-copy">
+              <strong>${escapeHtml(template.name)}</strong>
+              <span>${escapeHtml(template.description)}</span>
+            </span>
+            <span class="admin-shareable-chevron" aria-hidden="true">›</span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function shareableTemplateConfigMarkup() {
+  const template = getShareableTemplate(uiState.adminShareableTemplateId);
+  if (!template) {
+    uiState.adminShareableView = "library";
+    return shareableTemplateLibraryMarkup();
+  }
+  const selectedMarket = getSelectedShareableMarket();
+  const selectedGame = getSelectedShareableGame();
+  const playerResults = getShareablePlayerSearchResults(uiState.adminShareablePlayerQuery, selectedMarket?.id);
+  return `
+    <section class="admin-shareable-screen">
+      ${shareableWorkspaceHeaderMarkup()}
+      <div class="admin-shareable-config-shell">
+        <div class="admin-shareable-config-block">
+          <span class="admin-shareable-config-label">Template</span>
+          <strong class="admin-shareable-config-title">${escapeHtml(template.name)}</strong>
+          <span class="admin-shareable-config-copy">${escapeHtml(template.description)}</span>
+        </div>
+        <div class="admin-shareable-config-block">
+          <span class="admin-shareable-config-label">Aspect Ratio</span>
+          <div class="admin-shareable-toggle-row">
+            ${SHAREABLE_ASPECT_RATIOS.map((option) => `
+              <button class="admin-shareable-toggle ${uiState.adminShareableAspectRatio === option.id ? "is-active" : ""}" type="button" data-shareable-aspect="${option.id}">${option.label}</button>
+            `).join("")}
+          </div>
+        </div>
+        <div class="admin-shareable-config-block">
+          <span class="admin-shareable-config-label">Colour Mode</span>
+          <div class="admin-shareable-toggle-row admin-shareable-toggle-row--two-up">
+            ${SHAREABLE_THEMES.map((option) => `
+              <button class="admin-shareable-toggle ${uiState.adminShareableTheme === option.id ? "is-active" : ""}" type="button" data-shareable-theme="${option.id}">${option.label}</button>
+            `).join("")}
+          </div>
+        </div>
+        ${template.requiresPlayer ? `
+          <div class="admin-shareable-config-block">
+            <label class="admin-shareable-field">
+              <span class="admin-shareable-config-label">Search player...</span>
+              <input class="admin-shareable-input" type="search" value="${escapeHtml(uiState.adminShareablePlayerQuery)}" placeholder="Search player..." data-shareable-player-search>
+            </label>
+            ${playerResults.length ? `<div class="admin-shareable-results">${playerResults.map((market) => shareablePlayerResultMarkup(market)).join("")}</div>` : uiState.adminShareablePlayerQuery.trim() ? `<div class="admin-shareable-empty">No current round players match that search.</div>` : ""}
+            ${selectedMarket ? `<div class="admin-shareable-selection">${shareableTeamBadgeMarkup(selectedMarket.team)}<span>${escapeHtml(selectedMarket.playerName)}</span><span class="admin-shareable-selection-tick">✓</span></div>` : ""}
+          </div>
+        ` : ""}
+        ${template.requiresMatch ? `
+          <div class="admin-shareable-config-block">
+            <label class="admin-shareable-field">
+              <span class="admin-shareable-config-label">Select match</span>
+              <select class="admin-shareable-input admin-shareable-select" data-shareable-match-select>
+                <option value="">Select match</option>
+                ${getShareableMatchOptions().map((game) => `<option value="${game.id}" ${selectedGame?.id === game.id ? "selected" : ""}>${escapeHtml(formatShareableFixtureOption(game))}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+        ` : ""}
+        <button class="admin-shareable-generate-button" type="button" data-shareable-generate ${isShareableContentReady() ? "" : "disabled"}>Generate Content</button>
+      </div>
+    </section>
+  `;
+}
+
+function shareableWorkspaceHeaderMarkup() {
+  return `
+    <header class="admin-shareable-header">
+      <button class="admin-shareable-back" type="button" data-shareable-back aria-label="Back to admin tools">‹ Back</button>
+      <h3>Generate Shareable Content</h3>
+    </header>
+  `;
+}
+
+function shareablePlayerResultMarkup(market) {
+  return `
+    <button class="admin-shareable-result" type="button" data-shareable-market-id="${market.id}">
+      <span>${escapeHtml(market.playerName)}</span>
+      ${shareableTeamBadgeMarkup(market.team)}
+    </button>
+  `;
+}
+
+function shareableTeamBadgeMarkup(team) {
+  return `<span class="home-team-badge admin-shareable-team-badge" style="${homeTeamPillStyle(team)}">${escapeHtml(homeTeamAbbreviation(team))}</span>`;
+}
+
+function getShareableTemplate(templateId) {
+  return SHAREABLE_CONTENT_TEMPLATES.find((template) => template.id === templateId) || null;
+}
+
+function getShareableMatchOptions() {
+  return getActiveRoundGames()
+    .slice()
+    .sort((left, right) => kickoffTimestampForGame(left) - kickoffTimestampForGame(right));
+}
+
+function getShareablePlayerSearchResults(query, selectedMarketId) {
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const markets = getAdminRoundMarkets()
+    .slice()
+    .sort((left, right) => left.playerName.localeCompare(right.playerName));
+  if (!normalizedQuery) {
+    return selectedMarketId ? markets.filter((market) => market.id === selectedMarketId) : [];
+  }
+  return markets
+    .filter((market) => market.playerName.toLowerCase().includes(normalizedQuery))
+    .slice(0, 8);
+}
+
+function getSelectedShareableMarket() {
+  return findMarket(uiState.adminShareableSelectedMarketId);
+}
+
+function getSelectedShareableGame() {
+  return findGame(uiState.adminShareableSelectedGameId);
+}
+
+function isShareableContentReady() {
+  const template = getShareableTemplate(uiState.adminShareableTemplateId);
+  if (!template) return false;
+  if (template.requiresPlayer) return Boolean(getSelectedShareableMarket());
+  if (template.requiresMatch) return Boolean(getSelectedShareableGame());
+  return true;
+}
+
+function renderShareableContentOutput() {
+  let overlay = document.getElementById("shareable-content-output");
+  if (!uiState.adminShareableOutputOpen || !isShareableContentReady()) {
+    overlay?.remove();
+    document.body.classList.remove("shareable-content-output-open");
+    return;
+  }
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "shareable-content-output";
+    overlay.className = "shareable-content-output";
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = shareableContentOutputMarkup();
+  overlay.querySelector("[data-shareable-output-close]")?.addEventListener("click", () => {
+    closeShareableContentOutput();
+  });
+  document.body.classList.add("shareable-content-output-open");
+}
+
+function shareableContentOutputMarkup() {
+  const template = getShareableTemplate(uiState.adminShareableTemplateId);
+  const aspectClass = `ratio-${uiState.adminShareableAspectRatio.replace(":", "-")}`;
+  const themeClass = `theme-${uiState.adminShareableTheme}`;
+  const lockedCanvas = isRebuiltShareableTemplate(template?.id) ? getShareableCanvasSize(uiState.adminShareableAspectRatio) : null;
+  return `
+    <div class="shareable-content-output-backdrop ${themeClass}">
+      <button class="shareable-content-output-close" type="button" data-shareable-output-close aria-label="Close generated content">✕</button>
+      <div class="shareable-content-canvas ${aspectClass} ${themeClass} ${lockedCanvas ? "is-pixel-locked" : ""}" ${lockedCanvas ? `style="width:${lockedCanvas.width}px;height:${lockedCanvas.height}px;"` : ""}>
+        ${shareableCanvasMarkup(template)}
+      </div>
+    </div>
+  `;
+}
+
+function shareableCanvasMarkup(template) {
+  if (!template) return "";
+  if (template.id === "player-spotlight") return playerSpotlightMarkup();
+  if (template.id === "value-alert") return valueAlertMarkup();
+  if (template.id === "match-preview") return matchPreviewMarkup();
+  if (template.id === "round-rankings-value") return roundRankingsValueMarkup();
+  return roundRankingsProjectedMarkup();
+}
+
+function isRebuiltShareableTemplate(templateId) {
+  return ["value-alert", "match-preview", "round-rankings-value"].includes(templateId);
+}
+
+function getShareableCanvasSize(ratio) {
+  if (ratio === "3:4") return { width: 1080, height: 1440 };
+  if (ratio === "9:16") return { width: 1080, height: 1920 };
+  return { width: 1080, height: 1080 };
+}
+
+function shareableBrandingTopMarkup() {
+  const roundNumber = activeRoundNumber() || currentRoundNumber() || "—";
+  return `
+    <header class="shareable-branding-row">
+      <h1 class="brand-wordmark shareable-brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
+      <span class="shareable-round-badge">ROUND ${escapeHtml(roundNumber)}</span>
+    </header>
+    <div class="shareable-divider"></div>
+  `;
+}
+
+function shareableFooterMarkup() {
+  return `<footer class="shareable-footer">crowdiq.live</footer>`;
+}
+
+function shareableRebuiltChromeMarkup() {
+  const roundNumber = activeRoundNumber() || currentRoundNumber() || "—";
+  return `
+    <header class="shareable-fixed-branding-row">
+      <h1 class="brand-wordmark shareable-fixed-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1>
+      <span class="shareable-fixed-round-badge">ROUND ${escapeHtml(roundNumber)}</span>
+    </header>
+    <div class="shareable-fixed-divider shareable-fixed-divider--top"></div>
+    <div class="shareable-fixed-divider shareable-fixed-divider--bottom"></div>
+    <footer class="shareable-fixed-footer">crowdiq.live</footer>
+  `;
+}
+
+function shareableThemeTokens() {
+  return uiState.adminShareableTheme === "light"
+    ? {
+        primary: "#0D0D1A",
+        secondary: "#666666",
+        surface: "#FFFFFF",
+        divider: "#E0E0E0",
+        circle: "rgba(0, 200, 83, 0.04)",
+        rankOther: "#E0E0E0",
+        rankText: "#0D0D1A"
+      }
+    : {
+        primary: "#FFFFFF",
+        secondary: "#888888",
+        surface: "#1A1A2E",
+        divider: "#2A2A3E",
+        circle: "rgba(0, 200, 83, 0.04)",
+        rankOther: "#2A2A3E",
+        rankText: "#FFFFFF"
+      };
+}
+
+function shareableAppFontFamily() {
+  return window.getComputedStyle(document.body).fontFamily || "inherit";
+}
+
+function fitShareableText(text, startSize, minSize, maxWidth, weight = 800) {
+  const canvas = fitShareableText.canvas || (fitShareableText.canvas = document.createElement("canvas"));
+  const context = canvas.getContext("2d");
+  const family = shareableAppFontFamily();
+  let size = startSize;
+  while (size > minSize) {
+    context.font = `${weight} ${size}px ${family}`;
+    if (context.measureText(String(text || "")).width <= maxWidth) break;
+    size -= 2;
+  }
+  return size;
+}
+
+function shareableRankCircleTone(index) {
+  const tokens = shareableThemeTokens();
+  if (index === 0) return { background: "#FFD700", color: "#0D0D1A" };
+  if (index === 1) return { background: "#C0C0C0", color: "#0D0D1A" };
+  if (index === 2) return { background: "#CD7F32", color: "#FFFFFF" };
+  return { background: tokens.rankOther, color: tokens.rankText };
+}
+
+function shareableRankCircleMarkup(index) {
+  const tone = shareableRankCircleTone(index);
+  return `<span class="shareable-fixed-rank-circle" style="background:${tone.background};color:${tone.color};">${index + 1}</span>`;
+}
+
+function shareableFixedTeamBadgeMarkup(team) {
+  return `<span class="home-team-badge shareable-fixed-team-badge" style="${homeTeamPillStyle(team)}">${escapeHtml(homeTeamAbbreviation(team))}</span>`;
+}
+
+function formatShareableGameDate(game) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return "";
+  return new Date(kickoffAt).toLocaleString([], { month: "short", day: "numeric" });
+}
+
+function formatShareableGameTime(game) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return game?.kickoff || "";
+  return new Date(kickoffAt).toLocaleString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatShareableGameDateTime(game, detailed = false) {
+  const kickoffAt = kickoffTimestampForGame(game);
+  if (!Number.isFinite(kickoffAt)) return game?.kickoff || "";
+  return new Date(kickoffAt).toLocaleString([], detailed
+    ? { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }
+    : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function formatShareableFixtureOption(game) {
+  return `${game.homeTeam} vs ${game.awayTeam} · ${formatShareableGameDate(game)} · ${formatShareableGameTime(game)}`;
+}
+
+function playerSpotlightMarkup() {
+  const market = getSelectedShareableMarket();
+  if (!market) return "";
+  const performance = quickPickPerformanceSummary(market);
+  const seasonAverage = Number(performance.seasonAverageLabel);
+  const metrics = getMarketTradeMetrics(market);
+  const matchup = matchupContext(market);
+  return `
+    <div class="shareable-template shareable-template-player-spotlight ${uiState.adminShareableAspectRatio === "9:16" ? "has-depth" : ""}">
+      ${shareableBrandingTopMarkup()}
+      <div class="shareable-section-label">PLAYER SPOTLIGHT</div>
+      <h2 class="shareable-player-name">${escapeHtml(market.playerName)}</h2>
+      <div class="shareable-meta-row">${shareableTeamBadgeMarkup(market.team)}<span>${escapeHtml(market.position)}</span><span>${escapeHtml(`vs ${matchup.opponent}`)}</span></div>
+      <div class="shareable-divider"></div>
+      <section class="shareable-hero-stat">
+        <span class="shareable-micro-label shareable-micro-label--accent">CROWD PROJECTION</span>
+        <strong>${market.currentLine.toFixed(1)}</strong>
+        <span class="shareable-subtext">Season avg ${performance.seasonAverageLabel}</span>
+      </section>
+      <section class="shareable-form-block">
+        <span class="shareable-micro-label">LAST 5</span>
+        <div class="shareable-last-five">
+          ${performance.lastFive.map((entry) => {
+            const score = Number(entry.score);
+            const tone = entry.isMissing ? "is-missing" : score >= seasonAverage ? "is-up" : "is-down";
+            return `<span class="shareable-last-five-pill ${tone}">${escapeHtml(entry.value)}</span>`;
+          }).join("")}
+        </div>
+      </section>
+      <section class="shareable-confidence-block">
+        <span class="shareable-micro-label">MARKET CONFIDENCE</span>
+        <div class="shareable-confidence-dial">${marketConfidenceMarkup(metrics.confidence, true)}</div>
+      </section>
+      ${shareableFooterMarkup()}
+    </div>
+  `;
+}
+
+function valueAlertMarkup() {
+  const market = getSelectedShareableMarket();
+  if (!market) return "";
+  const ratio = uiState.adminShareableAspectRatio;
+  const matchup = matchupContext(market);
+  const performance = quickPickPerformanceSummary(market);
+  const impliedScore = priceImpliedProjectionForMarket(market);
+  const valueGap = Number.isFinite(impliedScore) ? roundToHalf(market.currentLine - impliedScore) : null;
+  const specs = ratio === "9:16"
+    ? {
+        playerZoneTop: 100,
+        playerZoneHeight: 320,
+        playerStartSize: 88,
+        playerMinSize: 54,
+        heroTop: 420,
+        heroHeight: 640,
+        heroSize: 180,
+        secondaryTop: 1060,
+        secondaryHeight: 160,
+        secondaryLabel: 14,
+        secondaryValue: 22,
+        footerDividerTop: 1870,
+        footerTop: 1871,
+        circleSize: 600,
+        showSeason: true
+      }
+    : ratio === "3:4"
+      ? {
+          playerZoneTop: 100,
+          playerZoneHeight: 280,
+          playerStartSize: 80,
+          playerMinSize: 50,
+          heroTop: 380,
+          heroHeight: 480,
+          heroSize: 144,
+          secondaryTop: 860,
+          secondaryHeight: 120,
+          secondaryLabel: 13,
+          secondaryValue: 20,
+          footerDividerTop: 1390,
+          footerTop: 1391,
+          circleSize: 500,
+          showSeason: false
+        }
+      : {
+          playerZoneTop: 100,
+          playerZoneHeight: 220,
+          playerStartSize: 72,
+          playerMinSize: 44,
+          heroTop: 322,
+          heroHeight: 358,
+          heroSize: 120,
+          secondaryTop: 680,
+          secondaryHeight: 80,
+          secondaryLabel: 11,
+          secondaryValue: 18,
+          footerDividerTop: 1030,
+          footerTop: 1031,
+          circleSize: 0,
+          showSeason: false
+        };
+  const nameSize = fitShareableText(market.playerName, specs.playerStartSize, specs.playerMinSize, 1016, 900);
+  const tokens = shareableThemeTokens();
+  return `
+    <div class="shareable-fixed-template shareable-fixed-template--value-alert shareable-fixed-template--${ratio.replace(":", "-")}">
+      ${shareableRebuiltChromeMarkup()}
+      <div class="shareable-fixed-label" style="top:61px;">VALUE ALERT</div>
+      <section class="shareable-fixed-player-zone" style="top:${specs.playerZoneTop}px;height:${specs.playerZoneHeight}px;">
+        <h2 class="shareable-fixed-player-name" style="font-size:${nameSize}px;">${escapeHtml(market.playerName)}</h2>
+        <div class="shareable-fixed-player-meta">${shareableFixedTeamBadgeMarkup(market.team)}<span>${escapeHtml(market.position)}</span><span>${escapeHtml(`vs ${homeTeamAbbreviation(matchup.opponent)}`)}</span></div>
+      </section>
+      <div class="shareable-fixed-divider" style="top:${ratio === "1:1" ? 320 : ratio === "3:4" ? 380 : 420}px;"></div>
+      ${specs.circleSize ? `<div class="shareable-fixed-value-circle" style="width:${specs.circleSize}px;height:${specs.circleSize}px;top:${specs.heroTop + (specs.heroHeight / 2) - (specs.circleSize / 2)}px;background:${tokens.circle};"></div>` : ""}
+      <section class="shareable-fixed-hero-zone" style="top:${specs.heroTop}px;height:${specs.heroHeight}px;">
+        <span class="shareable-fixed-hero-label">POINTS ABOVE PRICE</span>
+        <strong class="shareable-fixed-value-number" style="font-size:${specs.heroSize}px;">${Number.isFinite(valueGap) ? `${valueGap >= 0 ? "+" : ""}${valueGap.toFixed(1)}` : "--"}</strong>
+      </section>
+      <section class="shareable-fixed-secondary-metrics" style="top:${specs.secondaryTop}px;height:${specs.secondaryHeight}px;--label-size:${specs.secondaryLabel}px;--value-size:${specs.secondaryValue}px;">
+        <div class="shareable-fixed-secondary-metric">
+          <span>NRL Price</span>
+          <strong class="is-secondary">${Number.isFinite(impliedScore) ? impliedScore.toFixed(1) : formatShareablePrice(market.fantasyPrice)}</strong>
+        </div>
+        <div class="shareable-fixed-secondary-metric">
+          <span>CrowdIQ</span>
+          <strong>${market.currentLine.toFixed(1)}</strong>
+        </div>
+      </section>
+      ${specs.showSeason ? `<div class="shareable-fixed-season-average" style="top:${specs.secondaryTop + specs.secondaryHeight + 24}px;">Season avg ${escapeHtml(performance.seasonAverageLabel)}</div>` : ""}
+    </div>
+  `;
+}
+
+function matchPreviewMarkup() {
+  const game = getSelectedShareableGame();
+  if (!game) return "";
+  const ratio = uiState.adminShareableAspectRatio;
+  const count = ratio === "9:16" ? 7 : ratio === "3:4" ? 5 : 3;
+  const rows = getGameMarkets(game.id)
+    .filter((market) => marketRoundNumber(market) === activeRoundNumber())
+    .slice()
+    .sort((left, right) => right.currentLine - left.currentLine)
+    .slice(0, count);
+  const titleText = `${game.homeTeam} vs ${game.awayTeam}`;
+  const titleSize = fitShareableText(titleText, ratio === "9:16" ? 44 : ratio === "3:4" ? 40 : 36, 24, 1016, 900);
+  const titleParts = `
+    ${shareableFixedTeamBadgeMarkup(game.homeTeam)}
+    <span>${escapeHtml(game.homeTeam)}</span>
+    <span>vs</span>
+    <span>${escapeHtml(game.awayTeam)}</span>
+    ${shareableFixedTeamBadgeMarkup(game.awayTeam)}
+  `;
+  const headerBottom = ratio === "9:16" ? 360 : ratio === "3:4" ? 320 : 280;
+  const rowsStart = ratio === "9:16" ? 360 : ratio === "3:4" ? 320 : 311;
+  const rowHeight = ratio === "9:16" ? 214.2857142857 : ratio === "3:4" ? 214 : 239;
+  const footerDividerTop = ratio === "9:16" ? 1870 : ratio === "3:4" ? 1390 : 1030;
+  const footerTop = ratio === "9:16" ? 1870 : ratio === "3:4" ? 1390 : 1031;
+  const metaText = `${escapeHtml(game.venue || "")} · ${escapeHtml(formatShareableGameDateTime(game, ratio === "9:16"))}`;
+  return `
+    <div class="shareable-fixed-template shareable-fixed-template--match-preview shareable-fixed-template--${ratio.replace(":", "-")}">
+      ${shareableRebuiltChromeMarkup()}
+      <div class="shareable-fixed-label" style="top:61px;">MATCH PREVIEW</div>
+      <section class="shareable-fixed-match-header-zone" style="top:100px;height:${headerBottom - 100}px;">
+        <div class="shareable-fixed-match-title" style="font-size:${titleSize}px;">${titleParts}</div>
+        <div class="shareable-fixed-match-meta">${metaText}</div>
+      </section>
+      <div class="shareable-fixed-divider" style="top:${headerBottom}px;"></div>
+      <div class="shareable-fixed-column-header shareable-fixed-column-header--single" style="top:${headerBottom + 1}px;">CrowdIQ</div>
+      <div class="shareable-fixed-divider" style="top:${headerBottom + (ratio === "1:1" ? 30 : ratio === "3:4" ? 40 : 40)}px;"></div>
+      <section class="shareable-fixed-rows-zone" style="top:${rowsStart}px;">
+        ${rows.map((market, index) => shareableMatchPreviewRowMarkup(market, index, game, rows.length, rowHeight, ratio)).join("")}
+      </section>
+    </div>
+  `;
+}
+
+function shareableMatchPreviewRowMarkup(market, index, game, totalRows, rowHeight, ratio) {
+  const top = rowHeight * index;
+  const showContext = ratio !== "1:1";
+  const bottomText = ratio === "9:16"
+    ? `${escapeHtml(market.position)} · ${escapeHtml(formatShareableGameTime(game))}`
+    : ratio === "3:4"
+      ? `${escapeHtml(market.position)} · ${escapeHtml(`vs ${homeTeamAbbreviation(opponentForMarket(market))}`)}`
+      : `${shareableFixedTeamBadgeMarkup(market.team)}<span>${escapeHtml(market.position)}</span>`;
+  return `
+    <div class="shareable-fixed-row shareable-fixed-row--match" style="top:${top}px;height:${rowHeight}px;">
+      ${shareableRankCircleMarkup(index)}
+      <div class="shareable-fixed-row-copy">
+        <strong>${escapeHtml(market.playerName)}</strong>
+        <div class="shareable-fixed-row-meta">
+          ${ratio === "1:1" ? bottomText : `${shareableFixedTeamBadgeMarkup(market.team)}<span>${bottomText}</span>`}
+        </div>
+      </div>
+      <strong class="shareable-fixed-row-value shareable-fixed-row-value--large">${market.currentLine.toFixed(1)}</strong>
+      ${index < totalRows - 1 ? `<div class="shareable-fixed-row-divider"></div>` : ""}
+    </div>
+  `;
+}
+
+function roundRankingsValueMarkup() {
+  const ratio = uiState.adminShareableAspectRatio;
+  const count = ratio === "9:16" ? 7 : ratio === "3:4" ? 5 : 4;
+  const rows = getHomeLeaderboardPreviewData().bestValue.slice(0, count);
+  const headerStart = ratio === "9:16" ? 61 : 61;
+  const headlineBottom = ratio === "9:16" ? 280 : ratio === "3:4" ? 240 : 200;
+  const subtitleBottom = ratio === "9:16" ? 330 : ratio === "3:4" ? 290 : 240;
+  const columnsTop = ratio === "9:16" ? 330 : ratio === "3:4" ? 290 : 241;
+  const rowsTop = ratio === "9:16" ? 370 : ratio === "3:4" ? 320 : 271;
+  const rowHeight = ratio === "9:16" ? 214.2857142857 : ratio === "3:4" ? 214 : 189.75;
+  const footerDividerTop = ratio === "9:16" ? 1870 : ratio === "3:4" ? 1390 : 1030;
+  const footerTop = ratio === "9:16" ? 1870 : ratio === "3:4" ? 1390 : 1031;
+  return `
+    <div class="shareable-fixed-template shareable-fixed-template--rankings-value shareable-fixed-template--${ratio.replace(":", "-")}">
+      ${shareableRebuiltChromeMarkup()}
+      <section class="shareable-fixed-headline-zone" style="top:${headerStart}px;height:${headlineBottom - headerStart}px;">
+        <h2 class="shareable-fixed-headline" style="font-size:${ratio === "9:16" ? 80 : ratio === "3:4" ? 72 : 64}px;">TOP VALUE PICKS</h2>
+      </section>
+      <section class="shareable-fixed-subtitle-zone" style="top:${headlineBottom}px;height:${subtitleBottom - headlineBottom}px;">
+        <p class="shareable-fixed-subtitle">Best projection gaps vs NRL Fantasy price</p>
+      </section>
+      <div class="shareable-fixed-divider" style="top:${subtitleBottom}px;"></div>
+      <div class="shareable-fixed-column-header shareable-fixed-column-header--value" style="top:${columnsTop}px;">
+        ${ratio !== "1:1" ? `<span class="shareable-fixed-column-opponent">Opponent</span>` : ""}
+        <span class="shareable-fixed-column-price">NRL Price</span>
+        <span class="shareable-fixed-column-crowd">CrowdIQ</span>
+      </div>
+      <div class="shareable-fixed-divider" style="top:${ratio === "9:16" ? 370 : ratio === "3:4" ? 320 : 270}px;"></div>
+      <section class="shareable-fixed-rows-zone" style="top:${rowsTop}px;">
+        ${rows.map((row, index) => shareableRankingsValueRowMarkup(row, index, rows.length, rowHeight, ratio)).join("")}
+      </section>
+    </div>
+  `;
+}
+
+function shareableRankingsValueRowMarkup(row, index, totalRows, rowHeight, ratio) {
+  const market = row.market || row;
+  const top = rowHeight * index;
+  const game = findGame(market.gameId);
+  const opponent = opponentForMarket(market);
+  const metaLine = `${shareableFixedTeamBadgeMarkup(market.team)}<span>${escapeHtml(market.position)}</span>`;
+  const extraLine = ratio === "9:16"
+    ? `${escapeHtml(`vs ${homeTeamAbbreviation(opponent)}`)} · ${escapeHtml(formatShareableGameTime(game))}`
+    : ratio === "3:4"
+      ? escapeHtml(`vs ${homeTeamAbbreviation(opponent)}`)
+      : "";
+  return `
+    <div class="shareable-fixed-row shareable-fixed-row--value ${index % 2 === 1 ? "is-alt" : ""}" style="top:${top}px;height:${rowHeight}px;">
+      ${shareableRankCircleMarkup(index)}
+      <div class="shareable-fixed-row-copy">
+        <strong>${escapeHtml(market.playerName)}</strong>
+        <div class="shareable-fixed-row-meta">${metaLine}</div>
+        ${extraLine ? `<div class="shareable-fixed-row-submeta">${extraLine}</div>` : ""}
+      </div>
+      ${ratio !== "1:1" ? `<span class="shareable-fixed-row-opponent">${escapeHtml(`vs ${homeTeamAbbreviation(opponent)}`)}</span>` : ""}
+      <span class="shareable-fixed-row-price">${Number.isFinite(row.impliedScore) ? row.impliedScore.toFixed(1) : "--"}</span>
+      <strong class="shareable-fixed-row-value">${market.currentLine.toFixed(1)}</strong>
+      <strong class="shareable-fixed-row-gap">${row.value >= 0 ? "+" : ""}${Number(row.value).toFixed(1)}</strong>
+      ${index < totalRows - 1 ? `<div class="shareable-fixed-row-divider"></div>` : ""}
+    </div>
+  `;
+}
+
+function roundRankingsProjectedMarkup() {
+  const limit = uiState.adminShareableAspectRatio === "1:1" ? 4 : uiState.adminShareableAspectRatio === "3:4" ? 5 : 7;
+  const rows = getHomeLeaderboardPreviewData().topProjected.slice(0, limit).map((market) => ({ market }));
+  return `
+    <div class="shareable-template shareable-template-rankings">
+      ${shareableBrandingTopMarkup()}
+      <h2 class="shareable-ranking-title">TOP PROJECTED</h2>
+      <p class="shareable-ranking-subtitle">Highest crowd projections this round</p>
+      <div class="shareable-divider"></div>
+      <div class="shareable-list-header"><span></span><span>CrowdIQ</span></div>
+      <div class="shareable-rank-list">
+        ${rows.map((row, index) => `
+          <div class="shareable-rank-row ${index % 2 === 1 ? "is-alt" : ""}">
+            <span class="shareable-rank-circle ${homeRankTone(index)}">${index + 1}</span>
+            <div class="shareable-rank-copy">
+              <strong>${escapeHtml(row.market.playerName)}</strong>
+              <span>${shareableTeamBadgeMarkup(row.market.team)}<span>${escapeHtml(row.market.position)}</span></span>
+            </div>
+            <strong class="shareable-rank-value">${row.market.currentLine.toFixed(1)}</strong>
+          </div>
+        `).join("")}
+      </div>
+      ${shareableFooterMarkup()}
+    </div>
+  `;
+}
+
+function formatShareablePrice(price) {
+  const numeric = Number(price);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "--";
+  if (numeric >= 1000) return `$${Math.round(numeric).toLocaleString()}`;
+  return `${numeric.toFixed(1)}`;
 }
 
 function renderAdminMarkets() {
@@ -3464,7 +4880,7 @@ function getLeaderboardRows(options = {}) {
   return sortLeaderboardRows(buildLeaderboardRows(timeFilter), sort);
 }
 
-function renderHome() {
+function getHomeLeaderboardPreviewData() {
   const homeMarkets = getActiveRoundMarkets();
   const topProjected = homeMarkets
     .slice()
@@ -3509,6 +4925,31 @@ function renderHome() {
     .slice()
     .sort((left, right) => getMarketTradeMetrics(right).confidence - getMarketTradeMetrics(left).confidence || projectionValue(right) - projectionValue(left))
     .slice(0, 20);
+  return {
+    homeMarkets,
+    topProjected,
+    biggestGainers,
+    biggestLosers,
+    fallbackMovers,
+    projectionComparisons,
+    bestValue,
+    mostOverpriced,
+    mostConfident
+  };
+}
+
+function renderHome() {
+  const homeData = getHomeLeaderboardPreviewData();
+  const {
+    homeMarkets,
+    topProjected,
+    biggestGainers,
+    biggestLosers,
+    fallbackMovers,
+    bestValue,
+    mostOverpriced,
+    mostConfident
+  } = homeData;
   const leaderboardRows = safelyCompute("home leaderboard rows", () => getLeaderboardRows({ sort: "BALANCE", timeFilter: "ALL_TIME" }), []);
 
   const fallbackFeaturedMarkets = (topProjected.length ? topProjected : fallbackMovers).slice(0, 8);
@@ -3582,7 +5023,8 @@ function renderHome() {
     statPrimary: `${market.currentLine.toFixed(1)} pts`
   }), {
     variant: "compact-projection-group",
-    headingTitle: "Projected"
+    headingTitle: "Projected",
+    fullLeaderboardKey: "home-projected-leaderboard"
   }));
 
   safelyRender("home value", () => renderHomeMarketLeaderboard(elements.homeBestValue, bestValue, ({ market, impliedScore, value }) => ({
@@ -3598,7 +5040,8 @@ function renderHome() {
   }), {
     variant: "compact-list-group",
     headingTitle: "Value",
-    emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
+    emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available.",
+    fullLeaderboardKey: "home-value-leaderboard"
   }));
 
   safelyRender("home overpriced", () => renderHomeMarketLeaderboard(elements.homeMostOverpriced, mostOverpriced, ({ market, impliedScore, value }) => ({
@@ -4021,8 +5464,14 @@ function buildLeaderboardRows(timeFilter = "ALL_TIME") {
 function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
   if (!container) return;
   const scrollKey = options.scrollKey || container.id || "home-group";
+  const fullLeaderboardLinkMarkup = options.fullLeaderboardKey
+    ? `<button class="home-full-leaderboard-link" type="button" data-home-full-leaderboard="${options.fullLeaderboardKey}">View full leaderboard →</button>`
+    : "";
   if (!rows.length) {
-    container.innerHTML = `<div class="portfolio-empty-state"><strong>No markets yet</strong><span>${options.emptyMessage || "Market activity will appear here once trading begins."}</span></div>`;
+    container.innerHTML = `<div class="portfolio-empty-state"><strong>No markets yet</strong><span>${options.emptyMessage || "Market activity will appear here once trading begins."}</span></div>${fullLeaderboardLinkMarkup}`;
+    container.querySelector("[data-home-full-leaderboard]")?.addEventListener("click", () => {
+      openAppModal(options.fullLeaderboardKey);
+    });
     return;
   }
   const summaryMarkup = (options.summaryItems || []).length
@@ -4030,29 +5479,38 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
         .map((item) => `<span><strong>${item.value}</strong><em>${item.label}</em></span>`)
         .join("")}</div>`
     : "";
+  const headingMarkup = options.variant === "featured-market-confidence"
+    ? `<div class="home-group-card-head has-action"><div class="home-group-card-title"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><button class="market-confidence-info home-market-confidence-info" type="button" data-home-market-confidence-info aria-label="Explain market confidence">i</button></div>`
+    : `<div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div>`;
   const visibleRows = options.skipFirstListItem ? rows.slice(1) : rows;
   if (!visibleRows.length) {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="portfolio-empty-state compact-empty"><strong>No additional players yet</strong><span>${options.emptyMessage || "More player movement will appear here as the round develops."}</span></div></article>`;
+    container.innerHTML = `<article class="home-group-card">${headingMarkup}<div class="portfolio-empty-state compact-empty"><strong>No additional players yet</strong><span>${options.emptyMessage || "More player movement will appear here as the round develops."}</span></div></article>${fullLeaderboardLinkMarkup}`;
+    container.querySelector("[data-home-full-leaderboard]")?.addEventListener("click", () => {
+      openAppModal(options.fullLeaderboardKey);
+    });
     return;
   }
   if (options.variant === "compact-projection-group") {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
+    container.innerHTML = `<article class="home-group-card">${headingMarkup}<div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
         const note = view.note ? `<span class="home-card-note">${view.note}</span>` : "";
         return `<button class="home-projection-subcard" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${market.playerName}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge" style="${homeTeamPillStyle(market.team)}">${homeTeamAbbreviation(market.team)}</span><span>${market.position}</span></div>${note}</div><div class="home-projection-metric"><strong>${view.statPrimary || `${market.currentLine.toFixed(1)} pts`}</strong></div></button>`;
       })
-      .join("")}</div></article>`;
+      .join("")}</div></article>${fullLeaderboardLinkMarkup}`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
       card.addEventListener("click", () => {
         openMarketFromHome(card.dataset.marketId);
       })
     );
+    container.querySelector("[data-home-full-leaderboard]")?.addEventListener("click", () => {
+      openAppModal(options.fullLeaderboardKey);
+    });
     return;
   }
   if (options.variant === "compact-list-group") {
-    container.innerHTML = `<article class="home-group-card"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
+    container.innerHTML = `<article class="home-group-card">${headingMarkup}<div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
@@ -4060,16 +5518,19 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
         const isHeroCard = index === 0 && (options.headingTitle === "Gainers" || options.headingTitle === "Losers");
         return `<button class="home-projection-subcard home-list-subcard ${view.cardClassName || ""} ${isHeroCard ? "is-rank-hero" : ""}" type="button" data-market-id="${market.id}" style="${teamSurfaceTone(market.team)}">${homeRankMarkup(index)}<div class="home-projection-copy"><div class="home-card-mainline"><strong>${view.title}</strong></div><div class="home-projection-meta-row"><span class="home-team-badge ${view.badgeTone || ""}" style="${homeTeamPillStyle(market.team)}">${view.badge || homeTeamAbbreviation(market.team)}</span><span>${view.detail}</span></div>${note}</div>${renderHomeMetricMarkup({ ...view, metricHero: isHeroCard }, view.badgeTone)}</button>`;
       })
-      .join("")}</div></article>`;
+      .join("")}</div></article>${fullLeaderboardLinkMarkup}`;
     container.querySelectorAll("[data-market-id]").forEach((card) =>
       card.addEventListener("click", () => {
         openMarketFromHome(card.dataset.marketId);
       })
     );
+    container.querySelector("[data-home-full-leaderboard]")?.addEventListener("click", () => {
+      openAppModal(options.fullLeaderboardKey);
+    });
     return;
   }
   if (options.variant === "featured-market-confidence") {
-    container.innerHTML = `<article class="home-group-card home-group-card-featured"><div class="home-group-card-head"><h3>${options.headingTitle || ""}</h3>${summaryMarkup}</div><div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
+    container.innerHTML = `<article class="home-group-card home-group-card-featured">${headingMarkup}<div class="home-group-card-body" data-scroll-key="${scrollKey}">${visibleRows
       .map((row, index) => {
         const market = row.market || row;
         const view = presenter({ market, ...row }, index);
@@ -4084,6 +5545,11 @@ function renderHomeMarketLeaderboard(container, rows, presenter, options = {}) {
         openMarketFromHome(card.dataset.marketId);
       })
     );
+    container.querySelector("[data-home-market-confidence-info]")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openAppModal("market-confidence-info");
+    });
     return;
   }
   container.innerHTML = visibleRows
@@ -4223,10 +5689,10 @@ function quickPickPerformanceSummary(market) {
   const playerKey = normalizePlayerKey(market.playerName);
   const seasonScores = (derivedData.roundScoresByPlayer?.[playerKey] || [])
     .filter((entry) => Number.isFinite(Number(entry?.score)))
-    .sort((left, right) => Number(right.round) - Number(left.round));
+    .sort((left, right) => Number(left.round) - Number(right.round));
   const recentSeasonScores = seasonScores
     .filter((entry) => !Number.isFinite(roundNumber) || Number(entry.round) < roundNumber)
-    .slice(0, 5)
+    .slice(-5)
     .map((entry) => ({
       label: `Round ${entry.round}`,
       value: String(Math.round(Number(entry.score))),
@@ -4305,7 +5771,7 @@ function positionMetric(label, value, tone = 0) {
 }
 
 function currentUserName() {
-  return elements.userName.value.trim() || DEFAULT_USER_NAME;
+  return localStorage.getItem(USER_NAME_KEY)?.trim() || elements.authUsername?.value.trim() || DEFAULT_USER_NAME;
 }
 
 function findMarket(marketId) {
@@ -4590,11 +6056,11 @@ function compareQuickTakeMarkets(left, right) {
 
 function marketConfidenceMarkup(confidence, compact = false) {
   const tone = confidence >= 70 ? "high" : confidence >= 40 ? "mid" : "low";
-  if (compact) {
-    return `<span class="market-confidence compact ${tone}" aria-label="Market confidence ${confidence}%"><span class="market-confidence-mini-icon" aria-hidden="true"></span><span class="market-confidence-value">${confidence}%</span></span>`;
-  }
   const needle = -78 + (Math.max(0, Math.min(100, confidence)) / 100) * 156;
-  return `<span class="market-confidence ${compact ? "compact" : ""} ${tone}" aria-label="Market confidence ${confidence}%"><span class="market-confidence-head"><span class="market-confidence-label">Market confidence</span><button class="market-confidence-info" type="button" aria-label="Explain market confidence">i</button></span><span class="market-confidence-popover" role="note">Market confidence estimates how trustworthy the projection is based on crowd participation. More matched trades, volume, and unique traders lift it, with diminishing returns as activity builds.</span><span class="market-confidence-body"><span class="market-confidence-dial" style="--needle-angle:${needle}deg"><svg viewBox="0 0 120 76" aria-hidden="true"><path class="dial-arc" d="M14 62 A46 46 0 0 1 106 62" pathLength="100" /><path class="dial-tick" d="M24 58 L31 55" /><path class="dial-tick" d="M38 39 L42 45" /><path class="dial-tick" d="M60 30 L60 38" /><path class="dial-tick" d="M82 39 L78 45" /><path class="dial-tick" d="M96 58 L89 55" /><text x="18" y="74">E</text><text x="98" y="74">F</text></svg><span class="market-confidence-needle"></span><span class="market-confidence-pivot"></span></span><span class="market-confidence-value">${confidence}%</span></span></span>`;
+  if (compact) {
+    return `<button class="market-confidence market-confidence-trigger compact ${tone}" type="button" aria-label="Explain market confidence. Current confidence ${confidence}%"><span class="market-confidence-body"><span class="market-confidence-dial" style="--needle-angle:${needle}deg"><svg viewBox="0 0 120 76" aria-hidden="true"><path class="dial-arc" d="M14 62 A46 46 0 0 1 106 62" pathLength="100" /><path class="dial-tick" d="M24 58 L31 55" /><path class="dial-tick" d="M38 39 L42 45" /><path class="dial-tick" d="M60 30 L60 38" /><path class="dial-tick" d="M82 39 L78 45" /><path class="dial-tick" d="M96 58 L89 55" /><text x="18" y="74">E</text><text x="98" y="74">F</text></svg><span class="market-confidence-needle"></span><span class="market-confidence-pivot"></span></span><span class="market-confidence-value">${confidence}%</span></span></button>`;
+  }
+  return `<span class="market-confidence ${tone}" aria-label="Market confidence ${confidence}%"><span class="market-confidence-head"><span class="market-confidence-label">Market confidence</span></span><button class="market-confidence-trigger market-confidence-body" type="button" aria-label="Explain market confidence. Current confidence ${confidence}%"><span class="market-confidence-dial" style="--needle-angle:${needle}deg"><svg viewBox="0 0 120 76" aria-hidden="true"><path class="dial-arc" d="M14 62 A46 46 0 0 1 106 62" pathLength="100" /><path class="dial-tick" d="M24 58 L31 55" /><path class="dial-tick" d="M38 39 L42 45" /><path class="dial-tick" d="M60 30 L60 38" /><path class="dial-tick" d="M82 39 L78 45" /><path class="dial-tick" d="M96 58 L89 55" /><text x="18" y="74">E</text><text x="98" y="74">F</text></svg><span class="market-confidence-needle"></span><span class="market-confidence-pivot"></span></span><span class="market-confidence-value">${confidence}%</span></button></span>`;
 }
 
 function marketConfidenceRowIcon(confidence) {

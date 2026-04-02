@@ -25,7 +25,6 @@
   <link rel="stylesheet" href="./styles.css?v=2.2">
 </head>
 <body>
-  <div id="onboarding-overlay" aria-hidden="true"></div>
   <div class="app-shell">
     <div class="mobile-frame">
       <section id="auth-gate" class="auth-gate is-hidden" aria-hidden="true">
@@ -47,7 +46,7 @@
             </div>
           </header>
           <section class="auth-copy auth-hero">
-            <h2 class="auth-hero-title">The crowd<br>sets the line.</h2>
+            <h2 class="auth-hero-title">The crowd<br>sets the projection.</h2>
             <p class="auth-hero-subtitle">Back your opinion on NRL fantasy projections</p>
             <div class="auth-live-signal">
               <span class="auth-live-dot" aria-hidden="true"></span>
@@ -135,7 +134,16 @@
             </div>
           </div>
         </div>
-        <div id="header-balance" class="header-balance"></div>
+        <div class="app-header-actions">
+          <div id="header-balance" class="header-balance"></div>
+          <button id="header-menu-button" class="header-menu-button" type="button" aria-label="Open navigation menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <line x1="4" y1="7" x2="20" y2="7"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="17" x2="20" y2="17"></line>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <section class="screen" data-screen="search">
@@ -285,31 +293,6 @@
             <section class="section-block portfolio-list-block">
               <div id="portfolio-list" class="portfolio-list"></div>
             </section>
-
-            <section class="section-block profile-settings-block">
-              <div class="section-heading compact-heading">
-                <div>
-                  <p class="eyebrow">Profile settings</p>
-                  <h3>Account details</h3>
-                </div>
-              </div>
-              <form class="stack-form profile-settings-form">
-                <label>
-                  Username
-                  <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
-                </label>
-              </form>
-            </section>
-
-            <section class="section-block dev-entry">
-              <div>
-                <p class="eyebrow">Tools</p>
-                <h3>Account actions</h3>
-                <p class="section-meta">Keep your profile and admin access together in one personal space.</p>
-              </div>
-              <button id="logout-button" class="secondary-button" type="button">Log out</button>
-              <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
-            </section>
           </div>
 
           <div id="account-wallet-view" class="account-view-panel">
@@ -390,6 +373,15 @@
         </div>
       </section>
 
+      <div id="how-it-works-nav-shell" class="how-it-works-nav-shell is-hidden">
+        <button id="how-it-works-nav-button" class="how-it-works-nav-button" type="button" aria-label="Open how it works">
+          <span class="how-it-works-nav-copy">
+            <i class="ph-fill ph-info" aria-hidden="true"></i>
+            <span>How it works</span>
+          </span>
+        </button>
+        <button id="how-it-works-nav-dismiss" class="how-it-works-nav-dismiss" type="button" aria-label="Dismiss how it works">&times;</button>
+      </div>
       <nav class="bottom-nav" aria-label="User navigation">
         <button class="nav-button tab active" type="button" data-screen-target="home">
           <i class="ph-fill ph-house" aria-hidden="true"></i>
@@ -424,6 +416,19 @@
         </div>
         <button id="close-admin-button" class="ghost-button" type="button">Close</button>
       </div>
+
+      <section class="admin-panel admin-shareable-entry-panel">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">Content</p>
+            <h3>Shareable content</h3>
+            <p class="section-meta">Generate branded CrowdIQ social cards from current round markets without leaving admin tools.</p>
+          </div>
+          <button id="open-shareable-content-button" class="secondary-button" type="button">Generate Shareable Content</button>
+        </div>
+      </section>
+
+      <section id="admin-shareable-workspace" class="admin-shareable-workspace" aria-live="polite"></section>
 
       <section class="admin-panel">
         <div class="admin-grid">
@@ -707,33 +712,11 @@
     </button>
   </template>
 
-  <template id="position-card-template">
-    <article class="position-card">
-      <div class="position-header">
-        <span class="position-side-badge"></span>
-        <span class="status-chip"></span>
-      </div>
-      <div class="position-body">
-        <h4 class="position-title"></h4>
-        <p class="position-meta"></p>
-      </div>
-      <div class="position-footer">
-        <div class="position-pl">
-          <span class="position-pl-label">P/L</span>
-          <strong class="position-pl-value"></strong>
-        </div>
-        <div class="position-side-actions">
-          <button class="position-action" type="button" hidden>Cancel</button>
-          <span class="position-time"></span>
-        </div>
-      </div>
-    </article>
-  </template>
-
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
+  <div id="onboarding-overlay"></div>
   <script src="./lib/derived-fantasy-data.js?v=2.2"></script>
-  <script src="./lib/onboarding-modal.js?v=2.2"></script>
+  <script src="lib/onboarding-modal.js"></script>
   <script src="./seed-data.js?v=2.2"></script>
   <script src="./app.js?v=2.2"></script>
 </body>
