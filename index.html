@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=2.2">
+  <link rel="stylesheet" href="./styles.css?v=2.3">
 </head>
 <body>
   <div id="onboarding-overlay" aria-hidden="true"></div>
@@ -51,7 +51,7 @@
             <p class="auth-hero-subtitle">Back your opinion on NRL fantasy projections</p>
             <div class="auth-live-signal">
               <span class="auth-live-dot" aria-hidden="true"></span>
-              <span id="auth-live-badge">Market live &middot; Round 4</span>
+              <span id="auth-live-badge">Market live &middot; Round 5</span>
             </div>
           </section>
           <section class="auth-hero-cta-wrap">
@@ -65,7 +65,7 @@
               <div id="auth-phone-mockup" class="auth-phone-mockup">
                 <div class="auth-phone-status">
                   <span class="auth-phone-status-dot" aria-hidden="true"></span>
-                  <span>Round 4</span>
+                  <span>Round 5</span>
                 </div>
                 <div class="auth-phone-section-head">
                   <div>
@@ -135,7 +135,16 @@
             </div>
           </div>
         </div>
-        <div id="header-balance" class="header-balance"></div>
+        <div class="app-header-actions">
+          <div id="header-balance" class="header-balance"></div>
+          <button id="header-menu-button" class="header-menu-button" type="button" aria-label="Open navigation menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <line x1="4" y1="7" x2="20" y2="7"></line>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="17" x2="20" y2="17"></line>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <section class="screen" data-screen="search">
@@ -743,9 +752,9 @@
 
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
-  <script src="./lib/derived-fantasy-data.js?v=2.2"></script>
-  <script src="./lib/onboarding-modal.js?v=2.2"></script>
-  <script src="./seed-data.js?v=2.2"></script>
-  <script src="./app.js?v=2.2"></script>
+  <script src="./lib/derived-fantasy-data.js?v=2.3"></script>
+  <script src="./lib/onboarding-modal.js?v=2.3"></script>
+  <script src="./seed-data.js?v=2.3"></script>
+  <script src="./app.js?v=2.3"></script>
 </body>
 </html>
