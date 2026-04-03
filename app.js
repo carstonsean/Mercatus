@@ -2300,67 +2300,58 @@ const PORTFOLIO_SWIPE_ACTION_WIDTH = 80;
 const PORTFOLIO_SWIPE_OPEN_THRESHOLD = 40;
 
 function renderPortfolioPositionCards(container, trades, emptyMessage) {
+  const template = document.getElementById("position-card-template");
   container.innerHTML = "";
   activePortfolioSwipeCard = null;
-  bindPortfolioPositionSwipeDismiss();
   if (!trades.length) {
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No positions yet</strong><span>${emptyMessage}</span></div>`;
     return;
   }
   trades.forEach((trade) => {
     const market = findMarket(trade.marketId);
+    const card = template.content.firstElementChild.cloneNode(true);
     const status = portfolioPositionStatus(trade);
-    const entryProjection = trade.side === "OVER" ? trade.entryOverLine ?? trade.entryLine : trade.entryUnderLine ?? trade.entryLine;
     const playerName = trade.playerName ?? market?.playerName ?? "Unknown player";
+    const entryLine = trade.side === "OVER" ? trade.entryOverLine ?? trade.entryLine : trade.entryUnderLine ?? trade.entryLine;
     const teamName = trade.team ?? market?.team ?? "";
     const teamLabel = homeTeamAbbreviation(teamName);
-    const teamStyle = homeTeamPillStyle(teamName);
     const matchup = matchupContext(market || {});
     const kickoffLabel = formatPortfolioCardKickoff(market);
-    const projectionDirectionLabel = trade.side === "OVER" ? "Over" : "Under";
-    const projectionValueLabel = Number(entryProjection).toFixed(1);
-    const isMatched = status.label === "Matched";
-    const statusLabel = isMatched ? "MATCHED" : "UNMATCHED";
     const cancelableOrderIds = Array.isArray(trade.cancelableOrderIds) ? trade.cancelableOrderIds : [];
-    const canSwipeToCancel = !isMatched && cancelableOrderIds.length > 0;
-    const card = document.createElement("article");
-    card.className = `portfolio-position-card ${isMatched ? "is-matched" : "is-unmatched"}${canSwipeToCancel ? " is-swipeable" : ""}`;
-    card.innerHTML = `
-      ${canSwipeToCancel ? `<button class="portfolio-position-action-button" type="button" aria-label="Cancel unmatched position"><span aria-hidden="true">✕</span></button>` : ""}
-      <div class="portfolio-position-swipe-shell">
-        <div class="portfolio-position-shell">
-          <div class="portfolio-position-status-rail ${isMatched ? "is-matched" : "is-unmatched"}">
-            <span class="portfolio-position-status-text">${statusLabel}</span>
-          </div>
-          <div class="portfolio-position-body">
-            <div class="portfolio-position-row portfolio-position-row-primary">
-              <h4 class="portfolio-position-title">${escapeHtml(playerName)}</h4>
-              <div class="portfolio-position-stake-block">
-                <span class="portfolio-position-stake-label">Stake</span>
-                <strong class="portfolio-position-stake">${formatStake(trade.stake)}</strong>
-              </div>
-            </div>
-            <div class="portfolio-position-row portfolio-position-row-secondary">
-              <div class="portfolio-position-meta-stack">
-                <div class="portfolio-position-matchup">
-                  <span class="portfolio-position-team-badge" style="${teamStyle}">${escapeHtml(teamLabel)}</span>
-                  <span class="portfolio-position-matchup-text">vs ${escapeHtml(matchup.opponent || "Opponent")}</span>
-                </div>
-                <span class="portfolio-position-kickoff">${escapeHtml(kickoffLabel)}</span>
-              </div>
-              <strong class="portfolio-position-projection"><span class="portfolio-position-projection-direction">${projectionDirectionLabel}</span> <span class="portfolio-position-projection-value">${projectionValueLabel}</span></strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    if (canSwipeToCancel) {
-      const actionButton = card.querySelector(".portfolio-position-action-button");
-      actionButton?.addEventListener("click", async (event) => {
+    const sideBadge = card.querySelector(".position-side-badge");
+    const statusChip = card.querySelector(".status-chip");
+    const title = card.querySelector(".position-title");
+    const meta = card.querySelector(".position-meta");
+    const plValue = card.querySelector(".position-pl-value");
+    const time = card.querySelector(".position-time");
+    const actionButton = card.querySelector(".position-action");
+    applyStatusChip(statusChip, status);
+    sideBadge.textContent = trade.side === "OVER" ? "Over" : "Under";
+    sideBadge.className = `position-side-badge ${trade.side === "OVER" ? "side-over" : "side-under"}`;
+    title.textContent = playerName;
+    meta.textContent = `${teamLabel} vs ${matchup.opponent || "Opponent"} · ${kickoffLabel} · ${trade.side === "OVER" ? "Over" : "Under"} ${Number(entryLine).toFixed(1)} · Stake ${formatStake(trade.stake)}`;
+    plValue.textContent = trade.side === "OVER" ? `Over ${Number(entryLine).toFixed(1)}` : `Under ${Number(entryLine).toFixed(1)}`;
+    plValue.className = "position-pl-value";
+    time.textContent = trade.result ? formatTradeResultLabel(trade.result) : kickoffLabel;
+    card.classList.remove("is-win", "is-loss", "is-unmatched", "is-matched", "is-settled");
+    if (trade.result?.outcome === "WIN") {
+      card.classList.add("is-win");
+    } else if (trade.result?.outcome === "LOSS" || trade.result?.outcome === "MIDDLE") {
+      card.classList.add("is-loss");
+    } else if (status.label === "Unmatched") {
+      card.classList.add("is-unmatched");
+    } else if (trade.result || trade.status === "CANCELLED") {
+      card.classList.add("is-settled");
+    }
+    if (cancelableOrderIds.length && status.label === "Unmatched") {
+      actionButton.hidden = false;
+      actionButton.textContent = "Cancel";
+      actionButton.addEventListener("click", async (event) => {
         event.stopPropagation();
         await cancelPendingOrders(cancelableOrderIds);
       });
-      bindPortfolioPositionCardSwipe(card);
+    } else {
+      actionButton.hidden = true;
     }
     container.appendChild(card);
   });
