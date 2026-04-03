@@ -29,16 +29,21 @@ async function run(){
   const buildId=session.json?.build?.id||null;
   const assetVersion=buildId ? `?v=${encodeURIComponent(buildId)}` : "";
   const css=await fetchText(`/styles.css${assetVersion}`);
+  const app=await fetchText(`/app.js${assetVersion}`);
   const onboarding=await fetchText(`/lib/onboarding-modal.js${assetVersion}`);
 
   const checks=[
     ["GET / returns 200",index.ok],
     ["index contains header menu button",/header-menu-button/.test(index.text)],
     ["index loads versioned stylesheet",new RegExp(`styles\\.css\\?v=${escapeRegExp(buildId||"")}`).test(index.text)],
+    ["index loads versioned app bundle",new RegExp(`app\\.js\\?v=${escapeRegExp(buildId||"")}`).test(index.text)],
     ["index loads versioned onboarding bundle",new RegExp(`lib/onboarding-modal\\.js\\?v=${escapeRegExp(buildId||"")}`).test(index.text)],
+    ["app contains portfolio card renderer",/portfolio-position-card/.test(app.text)],
     ["styles contain app chrome host",/\.app-chrome-host/.test(css.text)],
     ["styles contain app menu panel",/\.app-menu-panel/.test(css.text)],
     ["styles contain app modal shell",/\.app-modal-shell/.test(css.text)],
+    ["styles contain portfolio position card",/\.portfolio-position-card/.test(css.text)],
+    ["styles contain portfolio position rail",/\.portfolio-position-status-rail/.test(css.text)],
     ["onboarding contains new numbered title",/1\. The crowd sets the projection\./.test(onboarding.text)],
     ["onboarding contains 'How to win'",/3\. How to win\./.test(onboarding.text)],
     ["onboarding contains pm overlay",/pm-overlay/.test(onboarding.text)],
