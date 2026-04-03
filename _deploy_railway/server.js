@@ -72,6 +72,7 @@ const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const SUPABASE_ENABLED=isSupabaseEnabled();
 const BUILD_INFO={id:BUILD_ID,environment:SUPABASE_ENABLED?"hosted":"local"};
+const ASSET_VERSION=BUILD_ID;
 
 let popularPlayersCache=null;
 let popularPlayersCacheTime=0;
@@ -129,6 +130,23 @@ setInterval(()=>{
 
 function serveStatic(res,pathname){
   const requestedPath=pathname==="/"?"/index.html":pathname;
+  if(requestedPath==="/index.html"){
+    const html=renderIndexHtmlWithMetadata({
+      title:"crowdIQ",
+      description:"Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.",
+      url:`${SHARE_URL_ORIGIN}/`,
+      image:`${SHARE_URL_ORIGIN}/social-preview.svg`
+    });
+    res.writeHead(200,{
+      "Content-Type":"text/html; charset=utf-8",
+      "Cache-Control":"no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Pragma":"no-cache",
+      "Expires":"0",
+      "Surrogate-Control":"no-store"
+    });
+    res.end(html);
+    return;
+  }
   const filePath=path.join(__dirname,requestedPath);
   if(!filePath.startsWith(__dirname)){
     res.writeHead(403);
@@ -602,6 +620,20 @@ function ensureAuthenticatedUserName(req){
   return ensureUser(userName);
 }
 
+function normalizeSupabaseErrorMessage(error,fallback){
+  const raw=String(error?.message||"").trim();
+  const jsonStart=raw.indexOf("{");
+  if(jsonStart!==-1){
+    try{
+      const payload=JSON.parse(raw.slice(jsonStart));
+      return payload.message||payload.error_description||payload.details||fallback;
+    }catch(parseError){
+      void parseError;
+    }
+  }
+  return raw||fallback;
+}
+
 async function createHostedShareSession(userName,tradeIds){
   const user=await ensureSupabaseDemoUser(userName);
   const rows=await supabaseRequest("share_sessions",{
@@ -824,14 +856,19 @@ async function updateShareSessionStatus(shareId,status,useSupabase=SUPABASE_ENAB
 
 async function acceptHostedShareTrade(userName,shareSessionId,tradeId){
   const user=await ensureSupabaseDemoUser(userName);
-  const rows=await supabaseRequest("rpc/accept_share_trade",{
-    method:"POST",
-    body:{
-      p_share_session_id:shareSessionId,
-      p_trade_id:tradeId,
-      p_accepting_user_id:user.id
-    }
-  });
+  let rows;
+  try{
+    rows=await supabaseRequest("rpc/accept_share_trade",{
+      method:"POST",
+      body:{
+        p_share_session_id:shareSessionId,
+        p_trade_id:tradeId,
+        p_accepting_user_id:user.id
+      }
+    });
+  }catch(error){
+    throw new Error(normalizeSupabaseErrorMessage(error,"Unable to match this trade right now"));
+  }
   const matchedTradeId=rows?.[0]?.matched_trade_id;
   if(!matchedTradeId){
     throw new Error("Unable to match this trade right now");
@@ -1736,7 +1773,8 @@ function renderIndexHtmlWithMetadata(metadata){
   const description=escapeHtmlText(metadata.description||"Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.");
   const url=escapeHtmlText(metadata.url||`${SHARE_URL_ORIGIN}/`);
   const image=escapeHtmlText(metadata.image||`${SHARE_URL_ORIGIN}/social-preview.svg`);
-  return html
+  return applyAssetVersion(
+    html
     .replace(/<title>[\s\S]*?<\/title>/i,`<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*">/i,`<meta name="description" content="${description}">`)
     .replace(/<meta property="og:url" content="[^"]*">/i,`<meta property="og:url" content="${url}">`)
@@ -1745,7 +1783,17 @@ function renderIndexHtmlWithMetadata(metadata){
     .replace(/<meta property="og:image" content="[^"]*">/i,`<meta property="og:image" content="${image}">`)
     .replace(/<meta name="twitter:title" content="[^"]*">/i,`<meta name="twitter:title" content="${title}">`)
     .replace(/<meta name="twitter:description" content="[^"]*">/i,`<meta name="twitter:description" content="${description}">`)
-    .replace(/<meta name="twitter:image" content="[^"]*">/i,`<meta name="twitter:image" content="${image}">`);
+    .replace(/<meta name="twitter:image" content="[^"]*">/i,`<meta name="twitter:image" content="${image}">`)
+  );
+}
+
+function applyAssetVersion(html){
+  return String(html)
+    .replace(/(\.\/styles\.css)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/(\.\/lib\/derived-fantasy-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/(\.\/lib\/onboarding-modal\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/(\.\/seed-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/(\.\/app\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`);
 }
 
 function escapeHtmlText(value){

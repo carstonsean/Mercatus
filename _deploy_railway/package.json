@@ -8,6 +8,8 @@
     "start": "node server.js",
     "dev": "node server.js",
     "check": "node -c server.js && node -c app.js",
+    "audit:release": "node scripts/audit-release.js",
+    "sync:deploy-bundle": "node scripts/sync-deploy-bundle.js",
     "smoke:release": "node scripts/smoke-release.js",
     "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2",
     "migrate:supabase": "node scripts/migrate-state-to-supabase.js",

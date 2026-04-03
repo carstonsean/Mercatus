@@ -25,14 +25,17 @@ async function fetchJson(pathname,body){
 async function run(){
   const failures=[];
   const index=await fetchText("/");
-  const css=await fetchText("/styles.css?v=2.3");
-  const onboarding=await fetchText("/lib/onboarding-modal.js?v=2.3");
   const session=await fetchJson("/api/session",{userName:""});
+  const buildId=session.json?.build?.id||null;
+  const assetVersion=buildId ? `?v=${encodeURIComponent(buildId)}` : "";
+  const css=await fetchText(`/styles.css${assetVersion}`);
+  const onboarding=await fetchText(`/lib/onboarding-modal.js${assetVersion}`);
 
   const checks=[
     ["GET / returns 200",index.ok],
     ["index contains header menu button",/header-menu-button/.test(index.text)],
-    ["index loads onboarding modal bundle",/lib\/onboarding-modal\.js\?v=2\.3/.test(index.text)],
+    ["index loads versioned stylesheet",new RegExp(`styles\\.css\\?v=${escapeRegExp(buildId||"")}`).test(index.text)],
+    ["index loads versioned onboarding bundle",new RegExp(`lib/onboarding-modal\\.js\\?v=${escapeRegExp(buildId||"")}`).test(index.text)],
     ["styles contain app chrome host",/\.app-chrome-host/.test(css.text)],
     ["styles contain app menu panel",/\.app-menu-panel/.test(css.text)],
     ["styles contain app modal shell",/\.app-modal-shell/.test(css.text)],
@@ -52,7 +55,7 @@ async function run(){
 
   const summary={
     baseUrl,
-    buildId:session.json?.build?.id||null,
+    buildId,
     activeRoundNumber:session.json?.state?.activeRoundNumber||null,
     failures
   };
@@ -68,3 +71,7 @@ run().catch((error)=>{
   console.error(JSON.stringify({baseUrl,error:error.message},null,2));
   process.exit(1);
 });
+
+function escapeRegExp(value){
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+}
