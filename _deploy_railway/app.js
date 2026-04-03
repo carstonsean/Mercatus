@@ -1158,6 +1158,7 @@ async function refreshSharedState() {
   const previousRenderSignature = buildRenderSignature(state, backendState);
   try {
     await syncSession();
+    await maybeLoadChallengeRoute(true);
     const nextRenderSignature = buildRenderSignature(state, backendState);
     if (nextRenderSignature === previousRenderSignature) {
       return;
@@ -1185,6 +1186,7 @@ async function handlePageResume() {
   ensureSeededMarketState();
   try {
     await syncSession();
+    await maybeLoadChallengeRoute(true);
   } catch (error) {
     console.warn("Resume session sync failed", error.message);
     ensureSeededMarketState();
@@ -1195,6 +1197,7 @@ async function handlePageResume() {
 
 function renderAll() {
   normalizeNavigationState();
+  safelyRender("challenge route", renderChallengeRoute);
   safelyRender("header balance", renderHeaderBalance);
   safelyRender("app chrome", renderAppChrome);
   safelyRender("guest hero", renderGuestHero);
@@ -1259,6 +1262,9 @@ function openAppModal(modalKey) {
 
 function closeAppModal() {
   if (!uiState.activeAppModal) return;
+  if (uiState.activeAppModal === "challenge-friends") {
+    resetChallengeModalState();
+  }
   uiState.activeAppModal = "";
   renderAppChrome();
 }
@@ -1394,6 +1400,7 @@ function renderAppChrome() {
       openMarketFromHome(button.dataset.fullLeaderboardMarketId);
     });
   });
+  bindChallengeFriendsModalEvents(chromeHost);
 
   document.body.classList.add("app-chrome-open");
 }
@@ -1431,15 +1438,16 @@ function appModalMarkup(modalKey) {
     return infoCardModalMarkup(modalKey);
   }
   const isHowItWorks = modalKey === "how-it-works";
+  const isChallengeFriends = modalKey === "challenge-friends";
   return `
     <div class="app-modal-overlay">
       <button class="app-modal-backdrop" type="button" aria-label="Close ${APP_MODAL_TITLES[modalKey]}"></button>
-      <section class="app-modal-shell ${isHowItWorks ? "app-modal-shell-flow" : ""}" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
+      <section class="app-modal-shell ${isHowItWorks ? "app-modal-shell-flow" : ""} ${isChallengeFriends ? "challenge-modal-shell" : ""}" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
         <header class="app-modal-header">
           <h2 id="app-modal-title">${APP_MODAL_TITLES[modalKey]}</h2>
           <button class="app-modal-close icon-tap-button" type="button" aria-label="Close ${APP_MODAL_TITLES[modalKey]}">✕</button>
         </header>
-        <div class="app-modal-body ${isHowItWorks ? "app-modal-body-flow" : ""}">
+        <div class="app-modal-body ${isHowItWorks ? "app-modal-body-flow" : ""} ${isChallengeFriends ? "challenge-modal-body" : ""}">
           ${appModalContentMarkup(modalKey)}
         </div>
       </section>
@@ -1650,6 +1658,9 @@ function marketConfidenceModalDialMarkup(confidence) {
 }
 
 function appModalContentMarkup(modalKey) {
+  if (modalKey === "challenge-friends") {
+    return challengeFriendsModalMarkup();
+  }
   if (modalKey === "how-it-works") {
     return HOW_IT_WORKS_SECTIONS.map((section) => `
       <section class="app-modal-flow-section">
@@ -1731,12 +1742,15 @@ function appModalContentMarkup(modalKey) {
 }
 
 function renderScreens() {
+  const challengeActive = isChallengeRouteActive();
   elements.navButtons.forEach((button) =>
-    button.classList.toggle("active", button.dataset.screenTarget === uiState.activeScreen)
+    button.classList.toggle("active", !challengeActive && button.dataset.screenTarget === uiState.activeScreen)
   );
   elements.screens.forEach((screen) =>
-    screen.classList.toggle("active", screen.dataset.screen === uiState.activeScreen)
+    screen.classList.toggle("active", !challengeActive && screen.dataset.screen === uiState.activeScreen)
   );
+  document.querySelector(".bottom-nav")?.classList.toggle("is-hidden", challengeActive);
+  document.querySelector(".app-header")?.classList.toggle("is-hidden", challengeActive);
   elements.accountViewTabs?.forEach((button) =>
     button.classList.toggle("active", button.dataset.accountView === uiState.activeAccountView)
   );
@@ -2230,6 +2244,7 @@ function renderPortfolio() {
     matchedBalance,
     unmatchedBalance
   });
+  renderPortfolioChallengeEntry();
   renderPortfolioPrizePoolCard();
   renderPortfolioFilters();
   renderPortfolioPositionCards(elements.portfolioList, positions, "No positions match that filter yet.");
@@ -2730,6 +2745,339 @@ function renderQuickTake() {
   activeCard?.querySelector("[data-quick-skip]")?.addEventListener("click", () => {
     skipQuickTake(current.id, activeCard);
   });
+}
+
+function renderPortfolioChallengeEntry() {
+  if (!elements.portfolioChallengeEntry) return;
+  const eligibleTrades = getEligibleChallengeTrades();
+  if (!eligibleTrades.length) {
+    elements.portfolioChallengeEntry.innerHTML = "";
+    return;
+  }
+  elements.portfolioChallengeEntry.innerHTML = `<button class="portfolio-challenge-button" type="button" data-open-challenge-friends><i class="ph-fill ph-share-network" aria-hidden="true"></i><span>Challenge Friends</span></button>`;
+  elements.portfolioChallengeEntry.querySelector("[data-open-challenge-friends]")?.addEventListener("click", () => {
+    resetChallengeModalState();
+    uiState.activeAppModal = "challenge-friends";
+    renderAppChrome();
+  });
+}
+
+function renderChallengeRoute() {
+  if (!elements.challengeRoute) return;
+  const active = isChallengeRouteActive();
+  elements.challengeRoute.classList.toggle("is-hidden", !active);
+  elements.challengeRoute.classList.toggle("is-active", active);
+  document.getElementById("app-content")?.classList.toggle("challenge-mode", active);
+  if (!active) {
+    elements.challengeRoute.innerHTML = "";
+    return;
+  }
+  if (uiState.challengeRouteLoading) {
+    elements.challengeRoute.innerHTML = `<div class="challenge-shell"><div class="challenge-loading">Loading challenge...</div></div>`;
+    return;
+  }
+  if (uiState.challengeRouteError) {
+    elements.challengeRoute.innerHTML = `<div class="challenge-shell"><div class="challenge-error-card"><h2>Challenge unavailable</h2><p>${escapeHtml(uiState.challengeRouteError)}</p><button class="secondary-button" type="button" data-challenge-home>Back to Home</button></div></div>`;
+    elements.challengeRoute.querySelector("[data-challenge-home]")?.addEventListener("click", () => {
+      window.location.href = "/";
+    });
+    return;
+  }
+  if (!uiState.challengeRouteSession) {
+    elements.challengeRoute.innerHTML = `<div class="challenge-shell"><div class="challenge-loading">Loading challenge...</div></div>`;
+    return;
+  }
+  elements.challengeRoute.innerHTML = isAuthenticated()
+    ? challengeAcceptanceMarkup()
+    : challengeLandingMarkup();
+  bindChallengeRouteEvents();
+}
+
+function challengeLandingMarkup() {
+  const session = uiState.challengeRouteSession || { trades: [], created_by_username: "A friend" };
+  const firstTrade = session.trades?.[0];
+  const moreCount = Math.max((session.trades?.length || 0) - 1, 0);
+  return `
+    <div class="challenge-shell">
+      <div class="challenge-brand-row"><h1 class="brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1></div>
+      <section class="challenge-stack">
+        <header class="challenge-header-block">
+          <h2>${escapeHtml(session.created_by_username)} challenged you to a trade</h2>
+          <p>Review their position and take the other side if you agree</p>
+        </header>
+        ${firstTrade ? challengePreviewCardMarkup(firstTrade, session.created_by_username) : `<div class="challenge-error-card"><p>This challenge has no available trades.</p></div>`}
+        ${moreCount ? `<p class="challenge-more-copy">...and ${moreCount} more trades to review</p>` : ""}
+        <div class="challenge-action-stack">
+          <button class="primary-button challenge-cta-button" type="button" data-challenge-auth="signup">Sign Up to Accept</button>
+          <button class="secondary-button challenge-secondary-button" type="button" data-challenge-auth="signin">Sign In</button>
+        </div>
+        <button class="challenge-link-button" type="button" data-challenge-how>How it works?</button>
+      </section>
+    </div>
+  `;
+}
+
+function challengeFriendsModalMarkup() {
+  const eligibleTrades = getEligibleChallengeTrades();
+  if (uiState.challengeModalStep === "link") {
+    const copied = uiState.challengeCopyStateUntil > Date.now();
+    return `
+      <section class="challenge-modal-section">
+        <p class="challenge-modal-title">${uiState.challengeCreatedTradeCount} trade(s) ready to challenge</p>
+        <div class="challenge-link-field">${escapeHtml(uiState.challengeCreatedUrl)}</div>
+        <button class="secondary-button challenge-copy-button" type="button" data-challenge-copy>${copied ? "Copied!" : "Copy Link"}</button>
+        <p class="challenge-modal-muted">Share this link with anyone you want to challenge. They'll need to sign up to accept.</p>
+        ${uiState.challengeExcludedTradeCount > 0 ? `<p class="challenge-modal-muted">${uiState.challengeExcludedTradeCount} of your selected trades were no longer available and weren't included.</p>` : ""}
+      </section>
+    `;
+  }
+  return `
+    <section class="challenge-modal-section challenge-modal-select">
+      <p class="challenge-modal-subtitle">Select the unmatched trades you want to challenge your friends to take the other side of.</p>
+      <div class="challenge-list-head">
+        <span>Eligible trades</span>
+        ${eligibleTrades.length ? `<button class="challenge-select-all" type="button" data-challenge-select-all>Select All</button>` : ""}
+      </div>
+      <div class="challenge-modal-list">
+        ${eligibleTrades.map((trade) => challengeTradeRowMarkup(trade)).join("") || `<div class="portfolio-empty-state"><strong>No eligible trades</strong><span>Unmatched trades before kickoff will appear here.</span></div>`}
+      </div>
+      ${uiState.challengeCreateError ? `<p class="feedback challenge-inline-error">${escapeHtml(uiState.challengeCreateError)}</p>` : ""}
+      <div class="challenge-modal-footer">
+        <button class="primary-button challenge-send-button ${uiState.challengeCreatePending ? "is-loading" : ""}" type="button" data-challenge-send ${!uiState.challengeSelectedTradeIds.length || uiState.challengeCreatePending ? "disabled" : ""}>${uiState.challengeCreatePending ? "Creating link..." : "Send Now"}</button>
+      </div>
+    </section>
+  `;
+}
+
+function challengeTradeRowMarkup(trade) {
+  const selected = uiState.challengeSelectedTradeIds.includes(trade.id);
+  return `
+    <button class="challenge-trade-row" type="button" data-challenge-trade-id="${trade.id}">
+      <span class="challenge-trade-check ${selected ? "is-selected" : ""}"></span>
+      <span class="challenge-trade-copy">
+        <strong>${escapeHtml(trade.playerName || trade.market?.playerName || "Unknown player")}</strong>
+        <span>${escapeHtml(formatChallengeTradeDirection(trade))}</span>
+        <span>${escapeHtml(`${homeTeamAbbreviation(trade.market?.team || trade.team || "")} · vs ${trade.market?.opponent || ""}`)}</span>
+        <span>${escapeHtml(formatPortfolioCardKickoff(trade.market || findMarket(trade.marketId)))}</span>
+      </span>
+    </button>
+  `;
+}
+
+function bindChallengeFriendsModalEvents(chromeHost) {
+  if (uiState.activeAppModal !== "challenge-friends") return;
+  chromeHost.querySelectorAll("[data-challenge-trade-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tradeId = button.dataset.challengeTradeId;
+      uiState.challengeCreateError = "";
+      uiState.challengeSelectedTradeIds = uiState.challengeSelectedTradeIds.includes(tradeId)
+        ? uiState.challengeSelectedTradeIds.filter((id) => id !== tradeId)
+        : [...uiState.challengeSelectedTradeIds, tradeId];
+      renderAppChrome();
+    });
+  });
+  chromeHost.querySelector("[data-challenge-select-all]")?.addEventListener("click", () => {
+    uiState.challengeSelectedTradeIds = getEligibleChallengeTrades().map((trade) => trade.id);
+    renderAppChrome();
+  });
+  chromeHost.querySelector("[data-challenge-send]")?.addEventListener("click", async () => {
+    uiState.challengeCreatePending = true;
+    uiState.challengeCreateError = "";
+    renderAppChrome();
+    try {
+      const response = await api("/api/share/create", {
+        trade_ids: uiState.challengeSelectedTradeIds
+      });
+      uiState.challengeModalStep = "link";
+      uiState.challengeCreatePending = false;
+      uiState.challengeCreatedUrl = response.share_url;
+      uiState.challengeCreatedTradeCount = Number(response.valid_trade_count) || 0;
+      uiState.challengeExcludedTradeCount = Number(response.excluded_trade_count) || 0;
+      renderAppChrome();
+    } catch (error) {
+      uiState.challengeCreatePending = false;
+      uiState.challengeCreateError = error.message;
+      renderAppChrome();
+    }
+  });
+  chromeHost.querySelector("[data-challenge-copy]")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(uiState.challengeCreatedUrl);
+      uiState.challengeCopyStateUntil = Date.now() + 2000;
+      renderAppChrome();
+      window.setTimeout(() => {
+        renderAppChrome();
+      }, 2000);
+    } catch (error) {
+      showToast("Copy failed", "Unable to copy the challenge link.");
+    }
+  });
+}
+
+function challengePreviewCardMarkup(trade, creator) {
+  return `
+    <article class="challenge-preview-card">
+      <h3>${escapeHtml(trade.market?.player_name || "Unknown player")}</h3>
+      <p class="challenge-preview-meta">${escapeHtml(challengeOpponentMeta(trade))}</p>
+      <div class="challenge-preview-direction">${escapeHtml(formatChallengeTradeDirection(trade))}</div>
+      <p class="challenge-preview-opposite">You would take: ${escapeHtml(oppositeChallengeDirection(trade))}</p>
+      <p class="challenge-preview-stake">Stake: ${formatStake(trade.unmatchedStake || trade.stake || 0)}</p>
+    </article>
+  `;
+}
+
+function challengeAcceptanceMarkup() {
+  const session = uiState.challengeRouteSession || { trades: [], created_by_username: "A friend" };
+  const total = session.trades?.length || 0;
+  const index = Math.min(uiState.challengeRouteIndex, Math.max(total - 1, 0));
+  if (!total || index >= total) {
+    return challengeSummaryMarkup();
+  }
+  const trade = currentChallengeTradeRecord();
+  const review = uiState.challengeRouteReview.find((entry) => entry.tradeId === trade.id);
+  const unavailable = !trade || isChallengeTradeUnavailable(trade);
+  return `
+    <div class="challenge-shell">
+      <section class="challenge-stack challenge-stack-wide">
+        <header class="challenge-accept-header">
+          <div>
+            <h2>${escapeHtml(session.created_by_username)} challenged you</h2>
+          </div>
+          <div class="challenge-header-actions">
+            <span>Trade ${index + 1} of ${total}</span>
+            <button class="icon-tap-button challenge-close-button" type="button" data-challenge-home>✕</button>
+          </div>
+        </header>
+        <article class="challenge-accept-card ${unavailable ? "is-unavailable" : ""}">
+          ${uiState.challengeRouteMatchedUntil > Date.now() && review?.tradeId === trade.id ? `<div class="challenge-match-overlay"><div>✓</div><strong>Trade Matched!</strong></div>` : ""}
+          <span class="challenge-label">${unavailable ? "UNAVAILABLE" : "CHALLENGE"}</span>
+          <h3>${escapeHtml(trade.market?.player_name || "Unknown player")}</h3>
+          <p class="challenge-preview-meta">${escapeHtml(challengeOpponentMeta(trade))}</p>
+          <div class="challenge-projection-value">${Number(trade.market?.current_line || trade.entryLine || 0).toFixed(1)}</div>
+          ${unavailable ? `<p class="challenge-muted-copy">This trade is no longer available</p>` : `
+            <p class="challenge-line-copy"><span>${escapeHtml(session.created_by_username)}'s pick:</span><strong>${escapeHtml(formatChallengeTradeDirection(trade))}</strong></p>
+            <p class="challenge-line-copy"><span>Your side:</span><strong class="is-positive">${escapeHtml(oppositeChallengeDirection(trade))}</strong></p>
+            <p class="challenge-preview-stake">Stake: ${formatStake(trade.unmatchedStake || trade.stake || 0)}</p>
+          `}
+        </article>
+        <div class="challenge-action-stack">
+          ${unavailable ? `<button class="primary-button challenge-cta-button" type="button" data-challenge-next>Next</button>` : `
+            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAcceptPending ? "is-loading" : ""}" type="button" data-challenge-accept ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>${uiState.challengeRouteAcceptPending ? "Matching..." : "Accept"}</button>
+            <button class="secondary-button challenge-secondary-button" type="button" data-challenge-decline ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>Decline</button>
+          `}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function challengeSummaryMarkup() {
+  const review = uiState.challengeRouteReview || [];
+  const matched = review.filter((entry) => entry.status === "matched").length;
+  const declined = review.filter((entry) => entry.status === "declined").length;
+  const expired = review.filter((entry) => entry.status === "expired").length;
+  return `
+    <div class="challenge-shell">
+      <section class="challenge-stack challenge-stack-wide">
+        <header class="challenge-header-block">
+          <h2>Challenge Complete</h2>
+          <p>Here's how it went</p>
+        </header>
+        <div class="challenge-summary-list">
+          ${review.map((entry) => challengeSummaryRowMarkup(entry)).join("")}
+        </div>
+        <p class="challenge-more-copy">${matched} matched · ${declined} declined · ${expired} expired</p>
+        <button class="primary-button challenge-cta-button" type="button" data-challenge-home>Explore CrowdIQ</button>
+      </section>
+    </div>
+  `;
+}
+
+function challengeSummaryRowMarkup(entry) {
+  const icon = entry.status === "matched" ? "✓" : entry.status === "declined" ? "✕" : "−";
+  const label = entry.status === "matched" ? "Matched" : entry.status === "declined" ? "Declined" : "No longer available";
+  const className = entry.status === "matched" ? "is-positive" : entry.status === "expired" ? "is-expired" : "";
+  return `<div class="challenge-summary-row"><span class="challenge-summary-icon ${className}">${icon}</span><span>${escapeHtml(entry.playerName)}</span><strong class="${className}">${label}</strong></div>`;
+}
+
+function challengeOpponentMeta(trade) {
+  const market = trade.market || {};
+  return `${homeTeamAbbreviation(market.team || "")} · vs ${market.opponent || "Opponent"} · ${formatChallengeKickoff(market.kickoff_time)}`;
+}
+
+function formatChallengeKickoff(kickoffTime) {
+  const timestamp = Number(new Date(kickoffTime || "").getTime());
+  if (!Number.isFinite(timestamp)) return "";
+  return new Date(timestamp).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
+function isChallengeTradeUnavailable(trade) {
+  const kickoffAt = Number(new Date(trade.market?.kickoff_time || "").getTime());
+  return !(Number(trade.unmatchedStake) > 0) || (Number.isFinite(kickoffAt) && kickoffAt <= Date.now());
+}
+
+function bindChallengeRouteEvents() {
+  elements.challengeRoute.querySelectorAll("[data-challenge-auth]").forEach((button) => {
+    button.addEventListener("click", () => beginChallengeAuthRedirect(button.dataset.challengeAuth));
+  });
+  elements.challengeRoute.querySelector("[data-challenge-how]")?.addEventListener("click", () => {
+    openAppModal("how-it-works");
+    renderAppChrome();
+  });
+  elements.challengeRoute.querySelectorAll("[data-challenge-home]").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.location.href = "/";
+    });
+  });
+  elements.challengeRoute.querySelector("[data-challenge-next]")?.addEventListener("click", () => {
+    markChallengeReviewStatus(currentChallengeTradeRecord(), "expired");
+    advanceChallengeTrade();
+  });
+  elements.challengeRoute.querySelector("[data-challenge-decline]")?.addEventListener("click", () => {
+    markChallengeReviewStatus(currentChallengeTradeRecord(), "declined");
+    advanceChallengeTrade();
+  });
+  elements.challengeRoute.querySelector("[data-challenge-accept]")?.addEventListener("click", async () => {
+    const trade = currentChallengeTradeRecord();
+    if (!trade) return;
+    uiState.challengeRouteAcceptPending = true;
+    uiState.challengeRouteAcceptError = "";
+    renderChallengeRoute();
+    try {
+      await api("/api/share/accept", {
+        share_session_id: uiState.challengeRouteShareId,
+        trade_id: trade.id
+      });
+      markChallengeReviewStatus(trade, "matched");
+      uiState.challengeRouteMatchedUntil = Date.now() + 1500;
+      renderChallengeRoute();
+      window.setTimeout(async () => {
+        uiState.challengeRouteMatchedUntil = 0;
+        uiState.challengeRouteAcceptPending = false;
+        await maybeLoadChallengeRoute(true);
+        renderAll();
+      }, 1500);
+      return;
+    } catch (error) {
+      uiState.challengeRouteAcceptPending = false;
+      showToast(error.message === "Insufficient balance" ? "Insufficient balance" : "Unable to accept", error.message);
+      renderChallengeRoute();
+    }
+  });
+}
+
+function markChallengeReviewStatus(trade, status) {
+  if (!trade) return;
+  uiState.challengeRouteReview = uiState.challengeRouteReview.map((entry) =>
+    entry.tradeId === trade.id ? { ...entry, status } : entry
+  );
+}
+
+function advanceChallengeTrade() {
+  uiState.challengeRouteAcceptPending = false;
+  uiState.challengeRouteMatchedUntil = 0;
+  uiState.challengeRouteIndex += 1;
+  renderAll();
 }
 
 async function submitQuickTake(marketId, side, card) {
@@ -4251,6 +4599,118 @@ async function submitContactForm() {
     uiState.contactFormFeedback = error.message;
     renderAppChrome();
   }
+}
+
+function currentChallengeShareId() {
+  const match = window.location.pathname.match(/^\/challenge\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function syncChallengeRouteFromLocation() {
+  uiState.challengeRouteShareId = currentChallengeShareId();
+}
+
+function isChallengeRouteActive() {
+  return Boolean(uiState.challengeRouteShareId);
+}
+
+async function maybeLoadChallengeRoute(force = false) {
+  const shareId = uiState.challengeRouteShareId;
+  if (!shareId) {
+    uiState.challengeRouteLoading = false;
+    uiState.challengeRouteError = "";
+    uiState.challengeRouteSession = null;
+    uiState.challengeRouteIndex = 0;
+    uiState.challengeRouteReview = [];
+    return;
+  }
+  if (!force && uiState.challengeRouteSession && uiState.challengeRouteSession.shareId === shareId) {
+    return;
+  }
+  uiState.challengeRouteLoading = true;
+  uiState.challengeRouteError = "";
+  try {
+    const previousReview = uiState.challengeRouteReview.slice();
+    const previousIndex = uiState.challengeRouteIndex;
+    const session = await apiGet(`/api/share/${encodeURIComponent(shareId)}`);
+    uiState.challengeRouteSession = {
+      ...session,
+      shareId
+    };
+    const nextReview = previousReview.slice();
+    (session.trades || []).forEach((trade) => {
+      if (nextReview.some((entry) => entry.tradeId === trade.id)) return;
+      nextReview.push({
+        tradeId: trade.id,
+        playerName: trade.market?.player_name || "Unknown player",
+        status: "pending"
+      });
+    });
+    uiState.challengeRouteReview = nextReview;
+    uiState.challengeRouteIndex = force ? Math.min(previousIndex, Math.max((session.trades || []).length - 1, 0)) : 0;
+  } catch (error) {
+    uiState.challengeRouteSession = null;
+    uiState.challengeRouteError = error.message;
+  } finally {
+    uiState.challengeRouteLoading = false;
+  }
+}
+
+function redirectToPendingChallengeIfNeeded() {
+  const shareId = localStorage.getItem(PENDING_CHALLENGE_KEY);
+  if (!shareId) {
+    return;
+  }
+  localStorage.removeItem(PENDING_CHALLENGE_KEY);
+  window.location.href = `/challenge/${encodeURIComponent(shareId)}`;
+}
+
+function beginChallengeAuthRedirect(mode = "signup") {
+  if (uiState.challengeRouteShareId) {
+    localStorage.setItem(PENDING_CHALLENGE_KEY, uiState.challengeRouteShareId);
+  }
+  openAuthPrompt(mode);
+}
+
+function resetChallengeModalState() {
+  uiState.challengeModalStep = "select";
+  uiState.challengeSelectedTradeIds = [];
+  uiState.challengeCreatePending = false;
+  uiState.challengeCreateError = "";
+  uiState.challengeCreatedUrl = "";
+  uiState.challengeCreatedTradeCount = 0;
+  uiState.challengeExcludedTradeCount = 0;
+  uiState.challengeCopyStateUntil = 0;
+}
+
+function getEligibleChallengeTrades() {
+  return getUserTrades(currentUserName())
+    .filter((trade) => (Number(trade.unmatchedStake) || 0) > 0 && !trade.result)
+    .map((trade) => {
+      const market = findMarket(trade.marketId);
+      return market && !isMarketLocked(market) ? { ...trade, market } : null;
+    })
+    .filter(Boolean)
+    .sort((left, right) => new Date(right.timestamp || 0) - new Date(left.timestamp || 0));
+}
+
+function formatChallengeTradeDirection(trade) {
+  const line = trade.side === "OVER"
+    ? Number(trade.entryOverLine ?? trade.entryLine)
+    : Number(trade.entryUnderLine ?? trade.entryLine);
+  return `${trade.side === "OVER" ? "Over" : "Under"} ${line.toFixed(1)}`;
+}
+
+function oppositeChallengeDirection(trade) {
+  const line = trade.side === "OVER"
+    ? Number(trade.entryUnderLine ?? trade.entryLine)
+    : Number(trade.entryOverLine ?? trade.entryLine);
+  return `${trade.side === "OVER" ? "Under" : "Over"} ${line.toFixed(1)}`;
+}
+
+function currentChallengeTradeRecord() {
+  const trades = uiState.challengeRouteSession?.trades || [];
+  return trades[uiState.challengeRouteIndex] || null;
 }
 
 function renderAdminContactInbox() {
@@ -6751,8 +7211,37 @@ async function api(url, payload) {
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Name": currentUserName()
+      },
       body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Request failed");
+    }
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError" || String(error.message).toLowerCase().includes("aborted")) {
+      throw new Error("Request timed out — please try again");
+    }
+    throw error;
+  }
+}
+
+async function apiGet(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "X-User-Name": currentUserName()
+      },
       signal: controller.signal
     });
     clearTimeout(timeoutId);
