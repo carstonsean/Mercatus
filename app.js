@@ -2383,12 +2383,13 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
     const projectionValueLabel = Number(entryProjection).toFixed(1);
     const isMatched = status.label === "Matched";
     const isSettled = trade.portfolioState === "SETTLED";
+    const isMarketShareable = !isMarketLocked(market);
     const statusLabel = isMatched ? "MATCHED" : "UNMATCHED";
     const cancelableOrderIds = Array.isArray(trade.cancelableOrderIds) ? trade.cancelableOrderIds : [];
     const canSwipeToCancel = !isMatched && cancelableOrderIds.length > 0;
     const canExpandInlineActions = !isSettled && !isMatched && cancelableOrderIds.length > 0;
     const challengeTradeIds = cancelableOrderIds.slice();
-    const challengeTradeId = challengeTradeIds[0] || "";
+    const challengeTradeId = isMarketShareable ? (challengeTradeIds[0] || "") : "";
     const positionKey = `${trade.portfolioState || "OPEN"}:${trade.marketId}:${trade.side}`;
     const isExpanded = canExpandInlineActions && uiState.expandedPortfolioPositionKey === positionKey;
     const isFirstRender = !portfolioRenderedPositionKeys.has(positionKey);
