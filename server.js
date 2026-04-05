@@ -184,31 +184,26 @@ async function handleApi(req,res,url){
     }catch(error){
       return json(res,401,{error:error.message||"Authentication required"});
     }
+    const submittedTradeId=String(body.trade_id || (Array.isArray(body.trade_ids)?body.trade_ids[0]:"")).trim();
+    if(!submittedTradeId){
+      return json(res,400,{error:"Select one unmatched trade to share"});
+    }
     if(useSupabase){
-      await syncStateFromSupabase({force:true});
-    }
-    const submittedTradeIds=Array.isArray(body.trade_ids)?body.trade_ids.filter(Boolean):[];
-    if(submittedTradeIds.length>10){
-      return json(res,400,{error:"Maximum 10 trades per challenge"});
-    }
-    const validTradeIds=[];
-    const uniqueSubmittedTradeIds=[...new Set(submittedTradeIds.map((tradeId)=>String(tradeId)))];
-    uniqueSubmittedTradeIds.forEach((tradeId)=>{
-      const eligibleTrade=findEligibleShareTrade(authenticatedUserName,tradeId);
-      if(eligibleTrade){
-        validTradeIds.push(eligibleTrade.trade.id);
+      try{
+        await syncStateFromSupabase({force:true});
+      }catch(error){
+        console.warn("Share create Supabase sync failed",error.message);
       }
-    });
-    if(!validTradeIds.length){
-      return json(res,400,{error:"No valid unmatched trades available to share"});
+    }
+    const eligibleTrade=findEligibleShareTrade(authenticatedUserName,submittedTradeId);
+    if(!eligibleTrade){
+      return json(res,400,{error:"This trade is no longer available to share"});
     }
     const shareSession=useSupabase
-      ? await createHostedShareSession(authenticatedUserName,validTradeIds)
-      : createLocalShareSession(authenticatedUserName,validTradeIds);
+      ? await createHostedShareSession(authenticatedUserName,eligibleTrade.trade.id)
+      : createLocalShareSession(authenticatedUserName,eligibleTrade.trade.id);
     return json(res,200,{
-      share_url:`${SHARE_URL_ORIGIN}/challenge/${shareSession.id}`,
-      valid_trade_count:validTradeIds.length,
-      excluded_trade_count:Math.max(uniqueSubmittedTradeIds.length-validTradeIds.length,0)
+      share_url:`${SHARE_URL_ORIGIN}/challenge/${shareSession.id}`
     });
   }
   if(req.method==="GET"&&url.pathname.startsWith("/api/share/")){
@@ -277,7 +272,7 @@ async function handleApi(req,res,url){
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
-    return json(res,200,{state,roundGames,teamColors:TEAM_COLORS,userName:username,backend:buildBackendPayload(backendUser,dashboard,useSupabase),prizePool:buildPrizePoolClientPayload(username),build:BUILD_INFO});
+    return json(res,200,{state:buildClientStateSnapshot(state),roundGames,teamColors:TEAM_COLORS,userName:username,backend:buildBackendPayload(backendUser,dashboard,useSupabase),prizePool:buildPrizePoolClientPayload(username),build:BUILD_INFO});
   }
   if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
     const body=await parseJson(req);
@@ -301,7 +296,7 @@ async function handleApi(req,res,url){
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
-    return json(res,200,{state,userName:username,backend:buildBackendPayload(null,null,useSupabase),prizePool:buildPrizePoolClientPayload(username),build:BUILD_INFO});
+    return json(res,200,{state:buildClientStateSnapshot(state),userName:username,backend:buildBackendPayload(null,null,useSupabase),prizePool:buildPrizePoolClientPayload(username),build:BUILD_INFO});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/active-round"){
     const body=await parseJson(req);
@@ -402,16 +397,13 @@ async function handleApi(req,res,url){
       });
     }
     syncPrizePoolState(state);
-    if(!canPersistToSupabase){
-      return json(res,200,{
-        trade,
-        balance:getUserBankroll(username),
-        market:buildTradeMarketPayload(market),
-        backend:null,
-        prizePool:buildPrizePoolClientPayload(username)
-      });
-    }
-    return json(res,200,{state,trade,backend:null,prizePool:buildPrizePoolClientPayload(username)});
+    return json(res,200,{
+      trade,
+      balance:getUserBankroll(username),
+      market:buildTradeMarketPayload(market),
+      backend:null,
+      prizePool:buildPrizePoolClientPayload(username)
+    });
   }
   if(req.method==="POST"&&url.pathname==="/api/orders/cancel"){
     const body=await parseJson(req);
@@ -634,7 +626,7 @@ function normalizeSupabaseErrorMessage(error,fallback){
   return raw||fallback;
 }
 
-async function createHostedShareSession(userName,tradeIds){
+async function createHostedShareSession(userName,tradeId){
   const user=await ensureSupabaseDemoUser(userName);
   const rows=await supabaseRequest("share_sessions",{
     method:"POST",
@@ -642,19 +634,19 @@ async function createHostedShareSession(userName,tradeIds){
     headers:{Prefer:"return=representation"},
     body:{
       created_by_user_id:user.id,
-      trade_ids:tradeIds,
+      trade_ids:[String(tradeId)],
       status:"active"
     }
   });
   return rows?.[0]||null;
 }
 
-function createLocalShareSession(userName,tradeIds){
+function createLocalShareSession(userName,tradeId){
   state.shareSessions=Array.isArray(state.shareSessions)?state.shareSessions:[];
   const session={
     id:randomUUID(),
     createdByUserName:userName,
-    tradeIds:tradeIds.slice(),
+    tradeIds:[String(tradeId)],
     createdAt:new Date().toISOString(),
     status:"active"
   };
@@ -1084,7 +1076,88 @@ function buildQuickTakeMarketPayload(market){
 function buildTradeMarketPayload(market){
   return {
     ...buildQuickTakeMarketPayload(market),
-    trades:Array.isArray(market.trades)?market.trades.slice():[]
+    trades:Array.isArray(market.trades)?market.trades.map((trade)=>serializeClientTrade(trade)):[]
+  };
+}
+
+function serializeClientTrade(trade){
+  if(!trade||typeof trade!=="object"){
+    return trade;
+  }
+  return {
+    id:trade.id,
+    marketId:trade.marketId,
+    userName:trade.userName,
+    side:trade.side,
+    entryLine:Number(trade.entryLine)||0,
+    entryUnderLine:Number(trade.entryUnderLine)||Number(trade.entryLine)||0,
+    entryOverLine:Number(trade.entryOverLine)||Number(trade.entryLine)||0,
+    stake:Number(trade.stake)||0,
+    matchedStake:Number(trade.matchedStake)||0,
+    unmatchedStake:Number(trade.unmatchedStake)||0,
+    refundedStake:Number(trade.refundedStake)||0,
+    pairIds:Array.isArray(trade.pairIds)?trade.pairIds.slice():[],
+    price:Number(trade.price)||1,
+    timestamp:trade.timestamp,
+    result:trade.result||null,
+    status:trade.status||"PENDING"
+  };
+}
+
+function serializeClientMarket(market){
+  if(!market||typeof market!=="object"){
+    return market;
+  }
+  const snapshot={...market};
+  delete snapshot.botInputs;
+  delete snapshot.matchedPairs;
+  snapshot.initialLine=Number(market.initialLine)||0;
+  snapshot.seasonAverage=Number(market.seasonAverage)||0;
+  snapshot.fantasyPrice=Number(market.fantasyPrice)||0;
+  snapshot.priceImpliedProjection=Number(market.priceImpliedProjection)||0;
+  snapshot.isHome=Boolean(market.isHome);
+  snapshot.teamOdds=Number(market.teamOdds)||0;
+  snapshot.opponentOdds=Number(market.opponentOdds)||0;
+  snapshot.impliedTeamWinProb=Number(market.impliedTeamWinProb)||0;
+  snapshot.lastSeasonAverage=Number(market.lastSeasonAverage)||0;
+  snapshot.lastGameScore=Number(market.lastGameScore)||0;
+  snapshot.last3Average=Number(market.last3Average)||0;
+  snapshot.positionalMatchupAdjustment=Number(market.positionalMatchupAdjustment)||0;
+  snapshot.opponentPositionAverage=Number(market.opponentPositionAverage)||0;
+  snapshot.leaguePositionAverage=Number(market.leaguePositionAverage)||0;
+  snapshot.homeAverage=Number(market.homeAverage)||0;
+  snapshot.awayAverage=Number(market.awayAverage)||0;
+  snapshot.popularity=Number(market.popularity)||0;
+  snapshot.scoreVolatility=Number(market.scoreVolatility)||0;
+  snapshot.currentLine=Number(market.currentLine)||0;
+  snapshot.spreadWidth=Number(market.spreadWidth)||0;
+  snapshot.totalOverStake=Number(market.totalOverStake)||0;
+  snapshot.totalUnderStake=Number(market.totalUnderStake)||0;
+  snapshot.netPressure=Number(market.netPressure)||0;
+  snapshot.pressureBalance=Number(market.pressureBalance)||0;
+  snapshot.trades=Array.isArray(market.trades)?market.trades.map((trade)=>serializeClientTrade(trade)):[];
+  snapshot.settlement=market.settlement||null;
+  snapshot.manuallyLocked=Boolean(market.manuallyLocked);
+  snapshot.manualAdjustmentSteps=Number(market.manualAdjustmentSteps)||0;
+  snapshot.engineVersion=market.engineVersion||ENGINE_VERSION;
+  return snapshot;
+}
+
+function buildClientStateSnapshot(sourceState){
+  const snapshot=sourceState&&typeof sourceState==="object"?sourceState:{};
+  return {
+    bankrolls:cloneValue(snapshot.bankrolls||{}),
+    markets:Array.isArray(snapshot.markets)?snapshot.markets.map((market)=>serializeClientMarket(market)):[],
+    activeRoundNumber:Number(snapshot.activeRoundNumber)||DEFAULT_ACTIVE_ROUND_NUMBER,
+    activeRoundLabel:snapshot.activeRoundLabel||buildRoundLabel(Number(snapshot.activeRoundNumber)||DEFAULT_ACTIVE_ROUND_NUMBER),
+    forceOpenGameIds:Array.isArray(snapshot.forceOpenGameIds)?snapshot.forceOpenGameIds.slice():[],
+    walletTransactions:Array.isArray(snapshot.walletTransactions)?cloneValue(snapshot.walletTransactions):[],
+    shareSessions:Array.isArray(snapshot.shareSessions)?cloneValue(snapshot.shareSessions):[],
+    contactMessages:Array.isArray(snapshot.contactMessages)?cloneValue(snapshot.contactMessages):[],
+    lastSettlementBatch:cloneValue(snapshot.lastSettlementBatch||null),
+    roundMetricsHistory:Array.isArray(snapshot.roundMetricsHistory)?cloneValue(snapshot.roundMetricsHistory):[],
+    prizePool:cloneValue(snapshot.prizePool||buildFreshPrizePoolState()),
+    botSimulation:cloneValue(snapshot.botSimulation||normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG))
   };
 }
 
