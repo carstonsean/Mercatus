@@ -9,7 +9,7 @@ require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
 const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
-const {isSupabaseEnabled}=require("./lib/config");
+const {USE_SUPABASE,isHostedEnvironment,isSupabaseEnabled,getLocalSupabaseSafetyError}=require("./lib/config");
 const {supabaseRequest}=require("./lib/supabase");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
@@ -70,9 +70,19 @@ const AVAILABLE_ROUND_NUMBERS=[...new Set([
 const SUPABASE_STATE_SYNC_TTL_MS=30000;
 const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
+const HOSTED_ENVIRONMENT=isHostedEnvironment();
 const SUPABASE_ENABLED=isSupabaseEnabled();
-const BUILD_INFO={id:BUILD_ID,environment:SUPABASE_ENABLED?"hosted":"local"};
+const SUPABASE_LOCAL_SAFETY_ERROR=getLocalSupabaseSafetyError();
+const BUILD_INFO={id:BUILD_ID,environment:HOSTED_ENVIRONMENT?"hosted":"local",persistence:SUPABASE_ENABLED?"supabase":"file"};
 const ASSET_VERSION=BUILD_ID;
+
+if(SUPABASE_LOCAL_SAFETY_ERROR){
+  console.warn(SUPABASE_LOCAL_SAFETY_ERROR);
+}
+
+if(HOSTED_ENVIRONMENT&&!SUPABASE_ENABLED){
+  throw new Error("Hosted environment requires Supabase. Refusing to start with ephemeral file-backed state.");
+}
 
 let popularPlayersCache=null;
 let popularPlayersCacheTime=0;
@@ -1029,6 +1039,9 @@ async function buildChallengeMetadata(shareId,useSupabase=SUPABASE_ENABLED){
 }
 
 function loadState(){
+  if(SUPABASE_ENABLED){
+    return buildFreshState();
+  }
   try{
     if(fs.existsSync(STATE_PATH)){
       return normalizeState(JSON.parse(fs.readFileSync(STATE_PATH,"utf8")));
@@ -1042,6 +1055,9 @@ function loadState(){
 function shouldUseSupabaseForRequest(req){
   if(!SUPABASE_ENABLED){
     return false;
+  }
+  if(HOSTED_ENVIRONMENT||USE_SUPABASE){
+    return true;
   }
   const host=String(req?.headers?.host||"").toLowerCase();
   return !(host.startsWith("127.0.0.1:")||host.startsWith("localhost:"));
@@ -1071,6 +1087,9 @@ function buildFreshState(){
 }
 
 function persistState(){
+  if(SUPABASE_ENABLED){
+    return;
+  }
   fs.writeFileSync(STATE_PATH,JSON.stringify(state,null,2),"utf8");
 }
 
