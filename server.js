@@ -883,7 +883,9 @@ async function updateShareSessionStatus(shareId,status,useSupabase=SUPABASE_ENAB
 }
 
 async function acceptHostedShareTrade(userName,shareSessionId,tradeId){
-  await syncStateFromSupabase({force:true});
+  syncStateFromSupabase().catch((error)=>{
+    console.warn("Hosted share accept sync failed",error.message);
+  });
   const sessionRecord=await fetchHostedShareSessionRecord(shareSessionId);
   if(!sessionRecord){
     throw new Error("This challenge link is no longer valid");
@@ -908,12 +910,16 @@ async function acceptHostedShareTrade(userName,shareSessionId,tradeId){
     if(!market){
       throw new Error("Matched trade could not be loaded");
     }
-    await persistSupabaseMarketState(market,state);
+    persistSupabaseMarketState(market,state).catch((error)=>{
+      console.warn("Supabase share accept persist failed",error.message);
+    });
     const updatedSession=state.shareSessions.find((entry)=>entry.id===shareSessionId);
     if(updatedSession?.status){
-      await updateShareSessionStatus(shareSessionId,updatedSession.status,true);
+      updateShareSessionStatus(shareSessionId,updatedSession.status,true).catch((error)=>{
+        console.warn("Share session status update failed",error.message);
+      });
     }
-    await persistStateSnapshot(true);
+    persistStateSnapshotDeferred(true);
     return matchedTrade;
   }catch(error){
     throw new Error(normalizeSupabaseErrorMessage(error,"Unable to match this trade right now"));
