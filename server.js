@@ -260,9 +260,20 @@ async function handleApi(req,res,url){
       return json(res,400,{error:"Invalid share acceptance payload"});
     }
     try{
-      const matchedTrade=useSupabase
-        ? await acceptHostedShareTrade(authenticatedUserName,shareSessionId,tradeId)
-        : acceptLocalShareTrade(authenticatedUserName,shareSessionId,tradeId);
+      let matchedTrade=null;
+      if(useSupabase){
+        try{
+          matchedTrade=await acceptHostedShareTrade(authenticatedUserName,shareSessionId,tradeId);
+        }catch(error){
+          if(!shouldFallbackShareSessionStorage(error)){
+            throw error;
+          }
+          console.warn("Hosted share accept failed; falling back to runtime overlay",error.message);
+          matchedTrade=acceptLocalShareTrade(authenticatedUserName,shareSessionId,tradeId,true);
+        }
+      }else{
+        matchedTrade=acceptLocalShareTrade(authenticatedUserName,shareSessionId,tradeId);
+      }
       return json(res,200,{success:true,matched_trade:matchedTrade});
     }catch(error){
       return json(res,400,{error:error.message||"Unable to accept this trade"});
@@ -674,7 +685,8 @@ function shouldFallbackShareSessionStorage(error){
     || /function .*accept_share_trade/i.test(message)
     || /Could not find the table/i.test(message)
     || /aborted/i.test(message)
-    || /timed out/i.test(message);
+    || /timed out/i.test(message)
+    || /no longer valid/i.test(message);
 }
 
 function createLocalShareSession(userName,tradeId,useSupabase=SUPABASE_ENABLED){
