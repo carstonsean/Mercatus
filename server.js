@@ -1006,36 +1006,13 @@ function acceptLocalShareTrade(userName,shareSessionId,tradeId,useSupabase=SUPAB
   return serializeShareTrade(acceptedTrade,market);
 }
 
-async function buildChallengeMetadata(shareId,useSupabase=SUPABASE_ENABLED){
-  const fallback={
+function buildChallengeMetadata(shareId){
+  return {
     title:"crowdIQ Challenge",
     description:"Review a crowdIQ challenge and take the other side before kickoff.",
     url:`${SHARE_URL_ORIGIN}/challenge/${shareId}`,
     image:`${SHARE_URL_ORIGIN}/social-preview.svg`
   };
-  try{
-    if(useSupabase){
-      await syncStateFromSupabase({force:true});
-    }
-    const session=await fetchShareSessionPayload(shareId,useSupabase);
-    const firstTrade=session.trades[0];
-    if(!firstTrade){
-      return fallback;
-    }
-    const playerName=firstTrade.market?.player_name||"A player";
-    const projection=firstTrade.side==="OVER"
-      ? `Over ${Number(firstTrade.entryOverLine||firstTrade.entryLine||0).toFixed(1)}`
-      : `Under ${Number(firstTrade.entryUnderLine||firstTrade.entryLine||0).toFixed(1)}`;
-    const moreTrades=session.trades.length>1?` and ${session.trades.length-1} more trades`:"";
-    return {
-      title:`${session.created_by_username} challenged you to a trade on CrowdIQ`,
-      description:`${playerName} · ${projection} · Take the other side?${moreTrades}`,
-      url:`${SHARE_URL_ORIGIN}/challenge/${shareId}`,
-      image:`${SHARE_URL_ORIGIN}/social-preview.svg`
-    };
-  }catch(error){
-    return fallback;
-  }
 }
 
 function loadState(){
@@ -1886,7 +1863,7 @@ function isChallengePath(pathname){
 
 async function serveChallengePage(res,pathname,useSupabase=SUPABASE_ENABLED){
   const shareId=decodeURIComponent(String(pathname||"").replace(/^\/challenge\//,"").replace(/\/$/,""));
-  const metadata=await buildChallengeMetadata(shareId,useSupabase);
+  const metadata=buildChallengeMetadata(shareId,useSupabase);
   const html=renderIndexHtmlWithMetadata(metadata);
   res.writeHead(200,{
     "Content-Type":"text/html; charset=utf-8",
