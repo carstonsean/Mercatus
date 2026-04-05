@@ -11,6 +11,7 @@ const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
 const {USE_SUPABASE,isHostedEnvironment,isSupabaseEnabled,getLocalSupabaseSafetyError}=require("./lib/config");
 const {supabaseRequest}=require("./lib/supabase");
+const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
 const {fetchSupabaseAppState}=require("./lib/supabase-state");
@@ -1156,7 +1157,7 @@ async function updateShareSessionStatus(shareId,status,useSupabase=SUPABASE_ENAB
 }
 
 async function acceptHostedShareTrade(userName,shareSessionId,tradeId){
-  const user=await getOrCreateSupabaseUserIdentity(userName);
+  const user=await ensureSupabaseDemoUser(userName);
   let rows;
   try{
     rows=await supabaseRequest("rpc/accept_share_trade",{
