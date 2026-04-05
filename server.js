@@ -188,6 +188,7 @@ function serveStatic(res,pathname){
 async function handleApi(req,res,url){
   const useSupabase=shouldUseSupabaseForRequest(req);
   if(req.method==="POST"&&url.pathname==="/api/share/create"){
+    const shareCreateStartedAt=Date.now();
     const body=await parseJson(req);
     let authenticatedUserName="";
     try{
@@ -199,31 +200,61 @@ async function handleApi(req,res,url){
     if(!submittedTradeId){
       return json(res,400,{error:"Select one unmatched trade to share"});
     }
-    if(useSupabase){
-      syncStateFromSupabase().catch((error)=>{
-        console.warn("Share create Supabase sync failed",error.message);
-      });
-    }
-    const eligibleTrade=useSupabase
-      ? await findEligibleHostedShareTrade(authenticatedUserName,submittedTradeId)
-      : findEligibleShareTrade(authenticatedUserName,submittedTradeId);
-    if(!eligibleTrade){
-      return json(res,400,{error:"This trade is no longer available to share"});
-    }
-    let shareSession=null;
-    if(useSupabase){
-      try{
-        shareSession=await createHostedShareSession(authenticatedUserName,eligibleTrade.trade.id);
-      }catch(error){
-        return json(res,500,{error:error.message||"Unable to create challenge link right now"});
+      if(useSupabase){
+        syncStateFromSupabase().catch((error)=>{
+          console.warn("Share create Supabase sync failed",error.message);
+        });
       }
-    }
-    if(!shareSession){
-      shareSession=createLocalShareSession(authenticatedUserName,eligibleTrade.trade.id,useSupabase);
-    }
-    return json(res,200,{
-      share_url:`${SHARE_URL_ORIGIN}/challenge/${shareSession.id}`
-    });
+      const eligibilityStartedAt=Date.now();
+      const eligibleTrade=useSupabase
+        ? await findEligibleHostedShareTrade(authenticatedUserName,submittedTradeId)
+        : findEligibleShareTrade(authenticatedUserName,submittedTradeId);
+      console.warn("Share create eligibility",JSON.stringify({
+        useSupabase,
+        duration_ms:Date.now()-eligibilityStartedAt,
+        trade_id:submittedTradeId
+      }));
+      if(!eligibleTrade){
+        console.warn("Share create rejected",JSON.stringify({
+          useSupabase,
+          duration_ms:Date.now()-shareCreateStartedAt,
+          reason:"trade_not_eligible",
+          trade_id:submittedTradeId
+        }));
+        return json(res,400,{error:"This trade is no longer available to share"});
+      }
+      let shareSession=null;
+      if(useSupabase){
+        try{
+          const createSessionStartedAt=Date.now();
+          shareSession=await createHostedShareSession(authenticatedUserName,eligibleTrade.trade.id);
+          console.warn("Share create session stored",JSON.stringify({
+            duration_ms:Date.now()-createSessionStartedAt,
+            trade_id:eligibleTrade.trade.id,
+            share_session_id:shareSession?.id||null
+          }));
+        }catch(error){
+          console.warn("Share create failed",JSON.stringify({
+            useSupabase,
+            duration_ms:Date.now()-shareCreateStartedAt,
+            trade_id:eligibleTrade.trade.id,
+            error:error.message||String(error)
+          }));
+          return json(res,500,{error:error.message||"Unable to create challenge link right now"});
+        }
+      }
+      if(!shareSession){
+        shareSession=createLocalShareSession(authenticatedUserName,eligibleTrade.trade.id,useSupabase);
+      }
+      console.warn("Share create completed",JSON.stringify({
+        useSupabase,
+        duration_ms:Date.now()-shareCreateStartedAt,
+        trade_id:eligibleTrade.trade.id,
+        share_session_id:shareSession?.id||null
+      }));
+      return json(res,200,{
+        share_url:`${SHARE_URL_ORIGIN}/challenge/${shareSession.id}`
+      });
   }
   if(req.method==="GET"&&url.pathname.startsWith("/api/share/")){
     const shareId=decodeURIComponent(url.pathname.replace("/api/share/","").trim());
