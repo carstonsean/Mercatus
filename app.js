@@ -2387,7 +2387,8 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
     const cancelableOrderIds = Array.isArray(trade.cancelableOrderIds) ? trade.cancelableOrderIds : [];
     const canSwipeToCancel = !isMatched && cancelableOrderIds.length > 0;
     const canExpandInlineActions = !isSettled && !isMatched && cancelableOrderIds.length > 0;
-    const challengeTradeId = cancelableOrderIds[0] || "";
+    const challengeTradeIds = cancelableOrderIds.slice();
+    const challengeTradeId = challengeTradeIds[0] || "";
     const positionKey = `${trade.portfolioState || "OPEN"}:${trade.marketId}:${trade.side}`;
     const isExpanded = canExpandInlineActions && uiState.expandedPortfolioPositionKey === positionKey;
     const isFirstRender = !portfolioRenderedPositionKeys.has(positionKey);
@@ -2460,7 +2461,7 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
       });
       card.querySelector("[data-inline-challenge]")?.addEventListener("click", async (event) => {
         event.stopPropagation();
-        await openPortfolioChallengeModal(challengeTradeId, positionKey);
+        await openPortfolioChallengeModal(challengeTradeIds, positionKey);
       });
     }
     container.appendChild(card);
@@ -3006,30 +3007,37 @@ function challengeTradeRowMarkup(trade) {
   `;
 }
 
-async function openPortfolioChallengeModal(tradeId, positionKey = "") {
-  if (!tradeId) return;
+async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
+  const candidateTradeIds = Array.isArray(tradeIds) ? tradeIds.map((tradeId) => String(tradeId)).filter(Boolean) : [String(tradeIds || "")].filter(Boolean);
+  if (!candidateTradeIds.length) return;
   resetChallengeModalState();
-  uiState.challengeSelectedTradeIds = [String(tradeId)];
+  uiState.challengeSelectedTradeIds = candidateTradeIds.slice();
   uiState.challengeCreatePending = true;
   uiState.challengeCreateError = "";
   uiState.activeAppModal = "challenge-friends";
   uiState.expandedPortfolioPositionKey = positionKey;
   renderAppChrome();
-  try {
-    const response = await api("/api/share/create", {
-      trade_id: String(tradeId)
-    });
-    uiState.challengeModalStep = "link";
-    uiState.challengeCreatePending = false;
-    uiState.challengeCreatedUrl = response.share_url;
-    uiState.challengeCreatedTradeCount = 1;
-    uiState.challengeExcludedTradeCount = 0;
-    renderAppChrome();
-  } catch (error) {
-    uiState.challengeCreatePending = false;
-    uiState.challengeCreateError = error.message;
-    renderAppChrome();
+  let lastError = null;
+  for (const tradeId of candidateTradeIds) {
+    try {
+      const response = await api("/api/share/create", {
+        trade_id: tradeId
+      });
+      uiState.challengeModalStep = "link";
+      uiState.challengeCreatePending = false;
+      uiState.challengeCreatedUrl = response.share_url;
+      uiState.challengeCreatedTradeCount = 1;
+      uiState.challengeExcludedTradeCount = Math.max(0, candidateTradeIds.length - 1);
+      uiState.challengeSelectedTradeIds = [tradeId];
+      renderAppChrome();
+      return;
+    } catch (error) {
+      lastError = error;
+    }
   }
+  uiState.challengeCreatePending = false;
+  uiState.challengeCreateError = lastError?.message || "Unable to create challenge link right now";
+  renderAppChrome();
 }
 
 function bindChallengeFriendsModalEvents(chromeHost) {
