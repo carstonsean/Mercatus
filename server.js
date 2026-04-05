@@ -11,7 +11,6 @@ const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomBot,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
 const {USE_SUPABASE,isHostedEnvironment,isSupabaseEnabled,getLocalSupabaseSafetyError}=require("./lib/config");
 const {supabaseRequest}=require("./lib/supabase");
-const {ensureSupabaseDemoUser,getSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
 const {fetchSupabaseAppState}=require("./lib/supabase-state");
@@ -675,8 +674,43 @@ function normalizeSupabaseErrorMessage(error,fallback){
   return raw||fallback;
 }
 
+function escapeSupabaseFilter(value){
+  return String(value??"").replaceAll(",","\\,");
+}
+
+async function findSupabaseUserIdentityByUsername(userName){
+  const normalizedUserName=ensureUser(userName);
+  const rows=await supabaseRequest("users",{
+    query:{
+      select:"id,username,display_name",
+      username:`eq.${escapeSupabaseFilter(normalizedUserName)}`,
+      limit:1
+    }
+  });
+  return rows?.[0]||null;
+}
+
+async function getOrCreateSupabaseUserIdentity(userName){
+  const normalizedUserName=ensureUser(userName);
+  const existing=await findSupabaseUserIdentityByUsername(normalizedUserName);
+  if(existing){
+    return existing;
+  }
+  const rows=await supabaseRequest("users",{
+    method:"POST",
+    query:{select:"id,username,display_name"},
+    headers:{Prefer:"return=representation,resolution=merge-duplicates"},
+    body:{
+      username:normalizedUserName,
+      display_name:normalizedUserName,
+      last_seen_at:new Date().toISOString()
+    }
+  });
+  return rows?.[0]||await findSupabaseUserIdentityByUsername(normalizedUserName);
+}
+
 async function createHostedShareSession(userName,tradeId){
-  const user=await getSupabaseDemoUser(userName)||await ensureSupabaseDemoUser(userName);
+  const user=await getOrCreateSupabaseUserIdentity(userName);
   const rows=await supabaseRequest("share_sessions",{
     method:"POST",
     query:{select:"id"},
@@ -1110,7 +1144,7 @@ async function updateShareSessionStatus(shareId,status,useSupabase=SUPABASE_ENAB
 }
 
 async function acceptHostedShareTrade(userName,shareSessionId,tradeId){
-  const user=await getSupabaseDemoUser(userName)||await ensureSupabaseDemoUser(userName);
+  const user=await getOrCreateSupabaseUserIdentity(userName);
   let rows;
   try{
     rows=await supabaseRequest("rpc/accept_share_trade",{
