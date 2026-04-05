@@ -1901,11 +1901,11 @@ function renderIndexHtmlWithMetadata(metadata){
 
 function applyAssetVersion(html){
   return String(html)
-    .replace(/(\.\/styles\.css)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/lib\/derived-fantasy-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/lib\/onboarding-modal\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/seed-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/app\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`);
+    .replace(/(?:\.\/|\/)styles\.css(\?v=[^"]+)?/g,`/styles.css?v=${ASSET_VERSION}`)
+    .replace(/(?:\.\/|\/)lib\/derived-fantasy-data\.js(\?v=[^"]+)?/g,`/lib/derived-fantasy-data.js?v=${ASSET_VERSION}`)
+    .replace(/(?:\.\/|\/)lib\/onboarding-modal\.js(\?v=[^"]+)?/g,`/lib/onboarding-modal.js?v=${ASSET_VERSION}`)
+    .replace(/(?:\.\/|\/)seed-data\.js(\?v=[^"]+)?/g,`/seed-data.js?v=${ASSET_VERSION}`)
+    .replace(/(?:\.\/|\/)app\.js(\?v=[^"]+)?/g,`/app.js?v=${ASSET_VERSION}`);
 }
 
 function escapeHtmlText(value){
