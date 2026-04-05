@@ -54,7 +54,7 @@ const ENGINE_VERSION="hybrid-v2";
 const STATE_PATH=path.join(__dirname,"server-state.json");
 const INDEX_PATH=path.join(__dirname,"index.html");
 const BOT_AUTOPLAY_INTERVAL_MS=3000;
-const SHARE_URL_ORIGIN="https://crowdiq.live";
+const DEFAULT_PUBLIC_ORIGIN="https://crowdiq.live";
 const SEEDED_MARKETS=buildRoundMarkets();
 const SEEDED_MARKETS_BY_ID=new Map(SEEDED_MARKETS.map((market)=>[market.id,market]));
 const SEEDED_ROUND_NUMBERS=[...new Set(roundGames.map((game)=>parseRoundNumber(game.roundLabel)).filter(Number.isFinite))].sort((left,right)=>left-right);
@@ -110,10 +110,10 @@ const server=http.createServer(async (req,res)=>{
       return;
     }
     if(isChallengePath(url.pathname)){
-      await serveChallengePage(res,url.pathname,shouldUseSupabaseForRequest(req));
+      await serveChallengePage(req,res,url.pathname,shouldUseSupabaseForRequest(req));
       return;
     }
-    serveStatic(res,url.pathname);
+    serveStatic(req,res,url.pathname);
   }catch(error){
     res.writeHead(500,{"Content-Type":"application/json; charset=utf-8"});
     res.end(JSON.stringify({error:error.message||"Server error"}));
@@ -138,14 +138,15 @@ setInterval(()=>{
   });
 },POPULAR_PLAYERS_REFRESH_MS);
 
-function serveStatic(res,pathname){
+function serveStatic(req,res,pathname){
   const requestedPath=pathname==="/"?"/index.html":pathname;
   if(requestedPath==="/index.html"){
+    const publicOrigin=getPublicOrigin(req);
     const html=renderIndexHtmlWithMetadata({
       title:"crowdIQ",
       description:"Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.",
-      url:`${SHARE_URL_ORIGIN}/`,
-      image:`${SHARE_URL_ORIGIN}/social-preview.svg`
+      url:`${publicOrigin}/`,
+      image:`${publicOrigin}/social-preview.svg`
     });
     res.writeHead(200,{
       "Content-Type":"text/html; charset=utf-8",
@@ -182,6 +183,16 @@ function serveStatic(res,pathname){
     res.writeHead(200,headers);
     res.end(data);
   });
+}
+
+function getPublicOrigin(req){
+  const forwardedProto=String(req?.headers?.["x-forwarded-proto"]||"").split(",")[0].trim();
+  const protocol=forwardedProto||"https";
+  const host=String(req?.headers?.host||"").trim();
+  if(host){
+    return `${protocol}://${host}`;
+  }
+  return DEFAULT_PUBLIC_ORIGIN;
 }
 
 async function handleApi(req,res,url){
@@ -251,8 +262,9 @@ async function handleApi(req,res,url){
         trade_id:eligibleTrade.trade.id,
         share_session_id:shareSession?.id||null
       }));
+      const publicOrigin=getPublicOrigin(req);
       return json(res,200,{
-        share_url:`${SHARE_URL_ORIGIN}/challenge/${shareSession.id}`
+        share_url:`${publicOrigin}/challenge/${shareSession.id}`
       });
   }
   if(req.method==="GET"&&url.pathname.startsWith("/api/share/")){
@@ -1256,12 +1268,12 @@ function acceptLocalShareTrade(userName,shareSessionId,tradeId,useSupabase=SUPAB
   return serializeShareTrade(acceptedTrade,market);
 }
 
-function buildChallengeMetadata(shareId){
+function buildChallengeMetadata(shareId,publicOrigin=DEFAULT_PUBLIC_ORIGIN){
   return {
     title:"crowdIQ Challenge",
     description:"Review a crowdIQ challenge and take the other side before kickoff.",
-    url:`${SHARE_URL_ORIGIN}/challenge/${shareId}`,
-    image:`${SHARE_URL_ORIGIN}/social-preview.svg`
+    url:`${publicOrigin}/challenge/${shareId}`,
+    image:`${publicOrigin}/social-preview.svg`
   };
 }
 
@@ -2111,9 +2123,9 @@ function isChallengePath(pathname){
   return /^\/challenge\/[^/]+\/?$/.test(String(pathname||""));
 }
 
-async function serveChallengePage(res,pathname,useSupabase=SUPABASE_ENABLED){
+async function serveChallengePage(req,res,pathname,useSupabase=SUPABASE_ENABLED){
   const shareId=decodeURIComponent(String(pathname||"").replace(/^\/challenge\//,"").replace(/\/$/,""));
-  const metadata=buildChallengeMetadata(shareId,useSupabase);
+  const metadata=buildChallengeMetadata(shareId,getPublicOrigin(req));
   const html=renderIndexHtmlWithMetadata(metadata);
   res.writeHead(200,{
     "Content-Type":"text/html; charset=utf-8",
@@ -2129,8 +2141,8 @@ function renderIndexHtmlWithMetadata(metadata){
   const html=fs.readFileSync(INDEX_PATH,"utf8");
   const title=escapeHtmlText(metadata.title||"crowdIQ");
   const description=escapeHtmlText(metadata.description||"Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.");
-  const url=escapeHtmlText(metadata.url||`${SHARE_URL_ORIGIN}/`);
-  const image=escapeHtmlText(metadata.image||`${SHARE_URL_ORIGIN}/social-preview.svg`);
+  const url=escapeHtmlText(metadata.url||`${DEFAULT_PUBLIC_ORIGIN}/`);
+  const image=escapeHtmlText(metadata.image||`${DEFAULT_PUBLIC_ORIGIN}/social-preview.svg`);
   return applyAssetVersion(
     html
     .replace(/<title>[\s\S]*?<\/title>/i,`<title>${title}</title>`)
