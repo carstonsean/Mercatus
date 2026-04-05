@@ -190,11 +190,9 @@ async function handleApi(req,res,url){
       return json(res,400,{error:"Select one unmatched trade to share"});
     }
     if(useSupabase){
-      try{
-        await syncStateFromSupabase({force:true});
-      }catch(error){
+      syncStateFromSupabase().catch((error)=>{
         console.warn("Share create Supabase sync failed",error.message);
-      }
+      });
     }
     const eligibleTrade=findEligibleShareTrade(authenticatedUserName,submittedTradeId);
     if(!eligibleTrade){
