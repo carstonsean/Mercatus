@@ -691,12 +691,18 @@ function escapeSupabaseFilter(value){
   return String(value??"").replaceAll(",","\\,");
 }
 
+function escapeSupabaseLikeFilter(value){
+  return escapeSupabaseFilter(String(value??""))
+    .replaceAll("%","\\%")
+    .replaceAll("_","\\_");
+}
+
 async function findSupabaseUserIdentityByUsername(userName){
   const normalizedUserName=ensureUser(userName);
   const rows=await supabaseRequest("users",{
     query:{
       select:"id,username,display_name",
-      username:`eq.${escapeSupabaseFilter(normalizedUserName)}`,
+      username:`ilike.${escapeSupabaseLikeFilter(normalizedUserName)}`,
       limit:1
     }
   });
