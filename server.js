@@ -72,6 +72,7 @@ const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const HOSTED_ENVIRONMENT=isHostedEnvironment();
 const SUPABASE_ENABLED=isSupabaseEnabled();
+const HOSTED_DEV_MODE=HOSTED_ENVIRONMENT&&String(process.env.SUPABASE_ENVIRONMENT||"").toLowerCase()==="development";
 const SUPABASE_LOCAL_SAFETY_ERROR=getLocalSupabaseSafetyError();
 const BUILD_INFO={id:BUILD_ID,environment:HOSTED_ENVIRONMENT?"hosted":"local",persistence:SUPABASE_ENABLED?"supabase":"file"};
 const ASSET_VERSION=BUILD_ID;
@@ -430,6 +431,37 @@ async function handleApi(req,res,url){
     syncPrizePoolState(state);
     await persistStateSnapshot(useSupabase);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
+  }
+  if(req.method==="POST"&&url.pathname==="/api/admin/force-open-market"){
+    if(!HOSTED_DEV_MODE){
+      return json(res,404,{error:"Not found"});
+    }
+    const body=await parseJson(req);
+    const market=findMarket(String(body.marketId||""));
+    if(!market){
+      return json(res,404,{error:"Market not found"});
+    }
+    const enabled=body.enabled!==false;
+    const gameId=market.gameId;
+    if(!gameId){
+      return json(res,400,{error:"That market cannot be force-opened"});
+    }
+    const nextIds=new Set(Array.isArray(state.forceOpenGameIds)?state.forceOpenGameIds:[]);
+    if(enabled){
+      nextIds.add(gameId);
+    }else{
+      nextIds.delete(gameId);
+    }
+    state.forceOpenGameIds=[...nextIds];
+    syncPrizePoolState(state);
+    await persistStateSnapshot(useSupabase);
+    return json(res,200,{
+      ok:true,
+      marketId:market.id,
+      gameId,
+      enabled,
+      forceOpenGameIds:state.forceOpenGameIds.slice()
+    });
   }
   if(req.method==="POST"&&url.pathname==="/api/wallet/deposit"){
     const body=await parseJson(req);
