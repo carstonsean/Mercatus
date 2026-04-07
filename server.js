@@ -199,16 +199,21 @@ function getPublicOrigin(req){
 async function handleApi(req,res,url){
   const useSupabase=shouldUseSupabaseForRequest(req);
   if(req.method==="POST"&&url.pathname==="/api/share/create"){
+    const trace=createRouteTrace("share_create",{use_supabase:useSupabase});
     const shareCreateStartedAt=Date.now();
     const body=await parseJson(req);
     let authenticatedUserName="";
     try{
       authenticatedUserName=ensureAuthenticatedUserName(req);
+      trace.update({requested_user_name:authenticatedUserName});
     }catch(error){
+      trace.finish("auth_error",{error:error.message||"Authentication required"});
       return json(res,401,{error:error.message||"Authentication required"});
     }
     const submittedTradeId=String(body.trade_id || (Array.isArray(body.trade_ids)?body.trade_ids[0]:"")).trim();
+    trace.update({trade_id:submittedTradeId||null});
     if(!submittedTradeId){
+      trace.finish("validation_error",{reason:"missing_trade_id"});
       return json(res,400,{error:"Select one unmatched trade to share"});
     }
       if(useSupabase){
@@ -220,12 +225,21 @@ async function handleApi(req,res,url){
       const eligibleTrade=useSupabase
         ? await findEligibleHostedShareTrade(authenticatedUserName,submittedTradeId)
         : findEligibleShareTrade(authenticatedUserName,submittedTradeId);
+      trace.step("eligibility_checked",{
+        trade_id:submittedTradeId,
+        eligible:Boolean(eligibleTrade)
+      });
       console.warn("Share create eligibility",JSON.stringify({
         useSupabase,
         duration_ms:Date.now()-eligibilityStartedAt,
         trade_id:submittedTradeId
       }));
       if(!eligibleTrade){
+        trace.finish("validation_error",{
+          reason:"trade_not_eligible",
+          duration_ms:Date.now()-shareCreateStartedAt,
+          trade_id:submittedTradeId
+        });
         console.warn("Share create rejected",JSON.stringify({
           useSupabase,
           duration_ms:Date.now()-shareCreateStartedAt,
@@ -239,12 +253,23 @@ async function handleApi(req,res,url){
         try{
           const createSessionStartedAt=Date.now();
           shareSession=await createHostedShareSession(authenticatedUserName,eligibleTrade.trade.id);
+          trace.update({share_session_id:shareSession?.id||null});
+          trace.step("session_created",{
+            trade_id:eligibleTrade.trade.id,
+            share_session_id:shareSession?.id||null,
+            write_ms:Date.now()-createSessionStartedAt
+          });
           console.warn("Share create session stored",JSON.stringify({
             duration_ms:Date.now()-createSessionStartedAt,
             trade_id:eligibleTrade.trade.id,
             share_session_id:shareSession?.id||null
           }));
         }catch(error){
+          trace.finish("db_error",{
+            duration_ms:Date.now()-shareCreateStartedAt,
+            trade_id:eligibleTrade.trade.id,
+            error:error.message||String(error)
+          });
           console.warn("Share create failed",JSON.stringify({
             useSupabase,
             duration_ms:Date.now()-shareCreateStartedAt,
@@ -263,44 +288,67 @@ async function handleApi(req,res,url){
         trade_id:eligibleTrade.trade.id,
         share_session_id:shareSession?.id||null
       }));
+      trace.finish("ok",{
+        duration_ms:Date.now()-shareCreateStartedAt,
+        trade_id:eligibleTrade.trade.id,
+        share_session_id:shareSession?.id||null
+      });
       const publicOrigin=getPublicOrigin(req);
       return json(res,200,{
         share_url:`${publicOrigin}/challenge/${shareSession.id}`
       });
   }
   if(req.method==="GET"&&url.pathname.startsWith("/api/share/")){
+    const trace=createRouteTrace("share_fetch",{use_supabase:useSupabase});
     const shareId=decodeURIComponent(url.pathname.replace("/api/share/","").trim());
+    trace.update({share_session_id:shareId||null});
     if(!shareId||shareId==="accept"||shareId==="create"){
+      trace.finish("validation_error",{reason:"invalid_share_id"});
       return json(res,404,{error:"Not found"});
     }
     try{
       const sessionPayload=useSupabase
         ? await fetchHostedShareSessionPayload(shareId)
         : await fetchShareSessionPayload(shareId,false);
+      trace.finish("ok",{
+        trade_id:sessionPayload?.trade?.id||null,
+        status:sessionPayload?.status||null
+      });
       return json(res,200,sessionPayload);
     }catch(error){
+      trace.finish("db_error",{error:error.message||"This challenge link is no longer valid"});
       return json(res,400,{error:error.message||"This challenge link is no longer valid"});
     }
   }
   if(req.method==="POST"&&url.pathname==="/api/share/accept"){
+    const trace=createRouteTrace("share_accept",{use_supabase:useSupabase});
     const body=await parseJson(req);
     let authenticatedUserName="";
     try{
       authenticatedUserName=ensureAuthenticatedUserName(req);
+      trace.update({requested_user_name:authenticatedUserName});
     }catch(error){
+      trace.finish("auth_error",{error:error.message||"Authentication required"});
       return json(res,401,{error:error.message||"Authentication required"});
     }
     const shareSessionId=String(body.share_session_id||"").trim();
     const tradeId=String(body.trade_id||"").trim();
+    trace.update({share_session_id:shareSessionId||null,trade_id:tradeId||null});
     if(!shareSessionId||!tradeId){
+      trace.finish("validation_error",{reason:"invalid_payload"});
       return json(res,400,{error:"Invalid share acceptance payload"});
     }
     try{
       const matchedTrade=useSupabase
         ? await acceptHostedShareTrade(authenticatedUserName,shareSessionId,tradeId)
         : acceptLocalShareTrade(authenticatedUserName,shareSessionId,tradeId);
+      trace.finish("ok",{
+        matched_trade_id:matchedTrade?.id||null,
+        market_id:matchedTrade?.marketId||null
+      });
       return json(res,200,{success:true,matched_trade:matchedTrade});
     }catch(error){
+      trace.finish("db_error",{error:error.message||"Unable to accept this trade"});
       return json(res,400,{error:error.message||"Unable to accept this trade"});
     }
   }
@@ -313,7 +361,9 @@ async function handleApi(req,res,url){
     return json(res,200,{players,cached:usingCached});
   }
   if(req.method==="GET"&&(url.pathname==="/api/bootstrap"||url.pathname==="/api")){
+    const trace=createRouteTrace("bootstrap",{use_supabase:useSupabase});
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
+    trace.update({requested_user_name:username});
     if(useSupabase){
       if(Array.isArray(state?.markets)&&state.markets.length){
         syncStateFromSupabase().catch((error)=>{
@@ -333,11 +383,17 @@ async function handleApi(req,res,url){
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
+    trace.finish("ok",{
+      canonical_user_name:backendUser?.username||username,
+      market_count:Array.isArray(state?.markets)?state.markets.length:0
+    });
     return json(res,200,{state:buildClientStateSnapshot(state),roundGames,teamColors:TEAM_COLORS,userName:username,backend:buildBackendPayload(backendUser,dashboard,useSupabase),prizePool:buildPrizePoolClientPayload(username),build:BUILD_INFO});
   }
   if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
+    const trace=createRouteTrace("session",{use_supabase:useSupabase});
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
+    trace.update({requested_user_name:username});
     let backendUser=null;
     if(useSupabase){
       if(Array.isArray(state?.markets)&&state.markets.length){
@@ -356,6 +412,10 @@ async function handleApi(req,res,url){
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
+    trace.finish("ok",{
+      canonical_user_name:backendUser?.username||username,
+      market_count:Array.isArray(state?.markets)?state.markets.length:0
+    });
     return json(res,200,{state:buildClientStateSnapshot(state),userName:backendUser?.username||username,backend:buildBackendPayload(backendUser,null,useSupabase),prizePool:buildPrizePoolClientPayload(backendUser?.username||username),build:BUILD_INFO});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/active-round"){
@@ -407,8 +467,14 @@ async function handleApi(req,res,url){
     return json(res,200,{state,backend:null,prizePool:buildPrizePoolClientPayload(username),message:"Withdrawal requests stop here in demo mode."});
   }
   if(req.method==="POST"&&url.pathname==="/api/trades"){
+    const trace=createRouteTrace("trade_submit",{use_supabase:useSupabase});
     const body=await parseJson(req);
     const requestedUserName=ensureUser(body.userName||"Demo Trader");
+    trace.update({
+      requested_user_name:requestedUserName,
+      market_id:body.marketId||null,
+      side:body.side||null
+    });
     let canPersistToSupabase=useSupabase;
     if(useSupabase&&lastSupabaseUnavailableAt&&(Date.now()-lastSupabaseUnavailableAt)<SUPABASE_UNAVAILABLE_BACKOFF_MS){
       canPersistToSupabase=false;
@@ -434,23 +500,35 @@ async function handleApi(req,res,url){
       if(backendUser?.username){
         username=backendUser.username;
       }
+      trace.update({canonical_user_name:username});
     }
     if(!market||!Number.isFinite(stake)||stake<=0||(side!=="OVER"&&side!=="UNDER")){
+      trace.finish("validation_error",{reason:"invalid_trade_payload"});
       return json(res,400,{error:"Invalid trade payload."});
     }
     if(stake>MAX_SINGLE_BID){
+      trace.finish("validation_error",{reason:"stake_cap_exceeded",stake});
       return json(res,400,{error:`Single bids are capped at ${formatCurrency(MAX_SINGLE_BID)}.`});
     }
     if(isMarketLocked(market)){
+      trace.finish("validation_error",{reason:"market_locked",market_id:market.id});
       return json(res,400,{error:"That market is locked."});
     }
     const bankroll=getUserBankroll(username);
+    trace.update({available_balance:bankroll,stake});
     if(stake>bankroll){
+      trace.finish("validation_error",{reason:"insufficient_balance",available_balance:bankroll,stake});
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
     const previousState=canPersistToSupabase?cloneValue(state):null;
     const preTradeLine=Number(market.currentLine)||0;
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
+    trace.update({trade_id:trade.id,entry_line:trade.entryLine});
+    trace.step("trade_computed",{
+      matched_stake:Number(trade.matchedStake)||0,
+      unmatched_stake:Number(trade.unmatchedStake)||0,
+      post_trade_line:Number(market.currentLine)||0
+    });
     if(canPersistToSupabase){
       try{
         if((Number(trade.matchedStake)||0)<=0){
@@ -461,19 +539,40 @@ async function handleApi(req,res,url){
             preTradeLine,
             postTradeLine:Number(market.currentLine)||0
           });
+          trace.step("trade_persisted",{
+            persistence_mode:"single_trade",
+            market_id:market.id
+          });
         }else{
           await persistSupabaseMarketState(market,state);
+          trace.step("trade_persisted",{
+            persistence_mode:"full_market",
+            market_id:market.id
+          });
         }
         await persistStateSnapshot(true);
+        trace.step("runtime_snapshot_persisted",{market_id:market.id});
       }catch(error){
         state=normalizeState(previousState||buildFreshState(),{skipWalletBootstrap:true});
         syncPrizePoolState(state);
+        trace.finish("db_error",{
+          error:normalizeSupabaseErrorMessage(error,"Unable to place this trade right now."),
+          market_id:market.id,
+          trade_id:trade.id
+        });
         return json(res,503,{error:normalizeSupabaseErrorMessage(error,"Unable to place this trade right now.")});
       }
     }else{
       await persistStateSnapshot(false);
+      trace.step("local_snapshot_persisted",{market_id:market.id});
     }
     if(body.quickPick||body.quickTake){
+      trace.finish("ok",{
+        trade_id:trade.id,
+        market_id:market.id,
+        matched_stake:Number(trade.matchedStake)||0,
+        unmatched_stake:Number(trade.unmatchedStake)||0
+      });
       return json(res,200,{
         trade,
         balance:getUserBankroll(username),
@@ -483,6 +582,12 @@ async function handleApi(req,res,url){
       });
     }
     syncPrizePoolState(state);
+    trace.finish("ok",{
+      trade_id:trade.id,
+      market_id:market.id,
+      matched_stake:Number(trade.matchedStake)||0,
+      unmatched_stake:Number(trade.unmatchedStake)||0
+    });
     return json(res,200,{
       trade,
       balance:getUserBankroll(username),
@@ -492,10 +597,16 @@ async function handleApi(req,res,url){
     });
   }
   if(req.method==="POST"&&url.pathname==="/api/orders/cancel"){
+    const trace=createRouteTrace("trade_cancel",{use_supabase:useSupabase});
     const body=await parseJson(req);
     const requestedUserName=ensureUser(body.userName||"Demo Trader");
     const orderIds=Array.isArray(body.orderIds)?body.orderIds:[body.orderId].filter(Boolean);
+    trace.update({
+      requested_user_name:requestedUserName,
+      order_ids:orderIds
+    });
     if(!orderIds.length){
+      trace.finish("validation_error",{reason:"missing_order_id"});
       return json(res,400,{error:"No open order selected."});
     }
     let username=requestedUserName;
@@ -504,10 +615,13 @@ async function handleApi(req,res,url){
       if(backendUser?.username){
         username=backendUser.username;
       }
+      trace.update({canonical_user_name:username});
     }
     const previousState=useSupabase?cloneValue(state):null;
     const affectedMarketIds=cancelPendingOrders(username,orderIds);
+    trace.step("orders_cancelled_locally",{affected_market_ids:affectedMarketIds});
     if(!affectedMarketIds.length){
+      trace.finish("validation_error",{reason:"order_not_found"});
       return json(res,404,{error:"No open order selected."});
     }
     if(useSupabase){
@@ -516,18 +630,26 @@ async function handleApi(req,res,url){
           const market=findMarket(marketId);
           if(market){
             await persistSupabaseMarketState(market,state);
+            trace.step("market_persisted",{market_id:marketId});
           }
         }
         await persistStateSnapshot(true);
+        trace.step("runtime_snapshot_persisted",{affected_market_ids:affectedMarketIds});
       }catch(error){
         state=normalizeState(previousState||buildFreshState(),{skipWalletBootstrap:true});
         syncPrizePoolState(state);
+        trace.finish("db_error",{
+          error:normalizeSupabaseErrorMessage(error,"Unable to cancel this order right now."),
+          affected_market_ids:affectedMarketIds
+        });
         return json(res,503,{error:normalizeSupabaseErrorMessage(error,"Unable to cancel this order right now.")});
       }
     }else{
       await persistStateSnapshot(false);
+      trace.step("local_snapshot_persisted",{affected_market_ids:affectedMarketIds});
     }
     syncPrizePoolState(state);
+    trace.finish("ok",{affected_market_ids:affectedMarketIds});
     return json(res,200,{state,backend:null,prizePool:buildPrizePoolClientPayload(username)});
   }
   if(req.method==="POST"&&url.pathname==="/api/prize-pool/draft/start"){
@@ -737,6 +859,43 @@ function normalizeSupabaseErrorMessage(error,fallback){
     }
   }
   return raw||fallback;
+}
+
+function createRouteTrace(routeName,initialContext={}){
+  const startedAt=Date.now();
+  const requestId=randomUUID();
+  let lastStepAt=startedAt;
+  const baseContext={
+    request_id:requestId,
+    route:routeName,
+    ...initialContext
+  };
+  return {
+    update(nextContext={}){
+      Object.assign(baseContext,nextContext);
+    },
+    step(stepName,details={}){
+      const now=Date.now();
+      console.warn(`${routeName} step`,JSON.stringify({
+        ...baseContext,
+        step:stepName,
+        step_ms:now-lastStepAt,
+        total_ms:now-startedAt,
+        ...details
+      }));
+      lastStepAt=now;
+    },
+    finish(resultCategory,details={}){
+      const now=Date.now();
+      console.warn(`${routeName} done`,JSON.stringify({
+        ...baseContext,
+        result:resultCategory,
+        step_ms:now-lastStepAt,
+        total_ms:now-startedAt,
+        ...details
+      }));
+    }
+  };
 }
 
 function escapeSupabaseFilter(value){
