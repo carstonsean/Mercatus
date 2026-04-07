@@ -463,6 +463,102 @@ async function handleApi(req,res,url){
       forceOpenGameIds:state.forceOpenGameIds.slice()
     });
   }
+  if(req.method==="POST"&&url.pathname==="/api/admin/test-trade"){
+    if(!HOSTED_DEV_MODE){
+      return json(res,404,{error:"Not found"});
+    }
+    const trace=createRouteTrace("test_trade_submit",{use_supabase:useSupabase});
+    const body=await parseJson(req);
+    const requestedUserName=ensureUser(body.userName||"Demo Trader");
+    const market=findMarket(String(body.marketId||""));
+    const side=body.side;
+    const stake=Number(body.stake);
+    trace.update({
+      requested_user_name:requestedUserName,
+      market_id:body.marketId||null,
+      side:side||null,
+      stake
+    });
+    if(!market||!Number.isFinite(stake)||stake<=0||(side!=="OVER"&&side!=="UNDER")){
+      trace.finish("validation_error",{reason:"invalid_trade_payload"});
+      return json(res,400,{error:"Invalid trade payload."});
+    }
+    let username=requestedUserName;
+    let backendUser=null;
+    if(useSupabase){
+      backendUser=await syncBackendUser(requestedUserName,true);
+      if(backendUser?.username){
+        username=backendUser.username;
+      }
+      trace.update({canonical_user_name:username});
+    }
+    const bankroll=getUserBankroll(username);
+    trace.update({available_balance:bankroll});
+    if(stake>bankroll){
+      trace.finish("validation_error",{reason:"insufficient_balance",available_balance:bankroll});
+      return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
+    }
+    const previousState=useSupabase?cloneValue(state):null;
+    const preTradeLine=Number(market.currentLine)||0;
+    const trade=executeProjectionTrade(market,{userName:username,side,stake});
+    trace.update({trade_id:trade.id,entry_line:trade.entryLine});
+    trace.step("trade_computed",{
+      matched_stake:Number(trade.matchedStake)||0,
+      unmatched_stake:Number(trade.unmatchedStake)||0,
+      bypassed_lock_check:true
+    });
+    try{
+      if(useSupabase){
+        if((Number(trade.matchedStake)||0)<=0){
+          await persistSupabaseTrade({
+            userName:username,
+            localMarket:market,
+            trade,
+            preTradeLine,
+            postTradeLine:Number(market.currentLine)||0
+          });
+          trace.step("trade_persisted",{
+            persistence_mode:"single_trade",
+            market_id:market.id
+          });
+        }else{
+          await persistSupabaseMarketState(market,state);
+          trace.step("trade_persisted",{
+            persistence_mode:"full_market",
+            market_id:market.id
+          });
+        }
+        await persistStateSnapshot(true);
+        trace.step("runtime_snapshot_persisted",{market_id:market.id});
+      }else{
+        await persistStateSnapshot(false);
+        trace.step("local_snapshot_persisted",{market_id:market.id});
+      }
+    }catch(error){
+      state=normalizeState(previousState||buildFreshState(),{skipWalletBootstrap:true});
+      syncPrizePoolState(state);
+      trace.finish("db_error",{
+        error:normalizeSupabaseErrorMessage(error,"Unable to place this test trade right now."),
+        market_id:market.id,
+        trade_id:trade.id
+      });
+      return json(res,503,{error:normalizeSupabaseErrorMessage(error,"Unable to place this test trade right now.")});
+    }
+    syncPrizePoolState(state);
+    trace.finish("ok",{
+      trade_id:trade.id,
+      market_id:market.id,
+      matched_stake:Number(trade.matchedStake)||0,
+      unmatched_stake:Number(trade.unmatchedStake)||0
+    });
+    return json(res,200,{
+      trade,
+      balance:getUserBankroll(username),
+      market:buildTradeMarketPayload(market),
+      backend:backendUser?buildBackendPayload(backendUser,null,useSupabase):null,
+      prizePool:buildPrizePoolClientPayload(username)
+    });
+  }
   if(req.method==="POST"&&url.pathname==="/api/wallet/deposit"){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
