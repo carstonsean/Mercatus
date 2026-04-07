@@ -13,7 +13,8 @@
     "smoke:release": "node scripts/smoke-release.js",
     "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2",
     "migrate:supabase": "node scripts/migrate-state-to-supabase.js",
-    "sync:supabase-runtime": "node scripts/sync-runtime-to-supabase.js"
+    "sync:supabase-runtime": "node scripts/sync-runtime-to-supabase.js",
+    "inspect:supabase": "node scripts/inspect-supabase-state.js"
   },
   "engines": {
     "node": ">=20"

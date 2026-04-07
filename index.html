@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=2.4">
+  <link rel="stylesheet" href="/styles.css?v=2.4">
 </head>
 <body>
   <div id="onboarding-overlay" aria-hidden="true"></div>
@@ -283,7 +283,6 @@
             <section class="section-block portfolio-controls-block">
               <div class="section-heading compact-heading portfolio-controls-heading">
                 <div>
-                  <div id="portfolio-challenge-entry"></div>
                   <h3>Your Positions</h3>
                 </div>
               </div>
@@ -297,30 +296,6 @@
               <div id="portfolio-list" class="portfolio-list"></div>
             </section>
 
-            <section class="section-block profile-settings-block">
-              <div class="section-heading compact-heading">
-                <div>
-                  <p class="eyebrow">Profile settings</p>
-                  <h3>Account details</h3>
-                </div>
-              </div>
-              <form class="stack-form profile-settings-form">
-                <label>
-                  Username
-                  <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
-                </label>
-              </form>
-            </section>
-
-            <section class="section-block dev-entry">
-              <div>
-                <p class="eyebrow">Tools</p>
-                <h3>Account actions</h3>
-                <p class="section-meta">Keep your profile and admin access together in one personal space.</p>
-              </div>
-              <button id="logout-button" class="secondary-button" type="button">Log out</button>
-              <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
-            </section>
           </div>
 
           <div id="account-wallet-view" class="account-view-panel">
@@ -763,9 +738,9 @@
 
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
-  <script src="./lib/derived-fantasy-data.js?v=2.4"></script>
-  <script src="./lib/onboarding-modal.js?v=2.4"></script>
-  <script src="./seed-data.js?v=2.4"></script>
-  <script src="./app.js?v=2.4"></script>
+  <script src="/lib/derived-fantasy-data.js?v=2.4"></script>
+  <script src="/lib/onboarding-modal.js?v=2.4"></script>
+  <script src="/seed-data.js?v=2.4"></script>
+  <script src="/app.js?v=2.4"></script>
 </body>
 </html>

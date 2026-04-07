@@ -171,3 +171,29 @@ The next implementation step is moving from `server.js` file-backed state to Sup
 - add scraping for official scores and team lists
 
 All future features and logic updates should also be checked against [docs/product-principles.md](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\docs\product-principles.md). If a change does not increase participation, trading activity, liquidity, or market efficiency, it should be reconsidered.
+
+## Database workflow
+
+CrowdIQ now has a strict Supabase branch workflow documented in [docs/database-deployment-workflow.md](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\docs\database-deployment-workflow.md).
+
+The short version:
+
+- Supabase `main` is production only
+- Supabase `development` is local development only
+- Railway production must stay on `main`
+- local `.env` must point at `development`, never `main`
+
+## Persistence diagnostics
+
+To inspect the connected Supabase state directly:
+
+```bash
+npm run inspect:supabase
+```
+
+That script prints:
+
+- row counts for the main persistence tables
+- wallet balance sample rows
+- runtime overlay keys and size
+- the configured Supabase branch/environment from `.env`
