@@ -12,7 +12,7 @@ const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,creat
 const {USE_SUPABASE,isHostedEnvironment,isSupabaseEnabled,getLocalSupabaseSafetyError}=require("./lib/config");
 const {supabaseRequest}=require("./lib/supabase");
 const {ensureSupabaseDemoUser}=require("./lib/supabase-users");
-const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
+const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState,persistSupabaseTrade}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
 const {fetchSupabaseAppState}=require("./lib/supabase-state");
 const {fetchSupabaseRuntimeState,persistSupabaseRuntimeState}=require("./lib/supabase-runtime-state");
@@ -338,6 +338,7 @@ async function handleApi(req,res,url){
   if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
+    let backendUser=null;
     if(useSupabase){
       if(Array.isArray(state?.markets)&&state.markets.length){
         syncStateFromSupabase().catch((error)=>{
@@ -350,14 +351,12 @@ async function handleApi(req,res,url){
           console.warn("Session Supabase sync failed",error.message);
         }
       }
-      syncBackendUser(username,useSupabase).catch((error)=>{
-        console.warn("Session user sync failed",error.message);
-      });
+      backendUser=await syncBackendUser(username,useSupabase);
     }else{
       syncDerivedBalances();
     }
     syncPrizePoolState(state);
-    return json(res,200,{state:buildClientStateSnapshot(state),userName:username,backend:buildBackendPayload(null,null,useSupabase),prizePool:buildPrizePoolClientPayload(username),build:BUILD_INFO});
+    return json(res,200,{state:buildClientStateSnapshot(state),userName:backendUser?.username||username,backend:buildBackendPayload(backendUser,null,useSupabase),prizePool:buildPrizePoolClientPayload(backendUser?.username||username),build:BUILD_INFO});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/active-round"){
     const body=await parseJson(req);
@@ -409,7 +408,7 @@ async function handleApi(req,res,url){
   }
   if(req.method==="POST"&&url.pathname==="/api/trades"){
     const body=await parseJson(req);
-    const username=ensureUser(body.userName||"Demo Trader");
+    const requestedUserName=ensureUser(body.userName||"Demo Trader");
     let canPersistToSupabase=useSupabase;
     if(useSupabase&&lastSupabaseUnavailableAt&&(Date.now()-lastSupabaseUnavailableAt)<SUPABASE_UNAVAILABLE_BACKOFF_MS){
       canPersistToSupabase=false;
@@ -428,6 +427,14 @@ async function handleApi(req,res,url){
     const market=findMarket(body.marketId);
     const stake=Number(body.stake);
     const side=body.side;
+    let username=requestedUserName;
+    let backendUser=null;
+    if(canPersistToSupabase){
+      backendUser=await syncBackendUser(requestedUserName,true);
+      if(backendUser?.username){
+        username=backendUser.username;
+      }
+    }
     if(!market||!Number.isFinite(stake)||stake<=0||(side!=="OVER"&&side!=="UNDER")){
       return json(res,400,{error:"Invalid trade payload."});
     }
@@ -441,10 +448,28 @@ async function handleApi(req,res,url){
     if(stake>bankroll){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
+    const previousState=canPersistToSupabase?cloneValue(state):null;
+    const preTradeLine=Number(market.currentLine)||0;
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
     if(canPersistToSupabase){
-      persistSupabaseMarketState(market,state).catch((error)=>console.warn("Supabase trade persist failed",error.message));
-      persistState();
+      try{
+        if((Number(trade.matchedStake)||0)<=0){
+          await persistSupabaseTrade({
+            userName:username,
+            localMarket:market,
+            trade,
+            preTradeLine,
+            postTradeLine:Number(market.currentLine)||0
+          });
+        }else{
+          await persistSupabaseMarketState(market,state);
+        }
+        await persistStateSnapshot(true);
+      }catch(error){
+        state=normalizeState(previousState||buildFreshState(),{skipWalletBootstrap:true});
+        syncPrizePoolState(state);
+        return json(res,503,{error:normalizeSupabaseErrorMessage(error,"Unable to place this trade right now.")});
+      }
     }else{
       await persistStateSnapshot(false);
     }
@@ -468,13 +493,40 @@ async function handleApi(req,res,url){
   }
   if(req.method==="POST"&&url.pathname==="/api/orders/cancel"){
     const body=await parseJson(req);
-    const username=ensureUser(body.userName||"Demo Trader");
+    const requestedUserName=ensureUser(body.userName||"Demo Trader");
     const orderIds=Array.isArray(body.orderIds)?body.orderIds:[body.orderId].filter(Boolean);
     if(!orderIds.length){
       return json(res,400,{error:"No open order selected."});
     }
-    cancelPendingOrders(username,orderIds);
-    await persistStateSnapshot(useSupabase);
+    let username=requestedUserName;
+    if(useSupabase){
+      const backendUser=await syncBackendUser(requestedUserName,true);
+      if(backendUser?.username){
+        username=backendUser.username;
+      }
+    }
+    const previousState=useSupabase?cloneValue(state):null;
+    const affectedMarketIds=cancelPendingOrders(username,orderIds);
+    if(!affectedMarketIds.length){
+      return json(res,404,{error:"No open order selected."});
+    }
+    if(useSupabase){
+      try{
+        for(const marketId of affectedMarketIds){
+          const market=findMarket(marketId);
+          if(market){
+            await persistSupabaseMarketState(market,state);
+          }
+        }
+        await persistStateSnapshot(true);
+      }catch(error){
+        state=normalizeState(previousState||buildFreshState(),{skipWalletBootstrap:true});
+        syncPrizePoolState(state);
+        return json(res,503,{error:normalizeSupabaseErrorMessage(error,"Unable to cancel this order right now.")});
+      }
+    }else{
+      await persistStateSnapshot(false);
+    }
     syncPrizePoolState(state);
     return json(res,200,{state,backend:null,prizePool:buildPrizePoolClientPayload(username)});
   }
@@ -2388,12 +2440,16 @@ async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
   }
   try{
     const backendUser=await ensureSupabaseDemoUser(userName);
-    const tableBackedBalance=typeof state.bankrolls?.[userName]==="number"?state.bankrolls[userName]:null;
+    const canonicalUserName=backendUser?.username||userName;
+    removeCaseVariantBankrollAliases(canonicalUserName,state);
+    const tableBackedBalance=typeof state.bankrolls?.[canonicalUserName]==="number"
+      ? state.bankrolls[canonicalUserName]
+      : (typeof state.bankrolls?.[userName]==="number"?state.bankrolls[userName]:null);
     if(backendUser&&Number.isFinite(tableBackedBalance)){
       backendUser.balance=tableBackedBalance;
-      state.bankrolls[userName]=tableBackedBalance;
+      setCanonicalBankroll(canonicalUserName,tableBackedBalance,state);
     }else if(backendUser&&Number.isFinite(backendUser.balance)){
-      state.bankrolls[userName]=backendUser.balance;
+      setCanonicalBankroll(canonicalUserName,backendUser.balance,state);
     }
     return backendUser;
   }catch(error){
@@ -2546,6 +2602,30 @@ function computeHostedBankrolls(supabaseState,runtimeOverlay={},currentState=sta
   return bankrolls;
 }
 
+function removeCaseVariantBankrollAliases(userName,targetState=state){
+  if(!userName||!targetState?.bankrolls||typeof targetState.bankrolls!=="object"){
+    return;
+  }
+  const canonicalKey=String(userName);
+  const canonicalLower=canonicalKey.toLowerCase();
+  Object.keys(targetState.bankrolls).forEach((key)=>{
+    if(key!==canonicalKey&&String(key).toLowerCase()===canonicalLower){
+      delete targetState.bankrolls[key];
+    }
+  });
+}
+
+function setCanonicalBankroll(userName,balance,targetState=state){
+  if(!userName){
+    return;
+  }
+  if(!targetState.bankrolls||typeof targetState.bankrolls!=="object"){
+    targetState.bankrolls={};
+  }
+  removeCaseVariantBankrollAliases(userName,targetState);
+  targetState.bankrolls[userName]=Number(balance)||0;
+}
+
 function ensureBankroll(userName,targetState=state){
   if(typeof targetState.bankrolls[userName]!=="number"){
     targetState.bankrolls[userName]=STARTING_BANKROLL;
@@ -2661,19 +2741,25 @@ function executeProjectionTrade(market,{userName,side,stake,botId=null,botSource
 }
 
 function cancelPendingOrders(userName,orderIds){
+  const affectedMarketIds=new Set();
   state.markets.forEach((market)=>{
     const previousNetPressure=Number(market.netPressure)||0;
     market.trades.forEach((trade)=>{
-      if(trade.userName!==userName||!orderIds.includes(trade.id)||!(trade.unmatchedStake>0)){
+      if(String(trade.userName||"").toLowerCase()!==String(userName||"").toLowerCase()||!orderIds.includes(trade.id)||!(trade.unmatchedStake>0)){
         return;
       }
       refundReservedStake(trade,trade.unmatchedStake,market);
       trade.unmatchedStake=0;
       trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
+      affectedMarketIds.add(market.id);
     });
     updateMarketTotals(market);
     applyTradePressure(market,(Number(market.netPressure)||0)-previousNetPressure);
   });
+  if(affectedMarketIds.size){
+    syncDerivedBalances();
+  }
+  return [...affectedMarketIds];
 }
 
 function settleProjectionMarket(market,finalScore,options={}){

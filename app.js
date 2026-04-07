@@ -766,6 +766,16 @@ function applySharedSnapshot(response) {
     activeRoundLabel: nextState.activeRoundLabel || roundLabelForNumber(nextActiveRoundNumber)
   };
   backendState = response.backend || { mode: "local", user: null, dashboard: null };
+  const canonicalUserName = backendState.user?.username;
+  if (canonicalUserName) {
+    localStorage.setItem(USER_NAME_KEY, canonicalUserName);
+    if (elements.userName) {
+      elements.userName.value = canonicalUserName;
+    }
+    if (elements.authUsername) {
+      elements.authUsername.value = canonicalUserName;
+    }
+  }
   prizePoolState = response.prizePool || null;
 }
 
@@ -5840,6 +5850,10 @@ function getUserCash(userName) {
   if (!userName) return STARTING_BANKROLL;
   if (typeof state.bankrolls?.[userName] === "number") {
     return Number(state.bankrolls[userName]) || 0;
+  }
+  const aliasKey = Object.keys(state.bankrolls || {}).find((key) => key.toLowerCase() === userName.toLowerCase());
+  if (aliasKey && typeof state.bankrolls?.[aliasKey] === "number") {
+    return Number(state.bankrolls[aliasKey]) || 0;
   }
   return STARTING_BANKROLL;
 }
