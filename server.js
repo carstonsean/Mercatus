@@ -277,7 +277,9 @@ async function handleApi(req,res,url){
             trade_id:eligibleTrade.trade.id,
             error:error.message||String(error)
           }));
-          return json(res,500,{error:error.message||"Unable to create challenge link right now"});
+          if(!shouldFallbackShareSessionStorage(error)){
+            return json(res,500,{error:error.message||"Unable to create challenge link right now"});
+          }
         }
       }
       if(!shareSession){
@@ -2726,7 +2728,20 @@ async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
     return null;
   }
   try{
-    const backendUser=await ensureSupabaseDemoUser(userName);
+    let backendUser=await getOrCreateSupabaseUserIdentity(userName);
+    if(backendUser){
+      const balance=typeof state.bankrolls?.[backendUser.username]==="number"
+        ? state.bankrolls[backendUser.username]
+        : (typeof state.bankrolls?.[userName]==="number"?state.bankrolls[userName]:null);
+      backendUser={
+        id:backendUser.id,
+        username:backendUser.username,
+        displayName:backendUser.display_name||backendUser.displayName||backendUser.username,
+        balance:Number.isFinite(balance)?balance:STARTING_BANKROLL
+      };
+    }else{
+      backendUser=await ensureSupabaseDemoUser(userName);
+    }
     const canonicalUserName=backendUser?.username||userName;
     removeCaseVariantBankrollAliases(canonicalUserName,state);
     const tableBackedBalance=typeof state.bankrolls?.[canonicalUserName]==="number"
