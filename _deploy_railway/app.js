@@ -13,9 +13,10 @@ const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
 const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
-const LIVE_SYNC_MS = 2500;
+const LIVE_SYNC_MS = 5000;
 const PRIZE_POOL_POLL_MS = 10000;
 const ONBOARDING_POPUP_DELAY_MS = 800;
+const WHOLE_NUMBER_FORMATTER = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
 const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
@@ -28,13 +29,6 @@ const AVAILABLE_ROUND_NUMBERS = [...new Set([
   ...SEEDED_ROUND_NUMBERS,
   ...((derivedData.metadata?.roundsIncluded) || []).map((round) => Number(round)).filter(Number.isFinite)
 ])].sort((left, right) => left - right);
-const BOT_BEHAVIOUR_PRESETS = {
-  BALANCED: { crowdStyle: 50, liquidityStyle: 40, fadeStyle: 45, frequencyStyle: 50, edgeStyle: 50 },
-  MOMENTUM: { crowdStyle: 84, liquidityStyle: 22, fadeStyle: 18, frequencyStyle: 70, edgeStyle: 38 },
-  CONTRARIAN: { crowdStyle: 14, liquidityStyle: 34, fadeStyle: 72, frequencyStyle: 42, edgeStyle: 62 },
-  MARKET_MAKER: { crowdStyle: 50, liquidityStyle: 88, fadeStyle: 55, frequencyStyle: 58, edgeStyle: 28 },
-  PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
-};
 const APP_MODAL_TITLES = {
   "how-it-works": "How It Works",
   "account-settings": "Account Settings",
@@ -349,32 +343,8 @@ const elements = {
   undoSettlementButton: document.getElementById("undo-settlement-button"),
   openingFeedback: document.getElementById("opening-feedback"),
   settlementFeedback: document.getElementById("settlement-feedback"),
-  botConfigForm: document.getElementById("bot-config-form"),
-  botSeasonWeight: document.getElementById("bot-season-weight"),
-  botFormWeight: document.getElementById("bot-form-weight"),
-  botVenueWeight: document.getElementById("bot-venue-weight"),
-  botOpponentWeight: document.getElementById("bot-opponent-weight"),
-  botMatchupWeight: document.getElementById("bot-matchup-weight"),
-  botNoiseWeight: document.getElementById("bot-noise-weight"),
-  botActivityWeight: document.getElementById("bot-activity-weight"),
-  botThresholdWeight: document.getElementById("bot-threshold-weight"),
-  botBehaviourPresets: document.getElementById("bot-behaviour-presets"),
-  botCrowdStyle: document.getElementById("bot-crowd-style"),
-  botLiquidityStyle: document.getElementById("bot-liquidity-style"),
-  botFadeStyle: document.getElementById("bot-fade-style"),
-  botFrequencyStyle: document.getElementById("bot-frequency-style"),
-  botEdgeStyle: document.getElementById("bot-edge-style"),
-  botCrowdStyleLabel: document.getElementById("bot-crowd-style-label"),
-  botLiquidityLabel: document.getElementById("bot-liquidity-label"),
-  botFadeLabel: document.getElementById("bot-fade-label"),
-  botFrequencyLabel: document.getElementById("bot-frequency-label"),
-  botEdgeLabel: document.getElementById("bot-edge-label"),
-  botBehaviourSummary: document.getElementById("bot-behaviour-summary"),
-  botConfigFeedback: document.getElementById("bot-config-feedback"),
   botSummary: document.getElementById("bot-summary"),
-  botArchetypeSummary: document.getElementById("bot-archetype-summary"),
   botPerformanceList: document.getElementById("bot-performance-list"),
-  createBot: document.getElementById("create-bot"),
   createRandomProbBot: document.getElementById("create-random-prob-bot"),
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
@@ -603,31 +573,8 @@ function bindEvents() {
   elements.undoSettlementButton?.addEventListener("click", async () => {
     await undoSettlementBatch();
   });
-  elements.botConfigForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveBotConfig();
-  });
-  elements.botBehaviourPresets?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-bot-preset]");
-    if (!button) return;
-    applyBotBehaviourPreset(button.dataset.botPreset);
-  });
-  [
-    elements.botCrowdStyle,
-    elements.botLiquidityStyle,
-    elements.botFadeStyle,
-    elements.botFrequencyStyle,
-    elements.botEdgeStyle
-  ].forEach((input) =>
-    input?.addEventListener("input", () => {
-      renderBotBehaviourSummary();
-    })
-  );
-  elements.createBot?.addEventListener("click", async () => {
-    await createSimulationBot();
-  });
   elements.createRandomProbBot?.addEventListener("click", async () => {
-    await createSimulationBot("random-prob");
+    await createSimulationBot();
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -1711,7 +1658,7 @@ function appModalContentMarkup(modalKey) {
         <form id="account-settings-form" class="account-settings-form">
           <label class="account-settings-field">
             <span>Username</span>
-            <input id="account-settings-username" name="accountSettingsUsername" type="text" maxlength="24" value="${escapeHtml(currentUserName())}" placeholder="Casey">
+            <input id="account-settings-username" name="accountSettingsUsername" type="text" maxlength="24" value="${escapeHtml(currentUserName())}" placeholder="Casey…" autocomplete="username" autocapitalize="words" spellcheck="false">
           </label>
         </form>
       </section>
@@ -1755,7 +1702,7 @@ function appModalContentMarkup(modalKey) {
             <textarea
               id="contact-message-input"
               rows="5"
-              placeholder="How can we help?"
+              placeholder="How can we help?…"
             >${escapeHtml(uiState.contactMessageDraft)}</textarea>
           </label>
           <button class="primary-button contact-submit-button" type="submit">Send Message</button>
@@ -2383,12 +2330,12 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
     const projectionValueLabel = Number(entryProjection).toFixed(1);
     const isMatched = status.label === "Matched";
     const isSettled = trade.portfolioState === "SETTLED";
-    const isMarketShareable = !isMarketLocked(market);
+    const isMarketShareable = !isMarketLocked(market) && marketRoundNumber(market) === activeRoundNumber();
     const statusLabel = isMatched ? "MATCHED" : "UNMATCHED";
     const cancelableOrderIds = Array.isArray(trade.cancelableOrderIds) ? trade.cancelableOrderIds : [];
     const canSwipeToCancel = !isMatched && cancelableOrderIds.length > 0;
     const canExpandInlineActions = !isSettled && !isMatched && cancelableOrderIds.length > 0;
-    const challengeTradeIds = cancelableOrderIds.slice();
+    const challengeTradeIds = isMarketShareable ? cancelableOrderIds.slice() : [];
     const challengeTradeId = isMarketShareable ? (challengeTradeIds[0] || "") : "";
     const positionKey = `${trade.portfolioState || "OPEN"}:${trade.marketId}:${trade.side}`;
     const isExpanded = canExpandInlineActions && uiState.expandedPortfolioPositionKey === positionKey;
@@ -2447,14 +2394,20 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
       bindPortfolioPositionCardSwipe(card);
     }
     if (canExpandInlineActions) {
+      const cardMain = card.querySelector(".portfolio-position-card-main");
       const shell = card.querySelector(".portfolio-position-shell.is-expandable");
-      shell?.addEventListener("click", () => {
+      const openInlineActions = () => {
         togglePortfolioPositionExpansion(positionKey);
+      };
+      cardMain?.addEventListener("click", (event) => {
+        if (event.target.closest(".portfolio-position-action-button")) return;
+        if (event.target.closest(".portfolio-inline-action-button")) return;
+        openInlineActions();
       });
       shell?.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        togglePortfolioPositionExpansion(positionKey);
+        openInlineActions();
       });
       card.querySelector("[data-inline-cancel]")?.addEventListener("click", async (event) => {
         event.stopPropagation();
@@ -2972,7 +2925,7 @@ function challengeAuthEntryMarkup(mode = "signup") {
               autocomplete="username"
             >
             ${uiState.challengeRouteAuthError ? `<p class="feedback challenge-inline-error">${escapeHtml(uiState.challengeRouteAuthError)}</p>` : ""}
-            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAuthPending ? "is-loading" : ""}" type="submit" ${uiState.challengeRouteAuthPending ? "disabled" : ""}>${uiState.challengeRouteAuthPending ? "Loading..." : buttonLabel}</button>
+            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAuthPending ? "is-loading" : ""}" type="submit" ${uiState.challengeRouteAuthPending ? "disabled" : ""}>${uiState.challengeRouteAuthPending ? "Loading…" : buttonLabel}</button>
           </form>
         </article>
       </section>
@@ -3160,7 +3113,7 @@ function challengeAcceptanceMarkup() {
         </article>
         <div class="challenge-action-stack">
           ${unavailable ? `<button class="primary-button challenge-cta-button" type="button" data-challenge-next>Next</button>` : `
-            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAcceptPending ? "is-loading" : ""}" type="button" data-challenge-accept ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>${uiState.challengeRouteAcceptPending ? "Matching..." : "Accept"}</button>
+            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAcceptPending ? "is-loading" : ""}" type="button" data-challenge-accept ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>${uiState.challengeRouteAcceptPending ? "Matching…" : "Accept"}</button>
             <button class="secondary-button challenge-secondary-button" type="button" data-challenge-decline ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>Decline</button>
           `}
         </div>
@@ -3373,6 +3326,7 @@ async function submitChallengeAuthAndAccept() {
       return;
     }
     uiState.challengeRouteAuthMode = "";
+    await maybeLoadChallengeRoute(true);
     await acceptCurrentChallengeTrade();
   } catch (error) {
     uiState.challengeRouteAuthError = error.message;
@@ -3383,8 +3337,16 @@ async function submitChallengeAuthAndAccept() {
 }
 
 async function acceptCurrentChallengeTrade() {
-  const trade = currentChallengeTradeRecord();
-  if (!trade) return;
+  let trade = currentChallengeTradeRecord();
+  if (!trade) {
+    await maybeLoadChallengeRoute(true);
+    trade = currentChallengeTradeRecord();
+  }
+  if (!trade) {
+    uiState.challengeRouteAcceptError = "This challenge could not be loaded. Please refresh and try again.";
+    renderChallengeRoute();
+    return;
+  }
   uiState.challengeRouteAcceptPending = true;
   uiState.challengeRouteAcceptError = "";
   renderChallengeRoute();
@@ -3393,6 +3355,15 @@ async function acceptCurrentChallengeTrade() {
       share_session_id: uiState.challengeRouteShareId,
       trade_id: trade.id
     });
+    if (response.state || response.backend || response.prizePool) {
+      applySharedSnapshot({
+        ...response,
+        backend: response.backend || backendState,
+        prizePool: response.prizePool || prizePoolState
+      });
+    } else if (Number.isFinite(Number(response.balance))) {
+      state.bankrolls[currentUserName()] = Number(response.balance);
+    }
     markChallengeReviewStatus(trade, "matched");
     try {
       await syncSession();
@@ -3620,7 +3591,7 @@ function renderPrizePool() {
         <div class="prize-pool-payout-grid">${payouts}</div>
       </section>
       <div class="prize-pool-sticky-cta">
-        ${view.canEnter ? `<button id="prize-pool-enter" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "start" ? "Opening..." : "Enter for $10"}</button>` : `<button class="secondary-button prize-pool-cta-muted" type="button" disabled>Entry Closed</button>`}
+        ${view.canEnter ? `<button id="prize-pool-enter" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "start" ? "Opening…" : "Enter for $10"}</button>` : `<button class="secondary-button prize-pool-cta-muted" type="button" disabled>Entry Closed</button>`}
       </div>
       ${!view.canEnter ? `<div class="portfolio-empty-state"><strong>Entry closed</strong><span>Prize Pool stays open only while at least one round game has not yet kicked off.</span></div>` : ""}
       ${renderPrizePoolLeaderboard(view, "Current Standings")}
@@ -3656,7 +3627,7 @@ function renderPrizePoolDraftState(view) {
           </div>
         </section>
         <div class="prize-pool-sticky-cta">
-          <button id="prize-pool-submit" class="primary-button prize-pool-submit-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "submit" ? "Submitting..." : "Submit Team"}</button>
+          <button id="prize-pool-submit" class="primary-button prize-pool-submit-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "submit" ? "Submitting…" : "Submit Team"}</button>
         </div>
       </section>
     `;
@@ -3705,8 +3676,8 @@ function renderPrizePoolDraftState(view) {
         <div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div>
         <div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div></div>
         <div class="quick-take-actions">
-          <button class="quick-take-action quick-take-under" type="button" data-prize-side="UNDER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Under ${Number(currentCard.line).toFixed(1)}</button>
-          <button class="quick-take-action quick-take-over" type="button" data-prize-side="OVER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Over ${Number(currentCard.line).toFixed(1)}</button>
+      <button class="quick-take-action quick-take-under" type="button" data-prize-side="UNDER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Under ${Number(currentCard.line).toFixed(1)}</button>
+      <button class="quick-take-action quick-take-over" type="button" data-prize-side="OVER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Over ${Number(currentCard.line).toFixed(1)}</button>
         </div>
       </article>
     </section>
@@ -4342,8 +4313,8 @@ function shareableTemplateConfigMarkup() {
         ${template.requiresPlayer ? `
           <div class="admin-shareable-config-block">
             <label class="admin-shareable-field">
-              <span class="admin-shareable-config-label">Search player...</span>
-              <input class="admin-shareable-input" type="search" value="${escapeHtml(uiState.adminShareablePlayerQuery)}" placeholder="Search player..." data-shareable-player-search>
+              <span class="admin-shareable-config-label">Search Player…</span>
+              <input class="admin-shareable-input" type="search" value="${escapeHtml(uiState.adminShareablePlayerQuery)}" placeholder="Search player…" data-shareable-player-search>
             </label>
             ${playerResults.length ? `<div class="admin-shareable-results">${playerResults.map((market) => shareablePlayerResultMarkup(market)).join("")}</div>` : uiState.adminShareablePlayerQuery.trim() ? `<div class="admin-shareable-empty">No current round players match that search.</div>` : ""}
             ${selectedMarket ? `<div class="admin-shareable-selection">${shareableTeamBadgeMarkup(selectedMarket.team)}<span>${escapeHtml(selectedMarket.playerName)}</span><span class="admin-shareable-selection-tick">✓</span></div>` : ""}
@@ -5072,7 +5043,7 @@ function getEligibleChallengeTrades() {
     .filter((trade) => (Number(trade.unmatchedStake) || 0) > 0 && !trade.result)
     .map((trade) => {
       const market = findMarket(trade.marketId);
-      return market && !isMarketLocked(market) ? { ...trade, market } : null;
+      return market && !isMarketLocked(market) && marketRoundNumber(market) === activeRoundNumber() ? { ...trade, market } : null;
     })
     .filter(Boolean)
     .sort((left, right) => new Date(right.timestamp || 0) - new Date(left.timestamp || 0));
@@ -5116,46 +5087,18 @@ function renderBotSimulation() {
   const config = state.botSimulation.config || {};
   const logs = config.logs || [];
   const bots = state.botSimulation.bots || [];
-  const displayLogs = logs.map((log) => ({
-    ...log,
-    reason: `${log.archetypeLabel ? `${log.archetypeLabel} personality Â· ` : ""}${log.reason}`
-  }));
+  const displayLogs = logs.map((log) => ({ ...log }));
   const botCount = bots.length;
   const activeBotCount = bots.filter((bot) => getDisplayedCash(bot.userName) >= 1).length;
   const totalBotBankroll = bots.reduce((sum, bot) => sum + getDisplayedCash(bot.userName), 0);
   const performance = getBotPerformanceSummary();
-  elements.botSeasonWeight.value = String(config.globalWeights?.season ?? 1);
-  elements.botFormWeight.value = String(config.globalWeights?.form ?? 1);
-  elements.botVenueWeight.value = String(config.globalWeights?.venue ?? 1);
-  elements.botOpponentWeight.value = String(config.globalWeights?.opponent ?? 1);
-  elements.botMatchupWeight.value = String(config.globalWeights?.matchup ?? 1);
-  elements.botNoiseWeight.value = String(config.globalWeights?.noise ?? 1);
-  elements.botSeasonWeight.disabled = true;
-  elements.botNoiseWeight.disabled = true;
-  elements.botActivityWeight.value = String(config.globalWeights?.activity ?? 1);
-  elements.botThresholdWeight.value = String(config.globalWeights?.threshold ?? 1);
-  syncBotBehaviourInputs(config.behaviour);
-  renderBotBehaviourSummary();
   elements.botSummary.innerHTML = `${positionMetric("Bots", String(botCount))}${positionMetric("Active", String(activeBotCount))}${positionMetric("Bot bankroll", formatStake(totalBotBankroll))}${positionMetric("Settled P/L", formatSignedStake(performance.totalRealizedProfit), performance.totalRealizedProfit)}${positionMetric("Recent events", String(displayLogs.length))}${positionMetric("Settled trades", String(performance.totalSettledTrades))}`;
-  if (elements.botArchetypeSummary) {
-    elements.botArchetypeSummary.innerHTML = performance.archetypes.length
-      ? performance.archetypes
-          .map((row) =>
-            adminDashboardCard(
-              row.label,
-              formatSignedStake(row.realizedProfit),
-              `${row.botCount} bots | ${row.settledTrades} settled | ${row.winRate}% win | ROI ${formatPercentage(row.roi)} | Open ${formatStake(row.openExposure)}`
-            )
-          )
-          .join("")
-      : `<div class="section-meta">No bot personalities to compare yet. Create a bot and let it trade into a few settled markets first.</div>`;
-  }
   if (elements.botPerformanceList) {
     elements.botPerformanceList.innerHTML = performance.bots.length
       ? performance.bots
           .map(
             (row, index) =>
-              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} ${row.archetypeLabel}</p><h4>${row.userName}</h4></div></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
+              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} Random Prob</p><h4>${row.userName}</h4></div></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
           )
           .join("")
       : `<div class="section-meta">Bot results will appear here once trades have been placed.</div>`;
@@ -5305,7 +5248,7 @@ function getBotPerformanceSummary() {
   botMap.forEach((bot, userName) => {
     botRows.set(userName, {
       userName,
-      archetype: bot.archetype || "custom",
+      archetype: bot.archetype || "random-prob",
       archetypeLabel: labelForBotArchetype(bot.archetype, bot),
       bankroll: getDisplayedCash(userName),
       settledTrades: 0,
@@ -5323,7 +5266,7 @@ function getBotPerformanceSummary() {
   );
   allBotTrades.forEach(({ trade }) => {
     const bot = botMap.get(trade.userName);
-    const archetypeKey = bot?.archetype || trade.archetype || "custom";
+    const archetypeKey = bot?.archetype || trade.archetype || "random-prob";
     const archetypeLabel = labelForBotArchetype(archetypeKey, bot);
     if (!botRows.has(trade.userName)) {
       botRows.set(trade.userName, {
@@ -5432,7 +5375,7 @@ function getTradeExposureStake(trade) {
 }
 
 function labelForBotArchetype(archetypeKey, bot = null) {
-  const rawLabel = bot?.config?.baseLabel || bot?.config?.label || archetypeKey || "Custom";
+  const rawLabel = bot?.config?.baseLabel || bot?.config?.label || archetypeKey || "Random Prob";
   return String(rawLabel)
     .replace(/\s+Variant$/i, "")
     .replace(/(^|\s)\w/g, (match) => match.toUpperCase());
@@ -5525,111 +5468,16 @@ async function undoSettlementBatch() {
   }
 }
 
-async function saveBotConfig() {
+async function createSimulationBot() {
   try {
-    const response = await api("/api/admin/bots/config", {
-      behaviour: getBotBehaviourDraft(),
-      globalWeights: {
-        season: Number(elements.botSeasonWeight.value),
-        form: Number(elements.botFormWeight.value),
-        venue: Number(elements.botVenueWeight.value),
-        opponent: Number(elements.botOpponentWeight.value),
-        matchup: Number(elements.botMatchupWeight.value),
-        noise: Number(elements.botNoiseWeight.value),
-        activity: Number(elements.botActivityWeight.value),
-        threshold: Number(elements.botThresholdWeight.value)
-      }
-    });
+    const response = await api("/api/admin/bots/create", {});
     applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
-    elements.botConfigFeedback.textContent = "Bot settings updated.";
-  } catch (error) {
-    elements.botConfigFeedback.textContent = error.message;
-  }
-}
-
-async function createSimulationBot(mode = "default") {
-  try {
-    const response = await api("/api/admin/bots/create", { mode });
-    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
-    renderAll();
-    const botName = response.bot?.userName || "Quick Pick bot";
-    const botDescription = mode === "random-prob" ? "50/50 random-probability bot" : "Quick Pick bot";
-    elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a ${botDescription}.`;
+    const botName = response.bot?.userName || "Random Prob bot";
+    elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a 50/50 random-probability bot.`;
     showToast("Bot created", `${botName} joined the Quick Pick market.`);
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
-  }
-}
-
-function applyBotBehaviourPreset(presetKey) {
-  const preset = BOT_BEHAVIOUR_PRESETS[presetKey];
-  if (!preset) return;
-  if (elements.botCrowdStyle) elements.botCrowdStyle.value = String(preset.crowdStyle);
-  if (elements.botLiquidityStyle) elements.botLiquidityStyle.value = String(preset.liquidityStyle);
-  if (elements.botFadeStyle) elements.botFadeStyle.value = String(preset.fadeStyle);
-  if (elements.botFrequencyStyle) elements.botFrequencyStyle.value = String(preset.frequencyStyle);
-  if (elements.botEdgeStyle) elements.botEdgeStyle.value = String(preset.edgeStyle);
-  renderBotBehaviourSummary();
-}
-
-function syncBotBehaviourInputs(behaviour = {}) {
-  const draft = behaviourToSliderValues(behaviour);
-  if (elements.botCrowdStyle) elements.botCrowdStyle.value = String(draft.crowdStyle);
-  if (elements.botLiquidityStyle) elements.botLiquidityStyle.value = String(draft.liquidityStyle);
-  if (elements.botFadeStyle) elements.botFadeStyle.value = String(draft.fadeStyle);
-  if (elements.botFrequencyStyle) elements.botFrequencyStyle.value = String(draft.frequencyStyle);
-  if (elements.botEdgeStyle) elements.botEdgeStyle.value = String(draft.edgeStyle);
-}
-
-function behaviourToSliderValues(behaviour = {}) {
-  const crowdStyle = Number.isFinite(Number(behaviour.crowdFollow))
-    ? Math.round(((Number(behaviour.crowdFollow) + 1) / 2) * 100)
-    : BOT_BEHAVIOUR_PRESETS.BALANCED.crowdStyle;
-  return {
-    crowdStyle: clampNumber(crowdStyle, 0, 100),
-    liquidityStyle: clampNumber(Math.round((Number(behaviour.liquidityProviding) || 0.4) * 100), 0, 100),
-    fadeStyle: clampNumber(Math.round((Number(behaviour.fadeExtremeMoves) || 0.45) * 100), 0, 100),
-    frequencyStyle: clampNumber(Math.round((((Number(behaviour.tradingFrequency) || 1) - 0.6) / 0.9) * 100), 0, 100),
-    edgeStyle: clampNumber(Math.round((((Number(behaviour.edgeRequirement) || 1) - 0.7) / 0.8) * 100), 0, 100)
-  };
-}
-
-function getBotBehaviourDraft() {
-  const crowdValue = Number(elements.botCrowdStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.crowdStyle);
-  const liquidityValue = Number(elements.botLiquidityStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.liquidityStyle);
-  const fadeValue = Number(elements.botFadeStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.fadeStyle);
-  const frequencyValue = Number(elements.botFrequencyStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.frequencyStyle);
-  const edgeValue = Number(elements.botEdgeStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.edgeStyle);
-  return {
-    crowdFollow: roundToTwo((crowdValue - 50) / 50),
-    liquidityProviding: roundToTwo(liquidityValue / 100),
-    fadeExtremeMoves: roundToTwo(fadeValue / 100),
-    tradingFrequency: roundToTwo(0.6 + (frequencyValue / 100) * 0.9),
-    edgeRequirement: roundToTwo(0.7 + (edgeValue / 100) * 0.8)
-  };
-}
-
-function renderBotBehaviourSummary() {
-  const draft = getBotBehaviourDraft();
-  const crowdLabel = describeCrowdStyle(draft.crowdFollow);
-  const liquidityLabel = describeLiquidityStyle(draft.liquidityProviding);
-  const fadeLabel = describeFadeStyle(draft.fadeExtremeMoves);
-  const frequencyLabel = describeFrequencyStyle(draft.tradingFrequency);
-  const edgeLabel = describeEdgeStyle(draft.edgeRequirement);
-  if (elements.botCrowdStyleLabel) elements.botCrowdStyleLabel.textContent = crowdLabel;
-  if (elements.botLiquidityLabel) elements.botLiquidityLabel.textContent = liquidityLabel;
-  if (elements.botFadeLabel) elements.botFadeLabel.textContent = fadeLabel;
-  if (elements.botFrequencyLabel) elements.botFrequencyLabel.textContent = frequencyLabel;
-  if (elements.botEdgeLabel) elements.botEdgeLabel.textContent = edgeLabel;
-  if (elements.botBehaviourSummary) {
-    elements.botBehaviourSummary.innerHTML = [
-      portfolioMetricCard("Crowd style", crowdLabel),
-      portfolioMetricCard("Liquidity", liquidityLabel),
-      portfolioMetricCard("Fade moves", fadeLabel),
-      portfolioMetricCard("Frequency", frequencyLabel),
-      portfolioMetricCard("Edge required", edgeLabel)
-    ].join("");
   }
 }
 
@@ -6922,6 +6770,9 @@ function optionalTrendText(market) {
 }
 
 function tradeCountFor(market) {
+  if (Number.isFinite(Number(market?.tradeMetrics?.tradeCount))) {
+    return Number(market.tradeMetrics.tradeCount) || 0;
+  }
   return market.trades?.length || 0;
 }
 
@@ -6932,43 +6783,6 @@ function tradeVolumeFor(market) {
 function formatSignedLine(value) {
   if (value === 0) return "0.0";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
-}
-
-function describeCrowdStyle(value) {
-  if (value <= -0.45) return "Fade crowd";
-  if (value < -0.15) return "Leaning contrarian";
-  if (value < 0.15) return "Neutral";
-  if (value < 0.45) return "Leaning momentum";
-  return "Follow crowd";
-}
-
-function describeLiquidityStyle(value) {
-  if (value < 0.25) return "Directional";
-  if (value < 0.55) return "Balanced";
-  if (value < 0.8) return "Liquidity first";
-  return "Market making";
-}
-
-function describeFadeStyle(value) {
-  if (value < 0.25) return "Low";
-  if (value < 0.6) return "Moderate";
-  return "Strong";
-}
-
-function describeFrequencyStyle(value) {
-  if (value < 0.85) return "Selective";
-  if (value < 1.15) return "Balanced";
-  return "Active";
-}
-
-function describeEdgeStyle(value) {
-  if (value < 0.9) return "Low threshold";
-  if (value < 1.2) return "Balanced";
-  return "High conviction";
-}
-
-function roundToTwo(value) {
-  return Math.round((Number(value) || 0) * 100) / 100;
 }
 
 function clampNumber(value, min, max) {
@@ -6994,12 +6808,12 @@ function matchupContext(market) {
 }
 
 function formatStake(value) {
-  return `$${Math.abs(value).toFixed(0)}`;
+  return `$${WHOLE_NUMBER_FORMATTER.format(Math.abs(value))}`;
 }
 
 function formatSignedStake(value) {
   if (value === 0) return "$0";
-  return `${value > 0 ? "+" : "-"}$${Math.abs(value).toFixed(0)}`;
+  return `${value > 0 ? "+" : "-"}$${WHOLE_NUMBER_FORMATTER.format(Math.abs(value))}`;
 }
 
 function formatPercentage(value) {
@@ -7024,6 +6838,23 @@ function formatTradeResultLabel(result) {
 
 
 function getMarketTradeMetrics(market) {
+  if (market?.tradeMetrics && typeof market.tradeMetrics === "object") {
+    const matchedTradeCount = Number(market.tradeMetrics.matchedTradeCount) || 0;
+    const volume = Number(market.tradeMetrics.volume) || 0;
+    const uniqueTraders = Number(market.tradeMetrics.uniqueTraders) || 0;
+    return {
+      volume,
+      liveExposure: Number(market.tradeMetrics.liveExposure) || 0,
+      availableLiquidity: Number(market.tradeMetrics.availableLiquidity) || 0,
+      netPressure: Number(market.tradeMetrics.netPressure) || 0,
+      unmatchedOrderCount: Number(market.tradeMetrics.unmatchedOrderCount) || 0,
+      matchedTradeCount,
+      uniqueTraders,
+      confidence: Number.isFinite(Number(market.tradeMetrics.confidence))
+        ? Number(market.tradeMetrics.confidence)
+        : marketConfidenceScore({ matchedTradeCount, volume, uniqueTraders })
+    };
+  }
   const trades = market.trades || [];
   const volume = trades.reduce((sum, trade) => sum + (Number(trade.stake) || 0), 0);
   const openTrades = trades.filter((trade) => !trade.result && trade.status !== "CANCELLED");
