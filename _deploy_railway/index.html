@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>crowdIQ</title>
   <meta name="description" content="Trade NRL fantasy projection markets, track crowd confidence, and test your edge on live weekly lines.">
   <meta property="og:type" content="website">
@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=2.4">
+  <link rel="stylesheet" href="/styles.css?v=2.4">
 </head>
 <body>
   <div id="onboarding-overlay" aria-hidden="true"></div>
@@ -117,7 +117,7 @@
           <form id="auth-form" class="stack-form auth-form">
             <label class="auth-field-label">
               CHOOSE YOUR USERNAME
-              <input id="auth-username" name="authUsername" type="text" maxlength="24" placeholder="Johnny" required>
+              <input id="auth-username" name="authUsername" type="text" maxlength="24" placeholder="Johnny…" autocomplete="username" autocapitalize="words" spellcheck="false" required>
             </label>
             <button class="primary-button auth-submit-button" type="submit">Enter the Market</button>
             <p id="auth-feedback" class="feedback" aria-live="polite"></p>
@@ -158,7 +158,7 @@
               </div>
             </div>
             <label class="search-label">
-              <input id="search-input" type="search" placeholder="Search player, team, or position">
+              <input id="search-input" name="searchQuery" type="search" placeholder="Search player, team, or position…" autocomplete="off" spellcheck="false">
             </label>
             <div id="search-results" class="list-stack"></div>
           </section>
@@ -283,7 +283,6 @@
             <section class="section-block portfolio-controls-block">
               <div class="section-heading compact-heading portfolio-controls-heading">
                 <div>
-                  <div id="portfolio-challenge-entry"></div>
                   <h3>Your Positions</h3>
                 </div>
               </div>
@@ -297,30 +296,6 @@
               <div id="portfolio-list" class="portfolio-list"></div>
             </section>
 
-            <section class="section-block profile-settings-block">
-              <div class="section-heading compact-heading">
-                <div>
-                  <p class="eyebrow">Profile settings</p>
-                  <h3>Account details</h3>
-                </div>
-              </div>
-              <form class="stack-form profile-settings-form">
-                <label>
-                  Username
-                  <input id="user-name" name="userName" type="text" maxlength="24" placeholder="Casey" readonly>
-                </label>
-              </form>
-            </section>
-
-            <section class="section-block dev-entry">
-              <div>
-                <p class="eyebrow">Tools</p>
-                <h3>Account actions</h3>
-                <p class="section-meta">Keep your profile and admin access together in one personal space.</p>
-              </div>
-              <button id="logout-button" class="secondary-button" type="button">Log out</button>
-              <button id="open-admin-button" class="secondary-button" type="button">Open admin tools</button>
-            </section>
           </div>
 
           <div id="account-wallet-view" class="account-view-panel">
@@ -344,7 +319,7 @@
               <div class="wallet-actions-card">
                 <label class="wallet-amount-field">
                   Amount
-                  <input id="wallet-amount-input" type="number" min="1" step="1" placeholder="25">
+                  <input id="wallet-amount-input" name="walletAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="25" autocomplete="off">
                 </label>
                 <div class="wallet-amount-presets" id="wallet-amount-presets">
                   <button class="portfolio-chip" type="button" data-wallet-amount="10">$10</button>
@@ -546,120 +521,24 @@
           </div>
         </div>
         <div class="bot-admin-layout">
-          <form id="bot-config-form" class="stack-form bot-tuning-panel">
-            <div>
-              <p class="panel-label">Bot market behaviour</p>
-              <p class="section-meta">Control how bots behave in the market using plain-English levers, then fine-tune the projection model only if needed.</p>
-            </div>
-            <div class="bot-preset-block">
-              <span class="trade-label">Quick presets</span>
-              <div id="bot-behaviour-presets" class="portfolio-chip-row">
-                <button class="portfolio-chip" type="button" data-bot-preset="BALANCED">Balanced</button>
-                <button class="portfolio-chip" type="button" data-bot-preset="MOMENTUM">Momentum</button>
-                <button class="portfolio-chip" type="button" data-bot-preset="CONTRARIAN">Contrarian</button>
-                <button class="portfolio-chip" type="button" data-bot-preset="MARKET_MAKER">Market maker</button>
-                <button class="portfolio-chip" type="button" data-bot-preset="PUBLIC">Public money</button>
-              </div>
-            </div>
-            <div class="bot-behaviour-grid">
-              <label class="bot-behaviour-card">
-                <span class="bot-behaviour-heading">Crowd style</span>
-                <span class="bot-behaviour-meta">Fade crowd <strong id="bot-crowd-style-label">Neutral</strong> Follow crowd</span>
-                <input id="bot-crowd-style" name="crowdStyle" type="range" min="0" max="100" step="1">
-              </label>
-              <label class="bot-behaviour-card">
-                <span class="bot-behaviour-heading">Liquidity providing</span>
-                <span class="bot-behaviour-meta">Directional <strong id="bot-liquidity-label">Balanced</strong> Market making</span>
-                <input id="bot-liquidity-style" name="liquidityStyle" type="range" min="0" max="100" step="1">
-              </label>
-              <label class="bot-behaviour-card">
-                <span class="bot-behaviour-heading">Fade big moves</span>
-                <span class="bot-behaviour-meta">Ignore extremes <strong id="bot-fade-label">Moderate</strong> Strong reversion</span>
-                <input id="bot-fade-style" name="fadeStyle" type="range" min="0" max="100" step="1">
-              </label>
-              <label class="bot-behaviour-card">
-                <span class="bot-behaviour-heading">Trading frequency</span>
-                <span class="bot-behaviour-meta">Selective <strong id="bot-frequency-label">Balanced</strong> Active</span>
-                <input id="bot-frequency-style" name="frequencyStyle" type="range" min="0" max="100" step="1">
-              </label>
-              <label class="bot-behaviour-card">
-                <span class="bot-behaviour-heading">Edge required</span>
-                <span class="bot-behaviour-meta">Trade small edges <strong id="bot-edge-label">Balanced</strong> Wait for conviction</span>
-                <input id="bot-edge-style" name="edgeStyle" type="range" min="0" max="100" step="1">
-              </label>
-            </div>
-            <details class="bot-advanced-panel">
-              <summary>Advanced model tuning</summary>
-              <p class="section-meta">These inputs change how the projection model is built. Use them only when you want to adjust the bot's underlying scoring logic.</p>
-              <div class="bot-tuning-grid">
-                <label>
-                  Season baseline (fixed in v1)
-                  <input id="bot-season-weight" name="seasonWeight" type="number" min="0" max="3" step="0.1" disabled>
-                </label>
-                <label>
-                  Recent form
-                  <input id="bot-form-weight" name="formWeight" type="number" min="0" max="3" step="0.1">
-                </label>
-                <label>
-                  Venue impact
-                  <input id="bot-venue-weight" name="venueWeight" type="number" min="0" max="3" step="0.1">
-                </label>
-                <label>
-                  Opponent odds weighting
-                  <input id="bot-opponent-weight" name="opponentWeight" type="number" min="0" max="1" step="0.05">
-                </label>
-                <label>
-                  Positional matchup
-                  <input id="bot-matchup-weight" name="matchupWeight" type="number" min="0" max="3" step="0.1">
-                </label>
-                <label>
-                  Noise (unused in v1)
-                  <input id="bot-noise-weight" name="noiseWeight" type="number" min="0" max="3" step="0.1" disabled>
-                </label>
-                <label>
-                  Activity multiplier
-                  <input id="bot-activity-weight" name="activityWeight" type="number" min="0.2" max="3" step="0.1">
-                </label>
-                <label>
-                  Trade threshold multiplier
-                  <input id="bot-threshold-weight" name="thresholdWeight" type="number" min="0.2" max="3" step="0.1">
-                </label>
-              </div>
-            </details>
-            <div id="bot-behaviour-summary" class="bot-behaviour-summary"></div>
-            <div class="bot-panel-footer">
-              <button class="secondary-button" type="submit">Save bot settings</button>
-              <p id="bot-config-feedback" class="feedback" aria-live="polite"></p>
-            </div>
-          </form>
-
           <div class="stack-form bot-overview-panel">
             <div>
               <p class="panel-label">Bot operations</p>
-              <p class="section-meta">Create a new $200 Quick Pick bot with either a random personality variant or a pure 50/50 over-under coin flip, then track how it performs once markets settle.</p>
+              <p class="section-meta">Create a new $200 Quick Pick bot that makes simple 50/50 over-under decisions to simulate baseline market activity and liquidity.</p>
             </div>
             <div class="bot-overview-head">
               <div id="bot-summary" class="position-grid bot-summary-grid"></div>
               <div class="bot-run-actions">
-                <button id="create-bot" class="primary-button" type="button">Create new bot</button>
-                <button id="create-random-prob-bot" class="secondary-button" type="button">Generate random prob bot</button>
+                <button id="create-random-prob-bot" class="primary-button" type="button">Create random prob bot</button>
               </div>
             </div>
             <p id="bot-run-feedback" class="feedback" aria-live="polite"></p>
           </div>
 
-          <div class="stack-form bot-personality-panel">
-            <div>
-              <p class="panel-label">Personality board</p>
-              <p class="section-meta">Settlement-first read on which bot styles are making money and which ones need retraining.</p>
-            </div>
-            <div id="bot-archetype-summary" class="admin-dashboard-grid"></div>
-          </div>
-
           <div class="stack-form bot-leaderboard-panel">
             <div>
               <p class="panel-label">Bot leaderboard</p>
-              <p class="section-meta">Rank individual bots by realized settlement performance while still showing open exposure.</p>
+              <p class="section-meta">Rank individual random-probability bots by realized settlement performance while still showing open exposure.</p>
             </div>
             <div id="bot-performance-list" class="bot-performance-list"></div>
           </div>
@@ -667,7 +546,7 @@
           <div class="stack-form bot-log-panel">
             <div>
               <p class="panel-label">Recent bot decisions</p>
-              <p class="section-meta">Use the latest event feed to explain why a personality is overperforming or struggling.</p>
+              <p class="section-meta">Use the latest event feed to confirm that bots are placing simple coin-flip trades into open markets.</p>
             </div>
             <div id="bot-log" class="bot-log"></div>
           </div>
@@ -763,9 +642,9 @@
 
   <div id="toast" class="toast" aria-live="polite" aria-hidden="true"></div>
 
-  <script src="./lib/derived-fantasy-data.js?v=2.4"></script>
-  <script src="./lib/onboarding-modal.js?v=2.4"></script>
-  <script src="./seed-data.js?v=2.4"></script>
-  <script src="./app.js?v=2.4"></script>
+  <script src="/lib/derived-fantasy-data.js?v=2.4"></script>
+  <script src="/lib/onboarding-modal.js?v=2.4"></script>
+  <script src="/seed-data.js?v=2.4"></script>
+  <script src="/app.js?v=2.4"></script>
 </body>
 </html>

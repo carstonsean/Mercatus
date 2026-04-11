@@ -13,9 +13,10 @@ const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
 const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const ADMIN_PASSWORD = "binthechin";
-const LIVE_SYNC_MS = 2500;
+const LIVE_SYNC_MS = 5000;
 const PRIZE_POOL_POLL_MS = 10000;
 const ONBOARDING_POPUP_DELAY_MS = 800;
+const WHOLE_NUMBER_FORMATTER = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 
 const seed = window.MERCATUS_SEED;
 const derivedData = window.MERCATUS_DERIVED || {};
@@ -28,13 +29,6 @@ const AVAILABLE_ROUND_NUMBERS = [...new Set([
   ...SEEDED_ROUND_NUMBERS,
   ...((derivedData.metadata?.roundsIncluded) || []).map((round) => Number(round)).filter(Number.isFinite)
 ])].sort((left, right) => left - right);
-const BOT_BEHAVIOUR_PRESETS = {
-  BALANCED: { crowdStyle: 50, liquidityStyle: 40, fadeStyle: 45, frequencyStyle: 50, edgeStyle: 50 },
-  MOMENTUM: { crowdStyle: 84, liquidityStyle: 22, fadeStyle: 18, frequencyStyle: 70, edgeStyle: 38 },
-  CONTRARIAN: { crowdStyle: 14, liquidityStyle: 34, fadeStyle: 72, frequencyStyle: 42, edgeStyle: 62 },
-  MARKET_MAKER: { crowdStyle: 50, liquidityStyle: 88, fadeStyle: 55, frequencyStyle: 58, edgeStyle: 28 },
-  PUBLIC: { crowdStyle: 76, liquidityStyle: 18, fadeStyle: 12, frequencyStyle: 82, edgeStyle: 24 }
-};
 const APP_MODAL_TITLES = {
   "how-it-works": "How It Works",
   "account-settings": "Account Settings",
@@ -44,7 +38,7 @@ const APP_MODAL_TITLES = {
   "market-confidence-info": "Market Confidence",
   "home-value-leaderboard": "Top Value Players",
   "home-projected-leaderboard": "Top Projected Players",
-  "challenge-friends": "Challenge Friends"
+  "challenge-friends": "Challenge a Friend"
 };
 const SHAREABLE_CONTENT_TEMPLATES = [
   {
@@ -124,16 +118,16 @@ const HOW_IT_WORKS_SECTIONS = [
 ];
 const MARKET_CONFIDENCE_EXPLANATION = "Market confidence estimates how trustworthy the projection is based on crowd participation. More matched trades, volume, and unique traders lift it, with diminishing returns as activity builds.";
 const PRIZE_POOL_EXPLANATION_PARAGRAPHS = [
-  "Starting 13: one player per position, randomly assigned.",
-  "Interchange 4: randomly assigned, any position. Replaces any starting player who does not play due to injury or non-selection.",
-  "Tiebreak: if two users finish with equal correct %, the user with more correct interchange picks wins.",
-  "Substitution order: first interchange replaces first unavailable starting player, in the order they were assigned."
+  "Enter for $10 and receive a weekly lineup of 13 randomly assigned starting players plus 4 interchange players.",
+  "For every assigned player, lock in an Over or Under pick against the listed fantasy line before entries close.",
+  "As real scores settle, each pick is graded correct or incorrect and your rank updates by correct pick percentage across the full entry.",
+  "The highest percentages finish on top of the leaderboard and the prize pool is split across the leading entries."
 ];
 const PRIZE_POOL_EXPLANATION_LABELS = [
-  "STARTING 13",
-  "INTERCHANGE 4",
-  "TIEBREAK",
-  "SUBSTITUTION ORDER"
+  "ENTRY",
+  "YOUR PICKS",
+  "SCORING",
+  "PRIZES"
 ];
 
 const authPreviewMarkets = typeof seed.buildRoundMarkets === "function" ? seed.buildRoundMarkets() : [];
@@ -220,6 +214,7 @@ const uiState = {
   activeAppModal: "",
   challengeModalStep: "select",
   challengeSelectedTradeIds: [],
+  expandedPortfolioPositionKey: "",
   challengeCreatePending: false,
   challengeCreateError: "",
   challengeCreatedUrl: "",
@@ -235,6 +230,12 @@ const uiState = {
   challengeRouteAcceptPending: false,
   challengeRouteMatchedUntil: 0,
   challengeRouteAcceptError: "",
+  challengeRouteAuthMode: "",
+  challengeRouteAuthDraft: "",
+  challengeRouteAuthPending: false,
+  challengeRouteAuthError: "",
+  portfolioHighlightPositionKey: "",
+  portfolioHighlightUntil: 0,
   contactEmailDraft: "",
   contactMessageDraft: "",
   contactFormSubmitted: false,
@@ -342,32 +343,8 @@ const elements = {
   undoSettlementButton: document.getElementById("undo-settlement-button"),
   openingFeedback: document.getElementById("opening-feedback"),
   settlementFeedback: document.getElementById("settlement-feedback"),
-  botConfigForm: document.getElementById("bot-config-form"),
-  botSeasonWeight: document.getElementById("bot-season-weight"),
-  botFormWeight: document.getElementById("bot-form-weight"),
-  botVenueWeight: document.getElementById("bot-venue-weight"),
-  botOpponentWeight: document.getElementById("bot-opponent-weight"),
-  botMatchupWeight: document.getElementById("bot-matchup-weight"),
-  botNoiseWeight: document.getElementById("bot-noise-weight"),
-  botActivityWeight: document.getElementById("bot-activity-weight"),
-  botThresholdWeight: document.getElementById("bot-threshold-weight"),
-  botBehaviourPresets: document.getElementById("bot-behaviour-presets"),
-  botCrowdStyle: document.getElementById("bot-crowd-style"),
-  botLiquidityStyle: document.getElementById("bot-liquidity-style"),
-  botFadeStyle: document.getElementById("bot-fade-style"),
-  botFrequencyStyle: document.getElementById("bot-frequency-style"),
-  botEdgeStyle: document.getElementById("bot-edge-style"),
-  botCrowdStyleLabel: document.getElementById("bot-crowd-style-label"),
-  botLiquidityLabel: document.getElementById("bot-liquidity-label"),
-  botFadeLabel: document.getElementById("bot-fade-label"),
-  botFrequencyLabel: document.getElementById("bot-frequency-label"),
-  botEdgeLabel: document.getElementById("bot-edge-label"),
-  botBehaviourSummary: document.getElementById("bot-behaviour-summary"),
-  botConfigFeedback: document.getElementById("bot-config-feedback"),
   botSummary: document.getElementById("bot-summary"),
-  botArchetypeSummary: document.getElementById("bot-archetype-summary"),
   botPerformanceList: document.getElementById("bot-performance-list"),
-  createBot: document.getElementById("create-bot"),
   createRandomProbBot: document.getElementById("create-random-prob-bot"),
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
@@ -398,7 +375,9 @@ async function init() {
   syncChallengeRouteFromLocation();
   const savedUserName = localStorage.getItem(USER_NAME_KEY);
   if (savedUserName) {
-    elements.userName.value = savedUserName;
+    if (elements.userName) {
+      elements.userName.value = savedUserName;
+    }
     elements.authUsername.value = savedUserName;
   }
   // Render immediately so the app is never a blank screen while waiting for the server
@@ -594,31 +573,8 @@ function bindEvents() {
   elements.undoSettlementButton?.addEventListener("click", async () => {
     await undoSettlementBatch();
   });
-  elements.botConfigForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await saveBotConfig();
-  });
-  elements.botBehaviourPresets?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-bot-preset]");
-    if (!button) return;
-    applyBotBehaviourPreset(button.dataset.botPreset);
-  });
-  [
-    elements.botCrowdStyle,
-    elements.botLiquidityStyle,
-    elements.botFadeStyle,
-    elements.botFrequencyStyle,
-    elements.botEdgeStyle
-  ].forEach((input) =>
-    input?.addEventListener("input", () => {
-      renderBotBehaviourSummary();
-    })
-  );
-  elements.createBot?.addEventListener("click", async () => {
-    await createSimulationBot();
-  });
   elements.createRandomProbBot?.addEventListener("click", async () => {
-    await createSimulationBot("random-prob");
+    await createSimulationBot();
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -816,7 +772,8 @@ function shouldShowOnboardingPopup() {
   return Boolean(onboardingModal)
     && !isAuthenticated()
     && !hasSeenOnboarding()
-    && uiState.activeScreen === "home";
+    && uiState.activeScreen === "home"
+    && !isChallengeRouteActive();
 }
 
 function scheduleOnboardingPopup() {
@@ -835,6 +792,9 @@ function scheduleOnboardingPopup() {
 function openOnboardingPopup() {
   window.clearTimeout(onboardingPopupTimer);
   onboardingPopupTimer = null;
+  uiState.appMenuOpen = false;
+  uiState.activeAppModal = "";
+  renderAppChrome();
   onboardingModal?.show();
 }
 
@@ -1252,6 +1212,12 @@ function closeAppMenu() {
 
 function openAppModal(modalKey) {
   if (!APP_MODAL_TITLES[modalKey]) return;
+  if (modalKey === "how-it-works") {
+    uiState.appMenuOpen = false;
+    renderAppChrome();
+    openOnboardingPopup();
+    return;
+  }
   uiState.appMenuOpen = false;
   uiState.activeAppModal = modalKey;
   if (modalKey !== "contact-us") {
@@ -1326,7 +1292,15 @@ function renderAppChrome() {
   const renderKey = JSON.stringify({
     menuOpen: uiState.appMenuOpen,
     activeModal: uiState.activeAppModal,
-    contactSubmitted: uiState.contactFormSubmitted
+    contactSubmitted: uiState.contactFormSubmitted,
+    challengeModalStep: uiState.activeAppModal === "challenge-friends" ? uiState.challengeModalStep : "",
+    challengeSelectedTradeIds: uiState.activeAppModal === "challenge-friends" ? uiState.challengeSelectedTradeIds : [],
+    challengeCreatePending: uiState.activeAppModal === "challenge-friends" ? uiState.challengeCreatePending : false,
+    challengeCreateError: uiState.activeAppModal === "challenge-friends" ? uiState.challengeCreateError : "",
+    challengeCreatedUrl: uiState.activeAppModal === "challenge-friends" ? uiState.challengeCreatedUrl : "",
+    challengeCreatedTradeCount: uiState.activeAppModal === "challenge-friends" ? uiState.challengeCreatedTradeCount : 0,
+    challengeExcludedTradeCount: uiState.activeAppModal === "challenge-friends" ? uiState.challengeExcludedTradeCount : 0,
+    challengeCopyStateUntil: uiState.activeAppModal === "challenge-friends" ? uiState.challengeCopyStateUntil : 0
   });
   const chromeHost = ensureAppChromeHost();
   if (appChromeRenderKey === renderKey) {
@@ -1684,7 +1658,7 @@ function appModalContentMarkup(modalKey) {
         <form id="account-settings-form" class="account-settings-form">
           <label class="account-settings-field">
             <span>Username</span>
-            <input id="account-settings-username" name="accountSettingsUsername" type="text" maxlength="24" value="${escapeHtml(currentUserName())}" placeholder="Casey">
+            <input id="account-settings-username" name="accountSettingsUsername" type="text" maxlength="24" value="${escapeHtml(currentUserName())}" placeholder="Casey…" autocomplete="username" autocapitalize="words" spellcheck="false">
           </label>
         </form>
       </section>
@@ -1728,7 +1702,7 @@ function appModalContentMarkup(modalKey) {
             <textarea
               id="contact-message-input"
               rows="5"
-              placeholder="How can we help?"
+              placeholder="How can we help?…"
             >${escapeHtml(uiState.contactMessageDraft)}</textarea>
           </label>
           <button class="primary-button contact-submit-button" type="submit">Send Message</button>
@@ -1831,7 +1805,7 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
     row.querySelector(".projection-move").className = `projection-move ${movement.className}`;
-    row.querySelector(".market-confidence-slot").innerHTML = `<span class="status-chip ${status.className}">${status.label}</span>`;
+    row.querySelector(".market-confidence-slot").innerHTML = marketConfidenceMarkup(metrics.confidence, true);
     row.addEventListener("click", () => {
       uiState.currentGameId = market.gameId;
       uiState.currentTeam = market.team;
@@ -1971,6 +1945,8 @@ function bindTradeSheetEvents(panel, marketId) {
   const stakeReturn = panel.querySelector("#stake-return");
   const tradeNoteToggle = panel.querySelector("[data-trade-note-toggle]");
   const tradeNotePopover = panel.querySelector(".trade-note-popover");
+  let replaceStakeOnNextDigit = !Object.prototype.hasOwnProperty.call(uiState.stakeDrafts, marketId)
+    && Number(stakeInput?.value) === MAX_SINGLE_BID;
   if (tradeNoteToggle && tradeNotePopover) {
     tradeNoteToggle.addEventListener("click", () => {
       tradeNotePopover.classList.toggle("is-visible");
@@ -2001,6 +1977,7 @@ function bindTradeSheetEvents(panel, marketId) {
 
   panel.querySelectorAll(".quick-stake-button").forEach((button) =>
     button.addEventListener("click", () => {
+      replaceStakeOnNextDigit = false;
       if (button.dataset.stakeMax) {
         stakeInput.value = String(normalizeStakeInputValue(Math.max(1, Math.floor(Math.min(getUserCash(currentUserName()), MAX_SINGLE_BID)))));
       } else {
@@ -2011,8 +1988,27 @@ function bindTradeSheetEvents(panel, marketId) {
     })
   );
 
+  stakeInput.addEventListener("beforeinput", (event) => {
+    if (!replaceStakeOnNextDigit) return;
+    if (event.inputType === "insertText" || event.inputType === "insertReplacementText") {
+      const nextDigits = String(event.data || "").replace(/\D/g, "");
+      if (!nextDigits) return;
+      event.preventDefault();
+      const normalizedStake = normalizeStakeInputValue(nextDigits);
+      stakeInput.value = String(normalizedStake);
+      uiState.stakeDrafts[marketId] = normalizedStake;
+      stakeReturn.textContent = formatStake(normalizedStake * 2);
+      replaceStakeOnNextDigit = false;
+      return;
+    }
+    if (event.inputType.startsWith("delete")) {
+      replaceStakeOnNextDigit = false;
+    }
+  });
+
   stakeInput.addEventListener("input", () => {
     isStakeInputInteractionActive = true;
+    replaceStakeOnNextDigit = false;
     const normalizedStake = normalizeStakeInputValue(stakeInput.value);
     if (String(normalizedStake) !== String(stakeInput.value)) {
       stakeInput.value = String(normalizedStake);
@@ -2023,6 +2019,13 @@ function bindTradeSheetEvents(panel, marketId) {
 
   stakeInput.addEventListener("focus", () => {
     isStakeInputInteractionActive = true;
+    if (replaceStakeOnNextDigit) {
+      window.requestAnimationFrame(() => {
+        if (document.activeElement === stakeInput) {
+          stakeInput.select();
+        }
+      });
+    }
   });
 
   stakeInput.addEventListener("blur", () => {
@@ -2296,6 +2299,9 @@ function renderPortfolioPrizePoolCard() {
 
 let activePortfolioSwipeCard = null;
 let portfolioSwipeDismissBound = false;
+let portfolioExpandDismissBound = false;
+let portfolioHighlightClearTimer = null;
+const portfolioRenderedPositionKeys = new Set();
 const PORTFOLIO_SWIPE_ACTION_WIDTH = 80;
 const PORTFOLIO_SWIPE_OPEN_THRESHOLD = 40;
 
@@ -2303,10 +2309,13 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
   container.innerHTML = "";
   activePortfolioSwipeCard = null;
   bindPortfolioPositionSwipeDismiss();
+  bindPortfolioPositionExpandDismiss();
   if (!trades.length) {
+    uiState.expandedPortfolioPositionKey = "";
     container.innerHTML = `<div class="portfolio-empty-state"><strong>No positions yet</strong><span>${emptyMessage}</span></div>`;
     return;
   }
+  const visiblePositionKeys = new Set();
   trades.forEach((trade) => {
     const market = findMarket(trade.marketId);
     const status = portfolioPositionStatus(trade);
@@ -2320,39 +2329,61 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
     const projectionDirectionLabel = trade.side === "OVER" ? "Over" : "Under";
     const projectionValueLabel = Number(entryProjection).toFixed(1);
     const isMatched = status.label === "Matched";
+    const isSettled = trade.portfolioState === "SETTLED";
+    const isMarketShareable = !isMarketLocked(market) && marketRoundNumber(market) === activeRoundNumber();
     const statusLabel = isMatched ? "MATCHED" : "UNMATCHED";
     const cancelableOrderIds = Array.isArray(trade.cancelableOrderIds) ? trade.cancelableOrderIds : [];
     const canSwipeToCancel = !isMatched && cancelableOrderIds.length > 0;
+    const canExpandInlineActions = !isSettled && !isMatched && cancelableOrderIds.length > 0;
+    const challengeTradeIds = isMarketShareable ? cancelableOrderIds.slice() : [];
+    const challengeTradeId = isMarketShareable ? (challengeTradeIds[0] || "") : "";
+    const positionKey = `${trade.portfolioState || "OPEN"}:${trade.marketId}:${trade.side}`;
+    const isExpanded = canExpandInlineActions && uiState.expandedPortfolioPositionKey === positionKey;
+    const isFirstRender = !portfolioRenderedPositionKeys.has(positionKey);
+    const isChallengeHighlight = uiState.portfolioHighlightPositionKey === positionKey && uiState.portfolioHighlightUntil > Date.now();
+    portfolioRenderedPositionKeys.add(positionKey);
+    visiblePositionKeys.add(positionKey);
     const card = document.createElement("article");
-    card.className = `portfolio-position-card ${isMatched ? "is-matched" : "is-unmatched"}${canSwipeToCancel ? " is-swipeable" : ""}`;
+    card.className = `portfolio-position-card ${isMatched ? "is-matched" : "is-unmatched"}${canSwipeToCancel ? " is-swipeable" : ""}${isExpanded ? " is-expanded" : ""}${isFirstRender ? " is-first-render" : ""}${isFirstRender && isMatched ? " is-first-render-matched" : ""}${isChallengeHighlight ? " is-challenge-highlight" : ""}`;
+    card.dataset.positionKey = positionKey;
     card.innerHTML = `
-      ${canSwipeToCancel ? `<button class="portfolio-position-action-button" type="button" aria-label="Cancel unmatched position"><span aria-hidden="true">✕</span></button>` : ""}
-      <div class="portfolio-position-swipe-shell">
-        <div class="portfolio-position-shell">
-          <div class="portfolio-position-status-rail ${isMatched ? "is-matched" : "is-unmatched"}">
-            <span class="portfolio-position-status-text">${statusLabel}</span>
-          </div>
-          <div class="portfolio-position-body">
-            <div class="portfolio-position-row portfolio-position-row-primary">
-              <h4 class="portfolio-position-title">${escapeHtml(playerName)}</h4>
-              <div class="portfolio-position-stake-block">
-                <span class="portfolio-position-stake-label">Stake</span>
-                <strong class="portfolio-position-stake">${formatStake(trade.stake)}</strong>
-              </div>
+      <div class="portfolio-position-card-main">
+        ${canSwipeToCancel ? `<button class="portfolio-position-action-button" type="button" aria-label="Cancel unmatched position"><span aria-hidden="true">✕</span></button>` : ""}
+        <div class="portfolio-position-swipe-shell">
+          <div class="portfolio-position-shell ${canExpandInlineActions ? "is-expandable" : ""}" ${canExpandInlineActions ? `role="button" tabindex="0" aria-expanded="${isExpanded ? "true" : "false"}"` : ""}>
+            <div class="portfolio-position-status-rail ${isMatched ? "is-matched" : "is-unmatched"}">
+              <span class="portfolio-position-status-text">${statusLabel}</span>
             </div>
-            <div class="portfolio-position-row portfolio-position-row-secondary">
-              <div class="portfolio-position-meta-stack">
-                <div class="portfolio-position-matchup">
-                  <span class="portfolio-position-team-badge" style="${teamStyle}">${escapeHtml(teamLabel)}</span>
-                  <span class="portfolio-position-matchup-text">vs ${escapeHtml(matchup.opponent || "Opponent")}</span>
+            <div class="portfolio-position-body">
+              <div class="portfolio-position-row portfolio-position-row-primary">
+                <h4 class="portfolio-position-title">${escapeHtml(playerName)}</h4>
+                <div class="portfolio-position-stake-block">
+                  <span class="portfolio-position-stake-label">Stake</span>
+                  <strong class="portfolio-position-stake">${formatStake(trade.stake)}</strong>
                 </div>
-                <span class="portfolio-position-kickoff">${escapeHtml(kickoffLabel)}</span>
               </div>
-              <strong class="portfolio-position-projection"><span class="portfolio-position-projection-direction">${projectionDirectionLabel}</span> <span class="portfolio-position-projection-value">${projectionValueLabel}</span></strong>
+              <div class="portfolio-position-row portfolio-position-row-secondary">
+                <div class="portfolio-position-meta-stack">
+                  <div class="portfolio-position-matchup">
+                    <span class="portfolio-position-team-badge" style="${teamStyle}">${escapeHtml(teamLabel)}</span>
+                    <span class="portfolio-position-matchup-text">vs ${escapeHtml(matchup.opponent || "Opponent")}</span>
+                  </div>
+                  <span class="portfolio-position-kickoff">${escapeHtml(kickoffLabel)}</span>
+                </div>
+                <strong class="portfolio-position-projection"><span class="portfolio-position-projection-direction">${projectionDirectionLabel}</span> <span class="portfolio-position-projection-value">${projectionValueLabel}</span></strong>
+              </div>
             </div>
           </div>
         </div>
       </div>
+      ${canExpandInlineActions ? `
+        <div class="portfolio-inline-actions" aria-hidden="${isExpanded ? "false" : "true"}">
+          <div class="portfolio-inline-actions-inner">
+            <button class="portfolio-inline-action-button is-cancel" type="button" data-inline-cancel>Cancel Trade</button>
+            <button class="portfolio-inline-action-button is-challenge" type="button" data-inline-challenge ${!challengeTradeId ? "disabled" : ""}>Challenge Friend</button>
+          </div>
+        </div>
+      ` : ""}
     `;
     if (canSwipeToCancel) {
       const actionButton = card.querySelector(".portfolio-position-action-button");
@@ -2362,8 +2393,42 @@ function renderPortfolioPositionCards(container, trades, emptyMessage) {
       });
       bindPortfolioPositionCardSwipe(card);
     }
+    if (canExpandInlineActions) {
+      const cardMain = card.querySelector(".portfolio-position-card-main");
+      const shell = card.querySelector(".portfolio-position-shell.is-expandable");
+      const openInlineActions = () => {
+        togglePortfolioPositionExpansion(positionKey);
+      };
+      cardMain?.addEventListener("click", (event) => {
+        if (event.target.closest(".portfolio-position-action-button")) return;
+        if (event.target.closest(".portfolio-inline-action-button")) return;
+        openInlineActions();
+      });
+      shell?.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openInlineActions();
+      });
+      card.querySelector("[data-inline-cancel]")?.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await cancelPendingOrders(cancelableOrderIds);
+      });
+      card.querySelector("[data-inline-challenge]")?.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await openPortfolioChallengeModal(challengeTradeIds, positionKey);
+      });
+    }
     container.appendChild(card);
   });
+  if (uiState.portfolioHighlightPositionKey && uiState.portfolioHighlightUntil > Date.now()) {
+    window.requestAnimationFrame(() => {
+      const highlightedCard = container.querySelector(`.portfolio-position-card[data-position-key="${uiState.portfolioHighlightPositionKey}"]`);
+      highlightedCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+  if (uiState.expandedPortfolioPositionKey && !visiblePositionKeys.has(uiState.expandedPortfolioPositionKey)) {
+    uiState.expandedPortfolioPositionKey = "";
+  }
 }
 
 function bindPortfolioPositionSwipeDismiss() {
@@ -2374,6 +2439,32 @@ function bindPortfolioPositionSwipeDismiss() {
     closePortfolioPositionSwipe(activePortfolioSwipeCard);
   });
   portfolioSwipeDismissBound = true;
+}
+
+function bindPortfolioPositionExpandDismiss() {
+  if (portfolioExpandDismissBound) return;
+  document.addEventListener("pointerdown", (event) => {
+    if (!uiState.expandedPortfolioPositionKey) return;
+    const expandedCard = elements.portfolioList?.querySelector(`.portfolio-position-card[data-position-key="${uiState.expandedPortfolioPositionKey}"]`);
+    if (!expandedCard) {
+      uiState.expandedPortfolioPositionKey = "";
+      return;
+    }
+    if (expandedCard.contains(event.target)) return;
+    collapseExpandedPortfolioPosition();
+  });
+  portfolioExpandDismissBound = true;
+}
+
+function togglePortfolioPositionExpansion(positionKey) {
+  uiState.expandedPortfolioPositionKey = uiState.expandedPortfolioPositionKey === positionKey ? "" : positionKey;
+  renderPortfolio();
+}
+
+function collapseExpandedPortfolioPosition() {
+  if (!uiState.expandedPortfolioPositionKey) return;
+  uiState.expandedPortfolioPositionKey = "";
+  renderPortfolio();
 }
 
 function setPortfolioPositionSwipeState(card, isOpen) {
@@ -2735,7 +2826,7 @@ function renderQuickTake() {
   const isLocked = isMarketLocked(current);
   const teamColors = TEAM_COLORS[current.team] ?? TEAM_COLORS[normalizeTeamName(current.team)] ?? { primary: "#101722", secondary: "#68d9ff" };
   const nextColors = next ? TEAM_COLORS[next.team] ?? TEAM_COLORS[normalizeTeamName(next.team)] ?? { primary: "#101722", secondary: "#68d9ff" } : null;
-  elements.quickPickDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span><span class="quick-take-mini-context">${matchupContext(next).label}</span></div></article>` : ""}<article class="quick-take-card is-front player-card-shell ${isPending || isLocked ? "is-locked" : ""}" data-market-id="${current.id}" data-card-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(current)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Pick</span><span class="quick-take-counter">${queue.length - activeIndex} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${isLocked ? "status-locked" : "status-open"}">${isLocked ? "Locked" : "Open"}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "UNDER" ? "Submitting..." : isLocked ? "Locked" : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-skip" type="button" data-quick-skip="true" ${isPending ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "SKIP" ? "Skipping..." : "Skip"}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "OVER" ? "Submitting..." : isLocked ? "Locked" : `Over ${currentPair.overLine.toFixed(1)}`}</button></div></article>`;
+  elements.quickPickDeck.innerHTML = `${next ? `<article class="quick-take-card is-back" style="--quick-primary-soft:${hexToRgba(nextColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(nextColors.secondary, 0.18)};"><div class="quick-take-backdrop"></div><div class="quick-take-mini"><span class="eyebrow">Up next</span><strong>${next.playerName}</strong><span>${next.team} | ${next.position}</span><span class="quick-take-mini-context">${matchupContext(next).label}</span></div></article>` : ""}<article class="quick-take-card is-front player-card-shell ${isPending || isLocked ? "is-locked" : ""}" data-market-id="${current.id}" data-card-id="${current.id}" style="--quick-primary-soft:${hexToRgba(teamColors.primary, 0.24)};--quick-secondary-soft:${hexToRgba(teamColors.secondary, 0.18)};${playerCardTone(current)}"><div class="quick-take-backdrop"></div><div class="quick-take-topline"><span class="eyebrow">Quick Pick</span><span class="quick-take-counter">${queue.length - activeIndex} left</span></div><div class="quick-take-header"><div><h3>${current.playerName}</h3><p>${current.team} | ${current.position}</p><p class="quick-take-context">${matchup.label}</p></div><div class="quick-take-status-block"><span class="status-chip ${isLocked ? "status-locked" : "status-open"}">${isLocked ? "Locked" : "Open"}</span>${marketConfidenceMarkup(metrics.confidence)}</div></div><div class="quick-take-line">${current.currentLine.toFixed(1)}</div><div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div><div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div><div class="quick-take-statline">${isLocked ? `<span>Trading closed at kickoff</span>` : ""}<span>${metrics.unmatchedOrderCount} unmatched orders</span></div></div><div class="quick-take-actions"><button class="quick-take-action quick-take-under" type="button" data-quick-side="UNDER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "UNDER" ? "Submitting..." : isLocked ? "Locked" : `Under ${currentPair.underLine.toFixed(1)}`}</button><button class="quick-take-action quick-take-over" type="button" data-quick-side="OVER" ${isPending || isLocked ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "OVER" ? "Submitting..." : isLocked ? "Locked" : `Over ${currentPair.overLine.toFixed(1)}`}</button><button class="quick-take-skip" type="button" data-quick-skip="true" ${isPending ? "disabled" : ""}>${isPending && uiState.quickPickPendingSide === "SKIP" ? "Skipping..." : "Skip"}</button></div></article>`;
   const activeCard = elements.quickPickDeck.querySelector(".quick-take-card.is-front");
   activeCard?.querySelectorAll("[data-quick-side]").forEach((button) =>
     button.addEventListener("click", async () => {
@@ -2749,17 +2840,7 @@ function renderQuickTake() {
 
 function renderPortfolioChallengeEntry() {
   if (!elements.portfolioChallengeEntry) return;
-  const eligibleTrades = getEligibleChallengeTrades();
-  if (!eligibleTrades.length) {
-    elements.portfolioChallengeEntry.innerHTML = "";
-    return;
-  }
-  elements.portfolioChallengeEntry.innerHTML = `<button class="portfolio-challenge-button" type="button" data-open-challenge-friends><i class="ph-fill ph-share-network" aria-hidden="true"></i><span>Challenge Friends</span></button>`;
-  elements.portfolioChallengeEntry.querySelector("[data-open-challenge-friends]")?.addEventListener("click", () => {
-    resetChallengeModalState();
-    uiState.activeAppModal = "challenge-friends";
-    renderAppChrome();
-  });
+  elements.portfolioChallengeEntry.innerHTML = "";
 }
 
 function renderChallengeRoute() {
@@ -2797,62 +2878,78 @@ function challengeLandingMarkup() {
   const session = uiState.challengeRouteSession || { trades: [], created_by_username: "A friend" };
   const firstTrade = session.trades?.[0];
   const moreCount = Math.max((session.trades?.length || 0) - 1, 0);
+  if (uiState.challengeRouteAuthMode) {
+    return challengeAuthEntryMarkup(uiState.challengeRouteAuthMode);
+  }
+  return `
+    <div class="challenge-shell challenge-shell-landing">
+      <div class="challenge-brand-row"><h1 class="brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1><button class="challenge-link-button challenge-header-link" type="button" data-challenge-how>How it works?</button></div>
+      <section class="challenge-stack">
+        <header class="challenge-header-block">
+          <h2>${escapeHtml(session.created_by_username)} challenged you to a trade</h2>
+          <p>${escapeHtml(challengeSupportingCopy())}</p>
+        </header>
+        ${firstTrade ? challengePreviewCardMarkup(firstTrade, session.created_by_username) : challengeUnavailableStateMarkup(session.unavailable_reason)}
+        ${moreCount ? `<p class="challenge-more-copy">...and ${moreCount} more trades to review</p>` : ""}
+        <div class="challenge-action-stack">
+          <button class="primary-button challenge-cta-button" type="button" data-challenge-begin-accept>Accept</button>
+          <button class="challenge-signin-link" type="button" data-challenge-begin-signin>Already have an account? Sign In</button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function challengeAuthEntryMarkup(mode = "signup") {
+  const isSignIn = mode === "signin";
+  const heading = isSignIn ? "Sign in." : "Create your account.";
+  const subheading = isSignIn
+    ? "Enter your username to accept this challenge."
+    : "Pick a username to get started. No email required.";
+  const buttonLabel = isSignIn ? "Continue" : "Get Started";
   return `
     <div class="challenge-shell">
       <div class="challenge-brand-row"><h1 class="brand-wordmark"><span class="brand-wordmark-crowd">crowd</span><span class="brand-wordmark-iq">IQ</span></h1></div>
       <section class="challenge-stack">
-        <header class="challenge-header-block">
-          <h2>${escapeHtml(session.created_by_username)} challenged you to a trade</h2>
-          <p>Review their position and take the other side if you agree</p>
-        </header>
-        ${firstTrade ? challengePreviewCardMarkup(firstTrade, session.created_by_username) : `<div class="challenge-error-card"><p>This challenge has no available trades.</p></div>`}
-        ${moreCount ? `<p class="challenge-more-copy">...and ${moreCount} more trades to review</p>` : ""}
-        <div class="challenge-action-stack">
-          <button class="primary-button challenge-cta-button" type="button" data-challenge-auth="signup">Sign Up to Accept</button>
-          <button class="secondary-button challenge-secondary-button" type="button" data-challenge-auth="signin">Sign In</button>
-        </div>
-        <button class="challenge-link-button" type="button" data-challenge-how>How it works?</button>
+        <article class="challenge-auth-card">
+          <h2>${heading}</h2>
+          <p class="challenge-modal-muted">${subheading}</p>
+          <form class="challenge-auth-form" data-challenge-auth-form>
+            <input
+              class="challenge-auth-input"
+              type="text"
+              name="challengeUsername"
+              maxlength="24"
+              placeholder="Casey"
+              value="${escapeHtml(uiState.challengeRouteAuthDraft)}"
+              autocomplete="username"
+            >
+            ${uiState.challengeRouteAuthError ? `<p class="feedback challenge-inline-error">${escapeHtml(uiState.challengeRouteAuthError)}</p>` : ""}
+            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAuthPending ? "is-loading" : ""}" type="submit" ${uiState.challengeRouteAuthPending ? "disabled" : ""}>${uiState.challengeRouteAuthPending ? "Loading…" : buttonLabel}</button>
+          </form>
+        </article>
       </section>
     </div>
   `;
 }
 
 function challengeFriendsModalMarkup() {
-  const eligibleTrades = getEligibleChallengeTrades();
-  if (uiState.challengeModalStep === "link") {
-    const copied = uiState.challengeCopyStateUntil > Date.now();
-    return `
-      <section class="challenge-modal-section">
-        <p class="challenge-modal-title">${uiState.challengeCreatedTradeCount} trade(s) ready to challenge</p>
-        <div class="challenge-link-field">${escapeHtml(uiState.challengeCreatedUrl)}</div>
-        <button class="secondary-button challenge-copy-button" type="button" data-challenge-copy>${copied ? "Copied!" : "Copy Link"}</button>
-        <p class="challenge-modal-muted">Share this link with anyone you want to challenge. They'll need to sign up to accept.</p>
-        ${uiState.challengeExcludedTradeCount > 0 ? `<p class="challenge-modal-muted">${uiState.challengeExcludedTradeCount} of your selected trades were no longer available and weren't included.</p>` : ""}
-      </section>
-    `;
-  }
+  const copied = uiState.challengeCopyStateUntil > Date.now();
   return `
-    <section class="challenge-modal-section challenge-modal-select">
-      <p class="challenge-modal-subtitle">Select the unmatched trades you want to challenge your friends to take the other side of.</p>
-      <div class="challenge-list-head">
-        <span>Eligible trades</span>
-        ${eligibleTrades.length ? `<button class="challenge-select-all" type="button" data-challenge-select-all>Select All</button>` : ""}
-      </div>
-      <div class="challenge-modal-list">
-        ${eligibleTrades.map((trade) => challengeTradeRowMarkup(trade)).join("") || `<div class="portfolio-empty-state"><strong>No eligible trades</strong><span>Unmatched trades before kickoff will appear here.</span></div>`}
-      </div>
+    <section class="challenge-modal-section challenge-modal-link-sheet">
       ${uiState.challengeCreateError ? `<p class="feedback challenge-inline-error">${escapeHtml(uiState.challengeCreateError)}</p>` : ""}
-      <div class="challenge-modal-footer">
-        <button class="primary-button challenge-send-button ${uiState.challengeCreatePending ? "is-loading" : ""}" type="button" data-challenge-send ${!uiState.challengeSelectedTradeIds.length || uiState.challengeCreatePending ? "disabled" : ""}>${uiState.challengeCreatePending ? "Creating link..." : "Send Now"}</button>
-      </div>
+      <div class="challenge-link-field ${uiState.challengeCreatePending ? "is-loading" : ""}" data-challenge-link tabindex="0" aria-busy="${uiState.challengeCreatePending ? "true" : "false"}">${uiState.challengeCreatePending ? "Generating link..." : escapeHtml(uiState.challengeCreatedUrl)}</div>
+      <button class="challenge-cta-button challenge-copy-link-button" type="button" data-challenge-copy ${uiState.challengeCreatePending || !uiState.challengeCreatedUrl ? "disabled" : ""}>${copied ? "Copied!" : "Copy Link"}</button>
+      <p class="challenge-modal-muted">Share with a friend to take the opposite side of your bet. If you're right, they lose.</p>
     </section>
   `;
 }
 
 function challengeTradeRowMarkup(trade) {
-  const selected = uiState.challengeSelectedTradeIds.includes(trade.id);
+  const tradeId = String(trade.id);
+  const selected = uiState.challengeSelectedTradeIds.includes(tradeId);
   return `
-    <button class="challenge-trade-row" type="button" data-challenge-trade-id="${trade.id}">
+    <button class="challenge-trade-row" type="button" data-challenge-trade-id="${tradeId}">
       <span class="challenge-trade-check ${selected ? "is-selected" : ""}"></span>
       <span class="challenge-trade-copy">
         <strong>${escapeHtml(trade.playerName || trade.market?.playerName || "Unknown player")}</strong>
@@ -2864,65 +2961,125 @@ function challengeTradeRowMarkup(trade) {
   `;
 }
 
-function bindChallengeFriendsModalEvents(chromeHost) {
-  if (uiState.activeAppModal !== "challenge-friends") return;
-  chromeHost.querySelectorAll("[data-challenge-trade-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const tradeId = button.dataset.challengeTradeId;
-      uiState.challengeCreateError = "";
-      uiState.challengeSelectedTradeIds = uiState.challengeSelectedTradeIds.includes(tradeId)
-        ? uiState.challengeSelectedTradeIds.filter((id) => id !== tradeId)
-        : [...uiState.challengeSelectedTradeIds, tradeId];
-      renderAppChrome();
-    });
-  });
-  chromeHost.querySelector("[data-challenge-select-all]")?.addEventListener("click", () => {
-    uiState.challengeSelectedTradeIds = getEligibleChallengeTrades().map((trade) => trade.id);
-    renderAppChrome();
-  });
-  chromeHost.querySelector("[data-challenge-send]")?.addEventListener("click", async () => {
-    uiState.challengeCreatePending = true;
-    uiState.challengeCreateError = "";
-    renderAppChrome();
+async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
+  const candidateTradeIds = Array.isArray(tradeIds) ? tradeIds.map((tradeId) => String(tradeId)).filter(Boolean) : [String(tradeIds || "")].filter(Boolean);
+  if (!candidateTradeIds.length) return;
+  resetChallengeModalState();
+  uiState.challengeSelectedTradeIds = candidateTradeIds.slice();
+  uiState.challengeCreatePending = true;
+  uiState.challengeCreateError = "";
+  uiState.activeAppModal = "challenge-friends";
+  uiState.expandedPortfolioPositionKey = positionKey;
+  renderAppChrome();
+  let lastError = null;
+  for (const tradeId of candidateTradeIds) {
     try {
       const response = await api("/api/share/create", {
-        trade_ids: uiState.challengeSelectedTradeIds
+        trade_id: tradeId
       });
       uiState.challengeModalStep = "link";
       uiState.challengeCreatePending = false;
       uiState.challengeCreatedUrl = response.share_url;
-      uiState.challengeCreatedTradeCount = Number(response.valid_trade_count) || 0;
-      uiState.challengeExcludedTradeCount = Number(response.excluded_trade_count) || 0;
+      uiState.challengeCreatedTradeCount = 1;
+      uiState.challengeExcludedTradeCount = Math.max(0, candidateTradeIds.length - 1);
+      uiState.challengeSelectedTradeIds = [tradeId];
       renderAppChrome();
+      return;
     } catch (error) {
-      uiState.challengeCreatePending = false;
-      uiState.challengeCreateError = error.message;
-      renderAppChrome();
+      lastError = error;
     }
-  });
-  chromeHost.querySelector("[data-challenge-copy]")?.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(uiState.challengeCreatedUrl);
+  }
+  uiState.challengeCreatePending = false;
+  uiState.challengeCreateError = lastError?.message || "Unable to create challenge link right now";
+  renderAppChrome();
+}
+
+function bindChallengeFriendsModalEvents(chromeHost) {
+  if (uiState.activeAppModal !== "challenge-friends") return;
+  const copyButton = chromeHost.querySelector("[data-challenge-copy]");
+  let lastCopyAttemptAt = 0;
+  const runCopy = async () => {
+    const copied = await copyTextToClipboard(uiState.challengeCreatedUrl);
+    if (copied) {
       uiState.challengeCopyStateUntil = Date.now() + 2000;
       renderAppChrome();
+      showToast("Link copied!");
       window.setTimeout(() => {
         renderAppChrome();
       }, 2000);
-    } catch (error) {
-      showToast("Copy failed", "Unable to copy the challenge link.");
+      return;
     }
+    showToast("Copy failed", "Press and hold the link field to copy it manually.");
+  };
+  copyButton?.addEventListener("touchend", async (event) => {
+    event.preventDefault();
+    lastCopyAttemptAt = Date.now();
+    await runCopy();
+  }, { passive: false });
+  copyButton?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (Date.now() - lastCopyAttemptAt < 500) {
+      return;
+    }
+    lastCopyAttemptAt = Date.now();
+    await runCopy();
   });
 }
 
 function challengePreviewCardMarkup(trade, creator) {
   return `
-    <article class="challenge-preview-card">
-      <h3>${escapeHtml(trade.market?.player_name || "Unknown player")}</h3>
-      <p class="challenge-preview-meta">${escapeHtml(challengeOpponentMeta(trade))}</p>
-      <div class="challenge-preview-direction">${escapeHtml(formatChallengeTradeDirection(trade))}</div>
-      <p class="challenge-preview-opposite">You would take: ${escapeHtml(oppositeChallengeDirection(trade))}</p>
-      <p class="challenge-preview-stake">Stake: ${formatStake(trade.unmatchedStake || trade.stake || 0)}</p>
+    <article class="challenge-preview-card challenge-preview-card-entry">
+      ${challengeBetSlipCardMarkup(trade, creator)}
     </article>
+  `;
+}
+
+function challengeBetSlipCardMarkup(trade, creator) {
+  const market = trade.market || {};
+  const resolvedMarket = findMarket(trade.marketId) || {
+    playerName: market.player_name,
+    team: market.team,
+    opponent: market.opponent,
+    gameId: market.game_id
+  };
+  const game = findGame(market.game_id || resolvedMarket.gameId);
+  const performance = quickPickPerformanceSummary(resolvedMarket);
+  const teamCode = homeTeamAbbreviation(market.team || trade.team || "");
+  const opponentCode = homeTeamAbbreviation(market.opponent || "Opponent");
+  const teamStyle = homeTeamPillStyle(market.team || trade.team || "");
+  const opponentStyle = homeTeamPillStyle(market.opponent || "");
+  const yourPick = oppositeChallengeDirection(trade);
+  const challengerPick = formatChallengeTradeDirection(trade);
+  const stake = Number(trade.unmatchedStake || trade.stake || 0);
+  return `
+    ${challengeKickoffBadgeMarkup(trade)}
+    <div class="challenge-betslip-section challenge-betslip-section-top">
+      <h3>${escapeHtml(market.player_name || "Unknown player")}</h3>
+      <p class="challenge-betslip-subline"><span class="challenge-team-pill" style="${teamStyle}">${escapeHtml(teamCode)}</span><span>vs</span><span class="challenge-team-pill" style="${opponentStyle}">${escapeHtml(opponentCode)}</span></p>
+      <p class="challenge-preview-meta challenge-betslip-datetime">${escapeHtml(formatChallengeLandingDateTime(market.kickoff_time))}</p>
+      <p class="challenge-preview-meta challenge-betslip-venue">${escapeHtml(game?.venue || matchupContext(resolvedMarket).venue || "")}</p>
+    </div>
+    <div class="challenge-betslip-section challenge-betslip-section-performance">
+      <div class="challenge-betslip-season-block">
+        <p class="challenge-betslip-performance-label">Season Avg</p>
+        <div class="challenge-betslip-season-pill">${escapeHtml(performance.seasonAverageLabel)}</div>
+      </div>
+      <div class="challenge-betslip-performance-divider" aria-hidden="true"></div>
+      <div class="challenge-betslip-last-five-block">
+        <p class="challenge-betslip-performance-label">Last 5 Games</p>
+        <div class="challenge-betslip-last-five">
+          ${performance.lastFive.map((entry) => `<span class="challenge-betslip-game-chip ${entry.isMissing ? "is-missing" : ""}" title="${escapeHtml(entry.label)}">${escapeHtml(entry.value)}</span>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="challenge-betslip-section challenge-betslip-section-picks">
+      <div class="challenge-betslip-pick-row challenge-betslip-pick-row-primary"><span>Your Pick</span><strong>${escapeHtml(yourPick)}</strong></div>
+      <div class="challenge-betslip-pick-row challenge-betslip-pick-row-secondary"><span>${escapeHtml(`${creator}'s Pick`)}</span><span>${escapeHtml(challengerPick)}</span></div>
+    </div>
+    <div class="challenge-betslip-section challenge-betslip-section-stake">
+      <div class="challenge-betslip-stake-row"><span>Your Stake</span><span>${formatStake(stake)}</span></div>
+      <div class="challenge-betslip-stake-row"><span>You Win</span><span>${formatStake(stake * 2)}</span></div>
+    </div>
   `;
 }
 
@@ -2931,7 +3088,7 @@ function challengeAcceptanceMarkup() {
   const total = session.trades?.length || 0;
   const index = Math.min(uiState.challengeRouteIndex, Math.max(total - 1, 0));
   if (!total || index >= total) {
-    return challengeSummaryMarkup();
+    return challengeUnavailableStateMarkup(session.unavailable_reason);
   }
   const trade = currentChallengeTradeRecord();
   const review = uiState.challengeRouteReview.find((entry) => entry.tradeId === trade.id);
@@ -2950,32 +3107,38 @@ function challengeAcceptanceMarkup() {
         </header>
         <article class="challenge-accept-card ${unavailable ? "is-unavailable" : ""}">
           ${uiState.challengeRouteMatchedUntil > Date.now() && review?.tradeId === trade.id ? `<div class="challenge-match-overlay"><div>✓</div><strong>Trade Matched!</strong></div>` : ""}
-          <span class="challenge-label">${unavailable ? "UNAVAILABLE" : "CHALLENGE"}</span>
-          <h3>${escapeHtml(trade.market?.player_name || "Unknown player")}</h3>
-          <p class="challenge-preview-meta">${escapeHtml(challengeOpponentMeta(trade))}</p>
-          <div class="challenge-projection-value">${Number(trade.market?.current_line || trade.entryLine || 0).toFixed(1)}</div>
-          ${unavailable ? `<p class="challenge-muted-copy">This trade is no longer available</p>` : `
-            <p class="challenge-line-copy"><span>${escapeHtml(session.created_by_username)}'s pick:</span><strong>${escapeHtml(formatChallengeTradeDirection(trade))}</strong></p>
-            <p class="challenge-line-copy"><span>Your side:</span><strong class="is-positive">${escapeHtml(oppositeChallengeDirection(trade))}</strong></p>
-            <p class="challenge-preview-stake">Stake: ${formatStake(trade.unmatchedStake || trade.stake || 0)}</p>
-          `}
+          ${!unavailable
+            ? challengeBetSlipCardMarkup(trade, session.created_by_username)
+            : `<span class="challenge-label">UNAVAILABLE</span><p class="challenge-muted-copy">${escapeHtml(challengeUnavailableMessage(challengeUnavailableReasonForTrade(trade)))}</p>`}
         </article>
         <div class="challenge-action-stack">
           ${unavailable ? `<button class="primary-button challenge-cta-button" type="button" data-challenge-next>Next</button>` : `
-            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAcceptPending ? "is-loading" : ""}" type="button" data-challenge-accept ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>${uiState.challengeRouteAcceptPending ? "Matching..." : "Accept"}</button>
+            <button class="primary-button challenge-cta-button ${uiState.challengeRouteAcceptPending ? "is-loading" : ""}" type="button" data-challenge-accept ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>${uiState.challengeRouteAcceptPending ? "Matching…" : "Accept"}</button>
             <button class="secondary-button challenge-secondary-button" type="button" data-challenge-decline ${uiState.challengeRouteAcceptPending ? "disabled" : ""}>Decline</button>
           `}
         </div>
+        ${unavailable ? `<button class="secondary-button challenge-secondary-button" type="button" data-challenge-home>Browse open markets</button>` : ""}
       </section>
     </div>
   `;
 }
 
 function challengeSummaryMarkup() {
+  const session = uiState.challengeRouteSession || {};
   const review = uiState.challengeRouteReview || [];
-  const matched = review.filter((entry) => entry.status === "matched").length;
-  const declined = review.filter((entry) => entry.status === "declined").length;
-  const expired = review.filter((entry) => entry.status === "expired").length;
+  if (!review.length && !session.settled_summary) {
+    return `
+      <div class="challenge-shell">
+        <section class="challenge-stack challenge-stack-wide">
+          <header class="challenge-header-block">
+            <h2>Challenge unavailable</h2>
+          </header>
+          ${challengeUnavailableStateMarkup(session.unavailable_reason)}
+          <button class="primary-button challenge-cta-button" type="button" data-challenge-home>Explore CrowdIQ</button>
+        </section>
+      </div>
+    `;
+  }
   return `
     <div class="challenge-shell">
       <section class="challenge-stack challenge-stack-wide">
@@ -2986,7 +3149,7 @@ function challengeSummaryMarkup() {
         <div class="challenge-summary-list">
           ${review.map((entry) => challengeSummaryRowMarkup(entry)).join("")}
         </div>
-        <p class="challenge-more-copy">${matched} matched · ${declined} declined · ${expired} expired</p>
+        ${challengeSummaryOutcomeMarkup(session.settled_summary)}
         <button class="primary-button challenge-cta-button" type="button" data-challenge-home>Explore CrowdIQ</button>
       </section>
     </div>
@@ -3005,10 +3168,96 @@ function challengeOpponentMeta(trade) {
   return `${homeTeamAbbreviation(market.team || "")} · vs ${market.opponent || "Opponent"} · ${formatChallengeKickoff(market.kickoff_time)}`;
 }
 
+function challengeSupportingCopy() {
+  return "Take the opposite side of their bet. If you're right when the match ends, you win the stake.";
+}
+
+function challengeKickoffBadgeMarkup(trade) {
+  const kickoffAt = Number(new Date(trade?.market?.kickoff_time || "").getTime());
+  if (!Number.isFinite(kickoffAt) || kickoffAt <= Date.now()) {
+    return "";
+  }
+  const minutesUntilKickoff = Math.max(1, Math.ceil((kickoffAt - Date.now()) / 60000));
+  const wholeHoursUntilKickoff = Math.max(1, Math.floor(minutesUntilKickoff / 60));
+  const isImminent = minutesUntilKickoff < 30;
+  const label = minutesUntilKickoff >= 60
+    ? `Kicks off in ${wholeHoursUntilKickoff} hour${wholeHoursUntilKickoff === 1 ? "" : "s"}`
+    : `Kicks off in ${minutesUntilKickoff} min${minutesUntilKickoff === 1 ? "" : "s"}`;
+  return `<span class="challenge-match-status ${isImminent ? "is-imminent" : ""}">${escapeHtml(label)}</span>`;
+}
+
+function challengeUnavailableStateMarkup(reason) {
+  return `
+    <div class="challenge-error-card">
+      <p>${escapeHtml(challengeUnavailableMessage(reason))}</p>
+      <button class="secondary-button challenge-secondary-button" type="button" data-challenge-home>Browse open markets</button>
+    </div>
+  `;
+}
+
+function challengeUnavailableMessage(reason) {
+  if (reason === "filled") {
+    return "Someone else accepted this challenge first.";
+  }
+  if (reason === "moved") {
+    return "The line has moved and this challenge is no longer available.";
+  }
+  return "This challenge has expired — the match is already underway or finished.";
+}
+
+function challengeUnavailableReasonForTrade(trade) {
+  const kickoffAt = Number(new Date(trade.market?.kickoff_time || "").getTime());
+  if (trade.result || (Number.isFinite(kickoffAt) && kickoffAt <= Date.now())) {
+    return "expired";
+  }
+  if (!(Number(trade.unmatchedStake) > 0) || String(trade.status || "") === "MATCHED") {
+    return "filled";
+  }
+  return "moved";
+}
+
+function challengeSummaryOutcomeMarkup(settledSummary) {
+  if (!settledSummary?.player_name) {
+    return `<p class="challenge-more-copy">Match in progress — check your Portfolio for results when the game ends.</p>`;
+  }
+  const finalScore = Number.isFinite(Number(settledSummary.final_score))
+    ? Number(settledSummary.final_score).toFixed(1)
+    : "No result";
+  const winner = settledSummary.winner_name
+    ? `${settledSummary.winner_name} won the stake.`
+    : settledSummary.outcome === "VOID" || settledSummary.outcome === "MIDDLE"
+      ? "No one won the stake."
+      : "Result recorded.";
+  return `<p class="challenge-more-copy">${escapeHtml(`${settledSummary.player_name} finished on ${finalScore}. ${winner}`)}</p>`;
+}
+
+function challengePreviewState(trade, session = uiState.challengeRouteSession || {}) {
+  if (session?.settled_summary?.player_name) return "settled";
+  if (!trade) {
+    return session?.unavailable_reason === "filled" ? "matched" : "expired";
+  }
+  const reason = challengeUnavailableReasonForTrade(trade);
+  if (reason === "filled") return "matched";
+  if (reason === "expired") return "expired";
+  if (reason === "moved") return "expired";
+  return "available";
+}
+
 function formatChallengeKickoff(kickoffTime) {
   const timestamp = Number(new Date(kickoffTime || "").getTime());
   if (!Number.isFinite(timestamp)) return "";
   return new Date(timestamp).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
+function formatChallengeLandingDateTime(kickoffTime) {
+  const timestamp = Number(new Date(kickoffTime || "").getTime());
+  if (!Number.isFinite(timestamp)) return "";
+  const date = new Date(timestamp);
+  const weekday = date.toLocaleString([], { weekday: "short" });
+  const day = date.toLocaleString([], { day: "numeric" });
+  const month = date.toLocaleString([], { month: "short" });
+  const time = date.toLocaleString([], { hour: "numeric", minute: "2-digit" });
+  return `${weekday}, ${day} ${month} at ${time}`;
 }
 
 function isChallengeTradeUnavailable(trade) {
@@ -3017,12 +3266,30 @@ function isChallengeTradeUnavailable(trade) {
 }
 
 function bindChallengeRouteEvents() {
-  elements.challengeRoute.querySelectorAll("[data-challenge-auth]").forEach((button) => {
-    button.addEventListener("click", () => beginChallengeAuthRedirect(button.dataset.challengeAuth));
+  elements.challengeRoute.querySelector("[data-challenge-begin-accept]")?.addEventListener("click", () => {
+    uiState.challengeRouteAuthMode = "signup";
+    uiState.challengeRouteAuthDraft = "";
+    uiState.challengeRouteAuthError = "";
+    renderChallengeRoute();
+    elements.challengeRoute.querySelector(".challenge-auth-input")?.focus();
+  });
+  elements.challengeRoute.querySelector("[data-challenge-begin-signin]")?.addEventListener("click", () => {
+    uiState.challengeRouteAuthMode = "signin";
+    uiState.challengeRouteAuthDraft = "";
+    uiState.challengeRouteAuthError = "";
+    renderChallengeRoute();
+    elements.challengeRoute.querySelector(".challenge-auth-input")?.focus();
+  });
+  elements.challengeRoute.querySelector(".challenge-auth-input")?.addEventListener("input", (event) => {
+    uiState.challengeRouteAuthDraft = event.target.value;
+    uiState.challengeRouteAuthError = "";
+  });
+  elements.challengeRoute.querySelector("[data-challenge-auth-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitChallengeAuthAndAccept();
   });
   elements.challengeRoute.querySelector("[data-challenge-how]")?.addEventListener("click", () => {
-    openAppModal("how-it-works");
-    renderAppChrome();
+    openOnboardingPopup();
   });
   elements.challengeRoute.querySelectorAll("[data-challenge-home]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3038,32 +3305,117 @@ function bindChallengeRouteEvents() {
     advanceChallengeTrade();
   });
   elements.challengeRoute.querySelector("[data-challenge-accept]")?.addEventListener("click", async () => {
-    const trade = currentChallengeTradeRecord();
-    if (!trade) return;
-    uiState.challengeRouteAcceptPending = true;
-    uiState.challengeRouteAcceptError = "";
-    renderChallengeRoute();
-    try {
-      await api("/api/share/accept", {
-        share_session_id: uiState.challengeRouteShareId,
-        trade_id: trade.id
-      });
-      markChallengeReviewStatus(trade, "matched");
-      uiState.challengeRouteMatchedUntil = Date.now() + 1500;
-      renderChallengeRoute();
-      window.setTimeout(async () => {
-        uiState.challengeRouteMatchedUntil = 0;
-        uiState.challengeRouteAcceptPending = false;
-        await maybeLoadChallengeRoute(true);
-        renderAll();
-      }, 1500);
-      return;
-    } catch (error) {
-      uiState.challengeRouteAcceptPending = false;
-      showToast(error.message === "Insufficient balance" ? "Insufficient balance" : "Unable to accept", error.message);
-      renderChallengeRoute();
-    }
+    await acceptCurrentChallengeTrade();
   });
+}
+
+async function submitChallengeAuthAndAccept() {
+  const nextUserName = String(uiState.challengeRouteAuthDraft || "").trim();
+  if (!nextUserName) {
+    uiState.challengeRouteAuthError = "Enter a username to continue.";
+    renderChallengeRoute();
+    return;
+  }
+  uiState.challengeRouteAuthPending = true;
+  uiState.challengeRouteAuthError = "";
+  renderChallengeRoute();
+  try {
+    await completeLogin(nextUserName);
+    if (!isAuthenticated()) {
+      uiState.challengeRouteAuthError = elements.authFeedback?.textContent || "Something went wrong.";
+      return;
+    }
+    uiState.challengeRouteAuthMode = "";
+    await maybeLoadChallengeRoute(true);
+    await acceptCurrentChallengeTrade();
+  } catch (error) {
+    uiState.challengeRouteAuthError = error.message;
+  } finally {
+    uiState.challengeRouteAuthPending = false;
+    renderChallengeRoute();
+  }
+}
+
+async function acceptCurrentChallengeTrade() {
+  let trade = currentChallengeTradeRecord();
+  if (!trade) {
+    await maybeLoadChallengeRoute(true);
+    trade = currentChallengeTradeRecord();
+  }
+  if (!trade) {
+    uiState.challengeRouteAcceptError = "This challenge could not be loaded. Please refresh and try again.";
+    renderChallengeRoute();
+    return;
+  }
+  uiState.challengeRouteAcceptPending = true;
+  uiState.challengeRouteAcceptError = "";
+  renderChallengeRoute();
+  try {
+    const response = await api("/api/share/accept", {
+      share_session_id: uiState.challengeRouteShareId,
+      trade_id: trade.id
+    });
+    if (response.state || response.backend || response.prizePool) {
+      applySharedSnapshot({
+        ...response,
+        backend: response.backend || backendState,
+        prizePool: response.prizePool || prizePoolState
+      });
+    } else if (Number.isFinite(Number(response.balance))) {
+      state.bankrolls[currentUserName()] = Number(response.balance);
+    }
+    markChallengeReviewStatus(trade, "matched");
+    try {
+      await syncSession();
+    } catch (error) {
+      console.warn("Challenge accept sync failed", error.message);
+    }
+    openAcceptedChallengePortfolio(response.matched_trade || trade);
+  } catch (error) {
+    uiState.challengeRouteAcceptPending = false;
+    showToast(error.message === "Insufficient balance" ? "Insufficient balance" : "Unable to accept", error.message);
+    renderChallengeRoute();
+  }
+}
+
+function openAcceptedChallengePortfolio(trade) {
+  const positionKey = trade?.marketId && trade?.side ? `OPEN:${trade.marketId}:${trade.side}` : "";
+  if (window.location.pathname !== "/") {
+    window.history.replaceState({}, "", "/");
+  }
+  uiState.activeScreen = "account";
+  uiState.activeAccountView = "portfolio";
+  uiState.portfolioFilter = "ALL";
+  uiState.portfolioSort = "MOST_RECENT";
+  uiState.challengeRouteAcceptPending = false;
+  uiState.challengeRouteMatchedUntil = 0;
+  uiState.challengeRouteAuthMode = "";
+  uiState.challengeRouteAuthDraft = "";
+  uiState.challengeRouteAuthError = "";
+  uiState.challengeRouteAuthPending = false;
+  uiState.portfolioHighlightPositionKey = positionKey;
+  uiState.portfolioHighlightUntil = Date.now() + 2200;
+  syncChallengeRouteFromLocation();
+  void maybeLoadChallengeRoute(true);
+  renderAll();
+  schedulePortfolioHighlightClear();
+}
+
+function schedulePortfolioHighlightClear() {
+  if (portfolioHighlightClearTimer) {
+    window.clearTimeout(portfolioHighlightClearTimer);
+  }
+  const remaining = uiState.portfolioHighlightUntil - Date.now();
+  if (!uiState.portfolioHighlightPositionKey || remaining <= 0) {
+    uiState.portfolioHighlightPositionKey = "";
+    uiState.portfolioHighlightUntil = 0;
+    return;
+  }
+  portfolioHighlightClearTimer = window.setTimeout(() => {
+    uiState.portfolioHighlightPositionKey = "";
+    uiState.portfolioHighlightUntil = 0;
+    renderPortfolio();
+  }, remaining);
 }
 
 function markChallengeReviewStatus(trade, status) {
@@ -3115,7 +3467,7 @@ async function submitQuickTake(marketId, side, card) {
       : submittedTrade?.status === "PARTIALLY_MATCHED"
         ? `Matched ${formatStake(submittedTrade.matchedStake || 0)} and left ${formatStake(submittedTrade.unmatchedStake || 0)} available`
         : `Posted ${formatStake(submittedTrade?.unmatchedStake || 1)} on ${side}`;
-    showToast("Quick Pick submitted", toastMessage);
+    showToast("Quick Pick submitted", toastMessage, { placement: "top" });
     if (backendState.mode !== "local") {
       window.setTimeout(() => {
         refreshSharedState();
@@ -3223,6 +3575,10 @@ function renderPrizePool() {
         <p class="prize-pool-kicker">Prize Pool</p>
         <h2 class="prize-pool-hero-title">Weekly Cash Pool</h2>
         <p class="prize-pool-hero-copy">Pay $10, get 13 randomly assigned players plus 4 interchange players, lock in Over or Under on each line. Highest correct percentage wins.</p>
+        <div class="prize-pool-info-row">
+          <span class="prize-pool-how-label">How it works</span>
+          <button id="prize-pool-info" class="prize-pool-info-button" type="button" aria-label="Explain Prize Pool">i</button>
+        </div>
         ${renderPrizePoolTipJar(view)}
       </section>
       <section class="section-block prize-pool-breakdown-block">
@@ -3234,14 +3590,8 @@ function renderPrizePool() {
         </div>
         <div class="prize-pool-payout-grid">${payouts}</div>
       </section>
-      <section class="section-block prize-pool-how-block">
-        <div class="prize-pool-info-row">
-          <span class="prize-pool-how-label">How it works</span>
-          <button id="prize-pool-info" class="prize-pool-info-button" type="button" aria-label="Explain Prize Pool">i</button>
-        </div>
-      </section>
       <div class="prize-pool-sticky-cta">
-        ${view.canEnter ? `<button id="prize-pool-enter" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "start" ? "Opening..." : "Enter for $10"}</button>` : `<button class="secondary-button prize-pool-cta-muted" type="button" disabled>Entry Closed</button>`}
+        ${view.canEnter ? `<button id="prize-pool-enter" class="primary-button prize-pool-enter-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "start" ? "Opening…" : "Enter for $10"}</button>` : `<button class="secondary-button prize-pool-cta-muted" type="button" disabled>Entry Closed</button>`}
       </div>
       ${!view.canEnter ? `<div class="portfolio-empty-state"><strong>Entry closed</strong><span>Prize Pool stays open only while at least one round game has not yet kicked off.</span></div>` : ""}
       ${renderPrizePoolLeaderboard(view, "Current Standings")}
@@ -3277,7 +3627,7 @@ function renderPrizePoolDraftState(view) {
           </div>
         </section>
         <div class="prize-pool-sticky-cta">
-          <button id="prize-pool-submit" class="primary-button prize-pool-submit-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "submit" ? "Submitting..." : "Submit Team"}</button>
+          <button id="prize-pool-submit" class="primary-button prize-pool-submit-button prize-pool-cta-live" type="button">${uiState.prizePoolPendingAction === "submit" ? "Submitting…" : "Submit Team"}</button>
         </div>
       </section>
     `;
@@ -3326,8 +3676,8 @@ function renderPrizePoolDraftState(view) {
         <div class="quick-take-move ${movement.className}">${movement.arrow} ${movement.label}</div>
         <div class="quick-take-stats"><div class="quick-take-stats-head"><span class="trade-label">Last 5 Games</span><span class="quick-take-season-average">Season avg ${performance.seasonAverageLabel}</span></div><div class="quick-take-score-row">${performance.lastFive.map((entry) => `<span class="quick-take-score-pill ${entry.isMissing ? "is-missing" : ""}" title="${entry.label}">${entry.value}</span>`).join("")}</div></div>
         <div class="quick-take-actions">
-          <button class="quick-take-action quick-take-under" type="button" data-prize-side="UNDER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Under ${Number(currentCard.line).toFixed(1)}</button>
-          <button class="quick-take-action quick-take-over" type="button" data-prize-side="OVER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Over ${Number(currentCard.line).toFixed(1)}</button>
+      <button class="quick-take-action quick-take-under" type="button" data-prize-side="UNDER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Under ${Number(currentCard.line).toFixed(1)}</button>
+      <button class="quick-take-action quick-take-over" type="button" data-prize-side="OVER" ${uiState.prizePoolPendingAction === "pick" ? "disabled" : ""}>Over ${Number(currentCard.line).toFixed(1)}</button>
         </div>
       </article>
     </section>
@@ -3963,8 +4313,8 @@ function shareableTemplateConfigMarkup() {
         ${template.requiresPlayer ? `
           <div class="admin-shareable-config-block">
             <label class="admin-shareable-field">
-              <span class="admin-shareable-config-label">Search player...</span>
-              <input class="admin-shareable-input" type="search" value="${escapeHtml(uiState.adminShareablePlayerQuery)}" placeholder="Search player..." data-shareable-player-search>
+              <span class="admin-shareable-config-label">Search Player…</span>
+              <input class="admin-shareable-input" type="search" value="${escapeHtml(uiState.adminShareablePlayerQuery)}" placeholder="Search player…" data-shareable-player-search>
             </label>
             ${playerResults.length ? `<div class="admin-shareable-results">${playerResults.map((market) => shareablePlayerResultMarkup(market)).join("")}</div>` : uiState.adminShareablePlayerQuery.trim() ? `<div class="admin-shareable-empty">No current round players match that search.</div>` : ""}
             ${selectedMarket ? `<div class="admin-shareable-selection">${shareableTeamBadgeMarkup(selectedMarket.team)}<span>${escapeHtml(selectedMarket.playerName)}</span><span class="admin-shareable-selection-tick">✓</span></div>` : ""}
@@ -4622,6 +4972,10 @@ async function maybeLoadChallengeRoute(force = false) {
     uiState.challengeRouteSession = null;
     uiState.challengeRouteIndex = 0;
     uiState.challengeRouteReview = [];
+    uiState.challengeRouteAuthMode = "";
+    uiState.challengeRouteAuthDraft = "";
+    uiState.challengeRouteAuthPending = false;
+    uiState.challengeRouteAuthError = "";
     return;
   }
   if (!force && uiState.challengeRouteSession && uiState.challengeRouteSession.shareId === shareId) {
@@ -4648,6 +5002,7 @@ async function maybeLoadChallengeRoute(force = false) {
     });
     uiState.challengeRouteReview = nextReview;
     uiState.challengeRouteIndex = force ? Math.min(previousIndex, Math.max((session.trades || []).length - 1, 0)) : 0;
+    uiState.challengeRouteAuthError = "";
   } catch (error) {
     uiState.challengeRouteSession = null;
     uiState.challengeRouteError = error.message;
@@ -4673,7 +5028,7 @@ function beginChallengeAuthRedirect(mode = "signup") {
 }
 
 function resetChallengeModalState() {
-  uiState.challengeModalStep = "select";
+  uiState.challengeModalStep = "link";
   uiState.challengeSelectedTradeIds = [];
   uiState.challengeCreatePending = false;
   uiState.challengeCreateError = "";
@@ -4688,7 +5043,7 @@ function getEligibleChallengeTrades() {
     .filter((trade) => (Number(trade.unmatchedStake) || 0) > 0 && !trade.result)
     .map((trade) => {
       const market = findMarket(trade.marketId);
-      return market && !isMarketLocked(market) ? { ...trade, market } : null;
+      return market && !isMarketLocked(market) && marketRoundNumber(market) === activeRoundNumber() ? { ...trade, market } : null;
     })
     .filter(Boolean)
     .sort((left, right) => new Date(right.timestamp || 0) - new Date(left.timestamp || 0));
@@ -4732,46 +5087,18 @@ function renderBotSimulation() {
   const config = state.botSimulation.config || {};
   const logs = config.logs || [];
   const bots = state.botSimulation.bots || [];
-  const displayLogs = logs.map((log) => ({
-    ...log,
-    reason: `${log.archetypeLabel ? `${log.archetypeLabel} personality Â· ` : ""}${log.reason}`
-  }));
+  const displayLogs = logs.map((log) => ({ ...log }));
   const botCount = bots.length;
   const activeBotCount = bots.filter((bot) => getDisplayedCash(bot.userName) >= 1).length;
   const totalBotBankroll = bots.reduce((sum, bot) => sum + getDisplayedCash(bot.userName), 0);
   const performance = getBotPerformanceSummary();
-  elements.botSeasonWeight.value = String(config.globalWeights?.season ?? 1);
-  elements.botFormWeight.value = String(config.globalWeights?.form ?? 1);
-  elements.botVenueWeight.value = String(config.globalWeights?.venue ?? 1);
-  elements.botOpponentWeight.value = String(config.globalWeights?.opponent ?? 1);
-  elements.botMatchupWeight.value = String(config.globalWeights?.matchup ?? 1);
-  elements.botNoiseWeight.value = String(config.globalWeights?.noise ?? 1);
-  elements.botSeasonWeight.disabled = true;
-  elements.botNoiseWeight.disabled = true;
-  elements.botActivityWeight.value = String(config.globalWeights?.activity ?? 1);
-  elements.botThresholdWeight.value = String(config.globalWeights?.threshold ?? 1);
-  syncBotBehaviourInputs(config.behaviour);
-  renderBotBehaviourSummary();
   elements.botSummary.innerHTML = `${positionMetric("Bots", String(botCount))}${positionMetric("Active", String(activeBotCount))}${positionMetric("Bot bankroll", formatStake(totalBotBankroll))}${positionMetric("Settled P/L", formatSignedStake(performance.totalRealizedProfit), performance.totalRealizedProfit)}${positionMetric("Recent events", String(displayLogs.length))}${positionMetric("Settled trades", String(performance.totalSettledTrades))}`;
-  if (elements.botArchetypeSummary) {
-    elements.botArchetypeSummary.innerHTML = performance.archetypes.length
-      ? performance.archetypes
-          .map((row) =>
-            adminDashboardCard(
-              row.label,
-              formatSignedStake(row.realizedProfit),
-              `${row.botCount} bots | ${row.settledTrades} settled | ${row.winRate}% win | ROI ${formatPercentage(row.roi)} | Open ${formatStake(row.openExposure)}`
-            )
-          )
-          .join("")
-      : `<div class="section-meta">No bot personalities to compare yet. Create a bot and let it trade into a few settled markets first.</div>`;
-  }
   if (elements.botPerformanceList) {
     elements.botPerformanceList.innerHTML = performance.bots.length
       ? performance.bots
           .map(
             (row, index) =>
-              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} ${row.archetypeLabel}</p><h4>${row.userName}</h4></div></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
+              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} Random Prob</p><h4>${row.userName}</h4></div></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
           )
           .join("")
       : `<div class="section-meta">Bot results will appear here once trades have been placed.</div>`;
@@ -4921,7 +5248,7 @@ function getBotPerformanceSummary() {
   botMap.forEach((bot, userName) => {
     botRows.set(userName, {
       userName,
-      archetype: bot.archetype || "custom",
+      archetype: bot.archetype || "random-prob",
       archetypeLabel: labelForBotArchetype(bot.archetype, bot),
       bankroll: getDisplayedCash(userName),
       settledTrades: 0,
@@ -4939,7 +5266,7 @@ function getBotPerformanceSummary() {
   );
   allBotTrades.forEach(({ trade }) => {
     const bot = botMap.get(trade.userName);
-    const archetypeKey = bot?.archetype || trade.archetype || "custom";
+    const archetypeKey = bot?.archetype || trade.archetype || "random-prob";
     const archetypeLabel = labelForBotArchetype(archetypeKey, bot);
     if (!botRows.has(trade.userName)) {
       botRows.set(trade.userName, {
@@ -5048,7 +5375,7 @@ function getTradeExposureStake(trade) {
 }
 
 function labelForBotArchetype(archetypeKey, bot = null) {
-  const rawLabel = bot?.config?.baseLabel || bot?.config?.label || archetypeKey || "Custom";
+  const rawLabel = bot?.config?.baseLabel || bot?.config?.label || archetypeKey || "Random Prob";
   return String(rawLabel)
     .replace(/\s+Variant$/i, "")
     .replace(/(^|\s)\w/g, (match) => match.toUpperCase());
@@ -5141,111 +5468,16 @@ async function undoSettlementBatch() {
   }
 }
 
-async function saveBotConfig() {
+async function createSimulationBot() {
   try {
-    const response = await api("/api/admin/bots/config", {
-      behaviour: getBotBehaviourDraft(),
-      globalWeights: {
-        season: Number(elements.botSeasonWeight.value),
-        form: Number(elements.botFormWeight.value),
-        venue: Number(elements.botVenueWeight.value),
-        opponent: Number(elements.botOpponentWeight.value),
-        matchup: Number(elements.botMatchupWeight.value),
-        noise: Number(elements.botNoiseWeight.value),
-        activity: Number(elements.botActivityWeight.value),
-        threshold: Number(elements.botThresholdWeight.value)
-      }
-    });
+    const response = await api("/api/admin/bots/create", {});
     applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
     renderAll();
-    elements.botConfigFeedback.textContent = "Bot settings updated.";
-  } catch (error) {
-    elements.botConfigFeedback.textContent = error.message;
-  }
-}
-
-async function createSimulationBot(mode = "default") {
-  try {
-    const response = await api("/api/admin/bots/create", { mode });
-    applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
-    renderAll();
-    const botName = response.bot?.userName || "Quick Pick bot";
-    const botDescription = mode === "random-prob" ? "50/50 random-probability bot" : "Quick Pick bot";
-    elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a ${botDescription}.`;
+    const botName = response.bot?.userName || "Random Prob bot";
+    elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a 50/50 random-probability bot.`;
     showToast("Bot created", `${botName} joined the Quick Pick market.`);
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
-  }
-}
-
-function applyBotBehaviourPreset(presetKey) {
-  const preset = BOT_BEHAVIOUR_PRESETS[presetKey];
-  if (!preset) return;
-  if (elements.botCrowdStyle) elements.botCrowdStyle.value = String(preset.crowdStyle);
-  if (elements.botLiquidityStyle) elements.botLiquidityStyle.value = String(preset.liquidityStyle);
-  if (elements.botFadeStyle) elements.botFadeStyle.value = String(preset.fadeStyle);
-  if (elements.botFrequencyStyle) elements.botFrequencyStyle.value = String(preset.frequencyStyle);
-  if (elements.botEdgeStyle) elements.botEdgeStyle.value = String(preset.edgeStyle);
-  renderBotBehaviourSummary();
-}
-
-function syncBotBehaviourInputs(behaviour = {}) {
-  const draft = behaviourToSliderValues(behaviour);
-  if (elements.botCrowdStyle) elements.botCrowdStyle.value = String(draft.crowdStyle);
-  if (elements.botLiquidityStyle) elements.botLiquidityStyle.value = String(draft.liquidityStyle);
-  if (elements.botFadeStyle) elements.botFadeStyle.value = String(draft.fadeStyle);
-  if (elements.botFrequencyStyle) elements.botFrequencyStyle.value = String(draft.frequencyStyle);
-  if (elements.botEdgeStyle) elements.botEdgeStyle.value = String(draft.edgeStyle);
-}
-
-function behaviourToSliderValues(behaviour = {}) {
-  const crowdStyle = Number.isFinite(Number(behaviour.crowdFollow))
-    ? Math.round(((Number(behaviour.crowdFollow) + 1) / 2) * 100)
-    : BOT_BEHAVIOUR_PRESETS.BALANCED.crowdStyle;
-  return {
-    crowdStyle: clampNumber(crowdStyle, 0, 100),
-    liquidityStyle: clampNumber(Math.round((Number(behaviour.liquidityProviding) || 0.4) * 100), 0, 100),
-    fadeStyle: clampNumber(Math.round((Number(behaviour.fadeExtremeMoves) || 0.45) * 100), 0, 100),
-    frequencyStyle: clampNumber(Math.round((((Number(behaviour.tradingFrequency) || 1) - 0.6) / 0.9) * 100), 0, 100),
-    edgeStyle: clampNumber(Math.round((((Number(behaviour.edgeRequirement) || 1) - 0.7) / 0.8) * 100), 0, 100)
-  };
-}
-
-function getBotBehaviourDraft() {
-  const crowdValue = Number(elements.botCrowdStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.crowdStyle);
-  const liquidityValue = Number(elements.botLiquidityStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.liquidityStyle);
-  const fadeValue = Number(elements.botFadeStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.fadeStyle);
-  const frequencyValue = Number(elements.botFrequencyStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.frequencyStyle);
-  const edgeValue = Number(elements.botEdgeStyle?.value || BOT_BEHAVIOUR_PRESETS.BALANCED.edgeStyle);
-  return {
-    crowdFollow: roundToTwo((crowdValue - 50) / 50),
-    liquidityProviding: roundToTwo(liquidityValue / 100),
-    fadeExtremeMoves: roundToTwo(fadeValue / 100),
-    tradingFrequency: roundToTwo(0.6 + (frequencyValue / 100) * 0.9),
-    edgeRequirement: roundToTwo(0.7 + (edgeValue / 100) * 0.8)
-  };
-}
-
-function renderBotBehaviourSummary() {
-  const draft = getBotBehaviourDraft();
-  const crowdLabel = describeCrowdStyle(draft.crowdFollow);
-  const liquidityLabel = describeLiquidityStyle(draft.liquidityProviding);
-  const fadeLabel = describeFadeStyle(draft.fadeExtremeMoves);
-  const frequencyLabel = describeFrequencyStyle(draft.tradingFrequency);
-  const edgeLabel = describeEdgeStyle(draft.edgeRequirement);
-  if (elements.botCrowdStyleLabel) elements.botCrowdStyleLabel.textContent = crowdLabel;
-  if (elements.botLiquidityLabel) elements.botLiquidityLabel.textContent = liquidityLabel;
-  if (elements.botFadeLabel) elements.botFadeLabel.textContent = fadeLabel;
-  if (elements.botFrequencyLabel) elements.botFrequencyLabel.textContent = frequencyLabel;
-  if (elements.botEdgeLabel) elements.botEdgeLabel.textContent = edgeLabel;
-  if (elements.botBehaviourSummary) {
-    elements.botBehaviourSummary.innerHTML = [
-      portfolioMetricCard("Crowd style", crowdLabel),
-      portfolioMetricCard("Liquidity", liquidityLabel),
-      portfolioMetricCard("Fade moves", fadeLabel),
-      portfolioMetricCard("Frequency", frequencyLabel),
-      portfolioMetricCard("Edge required", edgeLabel)
-    ].join("");
   }
 }
 
@@ -5645,8 +5877,7 @@ function renderHome() {
     statPrimary: `${market.currentLine.toFixed(1)} pts`
   }), {
     variant: "compact-projection-group",
-    headingTitle: "Projected",
-    fullLeaderboardKey: "home-projected-leaderboard"
+    headingTitle: "Projected"
   }));
 
   safelyRender("home value", () => renderHomeMarketLeaderboard(elements.homeBestValue, bestValue, ({ market, impliedScore, value }) => ({
@@ -5662,8 +5893,7 @@ function renderHome() {
   }), {
     variant: "compact-list-group",
     headingTitle: "Value",
-    emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available.",
-    fullLeaderboardKey: "home-value-leaderboard"
+    emptyMessage: "Projection comparisons will appear here once official Fantasy prices are available."
   }));
 
   safelyRender("home overpriced", () => renderHomeMarketLeaderboard(elements.homeMostOverpriced, mostOverpriced, ({ market, impliedScore, value }) => ({
@@ -6201,7 +6431,7 @@ function renderHomeUserLeaderboard(container, rows) {
   const showCurrentUserRow = currentUserRow && !topRows.some((row) => row.userName.toLowerCase() === activeUser);
   container.innerHTML = `<article class="home-leaderboard-snapshot-card"><div class="home-leaderboard-snapshot-head"><div><p class="eyebrow">Leaderboard</p></div><button class="home-leaderboard-snapshot-link" type="button" data-open-leaderboard="true">View full leaderboard →</button></div><div class="home-leaderboard-snapshot-body">${topRows
     .map((row, index) => homeLeaderboardSnapshotRowMarkup(row, index, row.userName.toLowerCase() === activeUser))
-    .join("")}${showCurrentUserRow ? `<div class="home-leaderboard-current-divider">— #${rows.findIndex((row) => row.userName.toLowerCase() === activeUser) + 1} You —</div>${homeLeaderboardSnapshotRowMarkup(currentUserRow, rows.findIndex((row) => row.userName.toLowerCase() === activeUser), true)}` : ""}</div><button class="home-leaderboard-snapshot-footer" type="button" data-open-leaderboard="true">View full leaderboard →</button></article>`;
+    .join("")}${showCurrentUserRow ? `<div class="home-leaderboard-current-divider">— #${rows.findIndex((row) => row.userName.toLowerCase() === activeUser) + 1} You —</div>${homeLeaderboardSnapshotRowMarkup(currentUserRow, rows.findIndex((row) => row.userName.toLowerCase() === activeUser), true)}` : ""}</div></article>`;
   container.querySelectorAll("[data-open-leaderboard]").forEach((button) =>
     button.addEventListener("click", () => {
       openFullLeaderboard();
@@ -6540,6 +6770,9 @@ function optionalTrendText(market) {
 }
 
 function tradeCountFor(market) {
+  if (Number.isFinite(Number(market?.tradeMetrics?.tradeCount))) {
+    return Number(market.tradeMetrics.tradeCount) || 0;
+  }
   return market.trades?.length || 0;
 }
 
@@ -6550,43 +6783,6 @@ function tradeVolumeFor(market) {
 function formatSignedLine(value) {
   if (value === 0) return "0.0";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
-}
-
-function describeCrowdStyle(value) {
-  if (value <= -0.45) return "Fade crowd";
-  if (value < -0.15) return "Leaning contrarian";
-  if (value < 0.15) return "Neutral";
-  if (value < 0.45) return "Leaning momentum";
-  return "Follow crowd";
-}
-
-function describeLiquidityStyle(value) {
-  if (value < 0.25) return "Directional";
-  if (value < 0.55) return "Balanced";
-  if (value < 0.8) return "Liquidity first";
-  return "Market making";
-}
-
-function describeFadeStyle(value) {
-  if (value < 0.25) return "Low";
-  if (value < 0.6) return "Moderate";
-  return "Strong";
-}
-
-function describeFrequencyStyle(value) {
-  if (value < 0.85) return "Selective";
-  if (value < 1.15) return "Balanced";
-  return "Active";
-}
-
-function describeEdgeStyle(value) {
-  if (value < 0.9) return "Low threshold";
-  if (value < 1.2) return "Balanced";
-  return "High conviction";
-}
-
-function roundToTwo(value) {
-  return Math.round((Number(value) || 0) * 100) / 100;
 }
 
 function clampNumber(value, min, max) {
@@ -6612,12 +6808,12 @@ function matchupContext(market) {
 }
 
 function formatStake(value) {
-  return `$${Math.abs(value).toFixed(0)}`;
+  return `$${WHOLE_NUMBER_FORMATTER.format(Math.abs(value))}`;
 }
 
 function formatSignedStake(value) {
   if (value === 0) return "$0";
-  return `${value > 0 ? "+" : "-"}$${Math.abs(value).toFixed(0)}`;
+  return `${value > 0 ? "+" : "-"}$${WHOLE_NUMBER_FORMATTER.format(Math.abs(value))}`;
 }
 
 function formatPercentage(value) {
@@ -6642,6 +6838,23 @@ function formatTradeResultLabel(result) {
 
 
 function getMarketTradeMetrics(market) {
+  if (market?.tradeMetrics && typeof market.tradeMetrics === "object") {
+    const matchedTradeCount = Number(market.tradeMetrics.matchedTradeCount) || 0;
+    const volume = Number(market.tradeMetrics.volume) || 0;
+    const uniqueTraders = Number(market.tradeMetrics.uniqueTraders) || 0;
+    return {
+      volume,
+      liveExposure: Number(market.tradeMetrics.liveExposure) || 0,
+      availableLiquidity: Number(market.tradeMetrics.availableLiquidity) || 0,
+      netPressure: Number(market.tradeMetrics.netPressure) || 0,
+      unmatchedOrderCount: Number(market.tradeMetrics.unmatchedOrderCount) || 0,
+      matchedTradeCount,
+      uniqueTraders,
+      confidence: Number.isFinite(Number(market.tradeMetrics.confidence))
+        ? Number(market.tradeMetrics.confidence)
+        : marketConfidenceScore({ matchedTradeCount, volume, uniqueTraders })
+    };
+  }
   const trades = market.trades || [];
   const volume = trades.reduce((sum, trade) => sum + (Number(trade.stake) || 0), 0);
   const openTrades = trades.filter((trade) => !trade.result && trade.status !== "CANCELLED");
@@ -7193,16 +7406,102 @@ function triggerBalanceFlash() {
   window.requestAnimationFrame(() => elements.headerBalance.classList.add("balance-flash"));
 }
 
-function showToast(title, meta) {
+function showToast(title, meta, options = {}) {
   if (!elements.toast) return;
   clearTimeout(toastTimer);
-  elements.toast.innerHTML = `<span class="toast-title">${title}</span><span class="toast-meta">${meta}</span>`;
+  elements.toast.classList.remove("toast-top");
+  if (options.placement === "top") {
+    elements.toast.classList.add("toast-top");
+  }
+  elements.toast.innerHTML = `<span class="toast-title">${title}</span>${meta ? `<span class="toast-meta">${meta}</span>` : ""}`;
   elements.toast.classList.add("visible");
   elements.toast.setAttribute("aria-hidden", "false");
   toastTimer = window.setTimeout(() => {
     elements.toast.classList.remove("visible");
+    elements.toast.classList.remove("toast-top");
     elements.toast.setAttribute("aria-hidden", "true");
   }, 2400);
+}
+
+async function copyTextToClipboard(value) {
+  const text = String(value || "");
+  if (!text) return false;
+  if (shouldPreferLegacyClipboardCopy()) {
+    const legacyCopied = legacyCopyTextToClipboard(text);
+    if (legacyCopied) return true;
+  }
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      void error;
+    }
+  }
+  return legacyCopyTextToClipboard(text);
+}
+
+function shouldPreferLegacyClipboardCopy() {
+  return /iPad|iPhone|iPod/i.test(navigator.userAgent || "") || Number(navigator.maxTouchPoints) > 0;
+}
+
+function legacyCopyTextToClipboard(text) {
+  const helper = document.createElement("textarea");
+  helper.value = text;
+  helper.setAttribute("readonly", "");
+  helper.style.position = "fixed";
+  helper.style.top = "0";
+  helper.style.left = "0";
+  helper.style.width = "1px";
+  helper.style.height = "1px";
+  helper.style.opacity = "0";
+  helper.style.pointerEvents = "none";
+  helper.style.contain = "strict";
+  document.body.appendChild(helper);
+  helper.focus();
+  helper.select();
+  helper.setSelectionRange(0, helper.value.length);
+  try {
+    return document.execCommand("copy");
+  } catch (error) {
+    void error;
+    return false;
+  } finally {
+    helper.remove();
+  }
+}
+
+async function copyChallengeLink(value, linkNode) {
+  const text = String(value || "");
+  if (!text) return false;
+  if (navigator.share) {
+    try {
+      await navigator.share({ url: text });
+      return true;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return true;
+      }
+    }
+  }
+  if (await copyTextToClipboard(text)) {
+    return true;
+  }
+  return selectTextContent(linkNode);
+}
+
+function selectTextContent(node) {
+  if (!node) return false;
+  const selection = window.getSelection?.();
+  if (!selection) return false;
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  if (typeof node.focus === "function") {
+    node.focus();
+  }
+  return true;
 }
 
 async function api(url, payload) {
