@@ -663,5 +663,6 @@ module.exports={
   ensureSupabaseSeedData,
   getSupabaseAvailableBalance,
   persistSupabaseMarketState,
-  persistSupabaseTrade
+  persistSupabaseTrade,
+  CURRENT_ROUND_NUMBER
 };
