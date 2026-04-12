@@ -1,0 +1,53 @@
+name: Import NRL Fantasy Scores
+
+on:
+  # Run every Tuesday at 08:00 AEST (22:00 UTC Monday) — after NRL rounds wrap up on Monday nights.
+  schedule:
+    - cron: '0 22 * * 1'
+  # Also allow manual trigger from GitHub Actions UI, with optional overrides.
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season year (e.g. 2026). Leave blank to auto-detect.'
+        required: false
+      rounds:
+        description: 'Comma-separated round numbers (e.g. 1,2,3). Leave blank to auto-detect.'
+        required: false
+
+jobs:
+  import:
+    name: Import scores
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use a token with push permissions so the commit can trigger Railway deploy
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Import fantasy scores
+        run: |
+          ARGS="${{ github.event.inputs.season || '' }} ${{ github.event.inputs.rounds || '' }}"
+          node scripts/cron-import-scores.js $ARGS
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet lib/derived-fantasy-data.js || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit updated scores
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib/derived-fantasy-data.js
+          git commit -m "chore: import NRL fantasy scores [skip ci]"
+          git push

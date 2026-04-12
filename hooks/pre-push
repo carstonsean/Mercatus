@@ -1,0 +1,29 @@
+#!/bin/sh
+# Pre-push hook: verifies the deploy bundle is in sync before pushing.
+# Install via: npm run hooks:install
+
+set -e
+
+echo "▶ Running syntax check..."
+node -c server.js && node -c app.js
+echo "  ✓ Syntax OK"
+
+echo "▶ Checking deploy bundle is in sync..."
+node scripts/audit-release.js > /tmp/audit-output.json 2>&1
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "✗ Deploy bundle is out of sync with source files."
+  echo ""
+  echo "  Run the following to fix it, then commit the result:"
+  echo "    npm run sync:deploy-bundle"
+  echo "    git add _deploy_railway/"
+  echo "    git commit -m 'chore: sync deploy bundle'"
+  echo ""
+  cat /tmp/audit-output.json
+  exit 1
+fi
+
+echo "  ✓ Deploy bundle is in sync"
+echo ""

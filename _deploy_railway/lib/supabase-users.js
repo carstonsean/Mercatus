@@ -41,7 +41,7 @@ async function findUserByUsername(username){
   const rows=await supabaseRequest("users",{
     query:{
       select:"id,username,display_name",
-      username:`eq.${escapeFilter(username)}`,
+      username:`ilike.${escapeLikeFilter(username)}`,
       limit:1
     }
   });
@@ -161,6 +161,12 @@ function normalizeUserName(userName){
 
 function escapeFilter(value){
   return String(value).replaceAll(",","\\,");
+}
+
+function escapeLikeFilter(value){
+  return escapeFilter(String(value))
+    .replaceAll("%","\\%")
+    .replaceAll("_","\\_");
 }
 
 module.exports={

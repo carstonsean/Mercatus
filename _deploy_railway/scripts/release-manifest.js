@@ -33,7 +33,8 @@ const RELEASE_FILES=[
   "scripts/release-manifest.js",
   "scripts/smoke-release.js",
   "scripts/sync-deploy-bundle.js",
-  "scripts/sync-runtime-to-supabase.js"
+  "scripts/sync-runtime-to-supabase.js",
+  "scripts/cron-import-scores.js"
 ];
 
 module.exports={ROOT_DIR,DEPLOY_DIR,RELEASE_FILES};

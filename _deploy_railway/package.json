@@ -14,12 +14,19 @@
     "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2",
     "migrate:supabase": "node scripts/migrate-state-to-supabase.js",
     "sync:supabase-runtime": "node scripts/sync-runtime-to-supabase.js",
-    "inspect:supabase": "node scripts/inspect-supabase-state.js"
+    "inspect:supabase": "node scripts/inspect-supabase-state.js",
+    "lint": "eslint server.js app.js",
+    "hooks:install": "node scripts/install-hooks.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.0",
+    "globals": "^17.4.0"
   }
 }
