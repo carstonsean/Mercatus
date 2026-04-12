@@ -21,34 +21,15 @@ async function persistSupabaseRuntimeState(state){
   if(!isSupabaseConfigured()){
     return null;
   }
-  const userNames=[...new Set(Object.keys(state?.bankrolls||{}).filter(Boolean))];
-  const users=await upsertRows("users",userNames.map((userName)=>({
-    username:userName,
-    display_name:userName,
-    last_seen_at:new Date().toISOString()
-  })),"username");
-  const usersByName=new Map(users.map((user)=>[user.username,user]));
-
-  await upsertRows("wallet_snapshots",userNames
-    .map((userName)=>{
-      const user=usersByName.get(userName);
-      if(!user){
-        return null;
-      }
-      return {
-        user_id:user.id,
-        username:userName,
-        current_balance:Number(state.bankrolls?.[userName])||0
-      };
-    })
-    .filter(Boolean),"user_id");
-
   await upsertRows("app_runtime_state",[{
     id:RUNTIME_STATE_ID,
     state:buildRuntimeOverlay(state)
   }],"id");
 
-  return {userCount:userNames.length};
+  return {
+    shareSessionCount:Array.isArray(state?.shareSessions)?state.shareSessions.length:0,
+    walletTransactionCount:Array.isArray(state?.walletTransactions)?state.walletTransactions.length:0
+  };
 }
 
 function buildRuntimeOverlay(state){
@@ -70,6 +51,7 @@ function buildRuntimeOverlay(state){
     activeRoundLabel:state?.activeRoundLabel,
     forceOpenGameIds:Array.isArray(state?.forceOpenGameIds)?state.forceOpenGameIds:[],
     walletTransactions:Array.isArray(state?.walletTransactions)?state.walletTransactions:[],
+    shareSessions:Array.isArray(state?.shareSessions)?state.shareSessions:[],
     lastSettlementBatch:state?.lastSettlementBatch||null,
     roundMetricsHistory:Array.isArray(state?.roundMetricsHistory)?state.roundMetricsHistory:[],
     prizePool:state?.prizePool||null,

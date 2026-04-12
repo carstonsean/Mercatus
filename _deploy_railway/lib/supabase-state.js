@@ -1,4 +1,4 @@
-const {supabaseRequest}=require("./supabase");
+const {supabaseRequest,supabaseRequestAll}=require("./supabase");
 const {ensureSupabaseSeedData}=require("./supabase-market-sync");
 const {isSupabaseConfigured}=require("./config");
 
@@ -7,37 +7,43 @@ async function fetchSupabaseAppState(){
     return null;
   }
   const context=await ensureSupabaseSeedData();
-  const roundId=context.round.id;
+  const roundIds=[...((context?.roundsByNumber||new Map()).values())].map((round)=>round.id).filter(Boolean);
 
-  const [markets,trades,balances]=await Promise.all([
-    supabaseRequest("weekly_player_markets",{
-      query:{
-        select:"id,round_id,game_id,player_id,team_id,market_status,opening_line,current_line,season_average,over_stake_total,under_stake_total,final_fantasy_score,settled_at,locked_at,manual_override",
-        round_id:`eq.${roundId}`
-      }
-    }),
-    supabaseRequest("trades",{
-      query:{
-        select:"id,market_id,user_id,side,stake,entry_line,entry_under_line,entry_over_line,placed_at,resolved_outcome,payout,profit_loss,settled_at,status,matched_stake,unmatched_stake,refunded_stake,engine_version",
-        round_id:`eq.${roundId}`,
-        order:"placed_at.asc"
-      }
-    }),
-    supabaseRequest("wallet_snapshots",{
+  const [markets,trades,balances,users,matchedPairs]=await Promise.all([
+    roundIds.length
+      ? supabaseRequest("weekly_player_markets",{
+        query:{
+          select:"id,round_id,game_id,player_id,team_id,market_status,opening_line,current_line,season_average,over_stake_total,under_stake_total,final_fantasy_score,settled_at,locked_at,manual_override",
+          round_id:`in.(${roundIds.join(",")})`
+        }
+      })
+      : [],
+    roundIds.length
+      ? supabaseRequestAll("trades",{
+        query:{
+          select:"id,market_id,user_id,side,stake,entry_line,entry_under_line,entry_over_line,placed_at,resolved_outcome,payout,profit_loss,settled_at,status,matched_stake,unmatched_stake,refunded_stake,engine_version",
+          round_id:`in.(${roundIds.join(",")})`,
+          order:"placed_at.asc"
+        }
+      })
+      : [],
+    supabaseRequest("wallet_balances",{
       query:{select:"username,current_balance"}
-    })
-  ]);
-  const [users,matchedPairs]=await Promise.all([
+    }).catch(()=>supabaseRequest("wallet_snapshots",{
+      query:{select:"username,current_balance"}
+    })),
     supabaseRequest("users",{
       query:{select:"id,username"}
     }),
-    supabaseRequest("matched_pairs",{
-      query:{
-        select:"id,market_id,status,stake,over_user_id,under_user_id,over_order_id,under_order_id,over_entry_line,under_entry_line,winner_user_id,voided,platform_revenue,created_at",
-        round_id:`eq.${roundId}`,
-        order:"created_at.asc"
-      }
-    })
+    roundIds.length
+      ? supabaseRequestAll("matched_pairs",{
+        query:{
+          select:"id,market_id,status,stake,over_user_id,under_user_id,over_order_id,under_order_id,over_entry_line,under_entry_line,winner_user_id,voided,platform_revenue,created_at",
+          round_id:`in.(${roundIds.join(",")})`,
+          order:"created_at.asc"
+        }
+      })
+      : []
   ]);
 
   const dbMarketById=new Map((markets||[]).map((market)=>[market.id,market]));
@@ -54,7 +60,7 @@ async function fetchSupabaseAppState(){
   });
 
   context.marketsByLocalId.forEach((entry,localMarketId)=>{
-    const dbMarket=dbMarketById.get(entry.market.id);
+    const dbMarket=dbMarketById.get(entry.market?.id);
     if(!dbMarket){
       return;
     }

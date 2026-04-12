@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Syntax check & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run check
+      - run: npm run lint
+
+  smoke:
+    name: Smoke tests
+    runs-on: ubuntu-latest
+    env:
+      PORT: 8000
+      USE_SUPABASE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Start server
+        run: node server.js &
+      - name: Wait for server
+        run: npx wait-on http://127.0.0.1:8000 --timeout 15000
+      - name: Run smoke tests
+        run: npm run smoke:release
+
+  audit-bundle:
+    name: Deploy bundle audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Sync deploy bundle
+        run: npm run sync:deploy-bundle
+      - name: Audit deploy bundle matches source
+        run: npm run audit:release

@@ -4,8 +4,12 @@ const {ensureSupabaseDemoUser,getSupabaseDemoUser}=require("./supabase-users");
 const {isSupabaseConfigured}=require("./config");
 
 const CURRENT_SEASON=2026;
-const CURRENT_ROUND_NUMBER=[...new Set(roundGames.map((game)=>parseRoundNumber(game.roundLabel)).filter(Number.isFinite))].sort((left,right)=>left-right).at(-1)||1;
-const CURRENT_ROUND_LABEL=roundGames.find((game)=>parseRoundNumber(game.roundLabel)===CURRENT_ROUND_NUMBER)?.roundLabel||`Round ${CURRENT_ROUND_NUMBER}`;
+const ALL_ROUND_NUMBERS=[...new Set(roundGames.map((game)=>parseRoundNumber(game.roundLabel)).filter(Number.isFinite))].sort((left,right)=>left-right);
+const CURRENT_ROUND_NUMBER=ALL_ROUND_NUMBERS.at(-1)||1;
+const ROUND_LABEL_BY_NUMBER=new Map(ALL_ROUND_NUMBERS.map((roundNumber)=>[
+  roundNumber,
+  roundGames.find((game)=>parseRoundNumber(game.roundLabel)===roundNumber)?.roundLabel||`Round ${roundNumber}`
+]));
 const STARTING_BANKROLL=200;
 
 let cachedContext=null;
@@ -18,28 +22,32 @@ async function ensureSupabaseSeedData(){
     return cachedContext;
   }
 
-  const currentRoundGames=roundGames.filter((game)=>parseRoundNumber(game.roundLabel)===CURRENT_ROUND_NUMBER);
-  const currentRoundGameIds=new Set(currentRoundGames.map((game)=>game.id));
-  const localMarkets=buildRoundMarkets().filter((market)=>currentRoundGameIds.has(market.gameId));
+  const localMarkets=buildRoundMarkets();
+  const roundNumberByGameId=new Map(roundGames.map((game)=>[game.id,parseRoundNumber(game.roundLabel)]));
 
   const teams=await upsertTeams();
   const teamsByName=new Map(teams.map((team)=>[team.name,team]));
 
-  const round=(await upsertRows("rounds",[{
+  const rounds=await upsertRows("rounds",ALL_ROUND_NUMBERS.map((roundNumber)=>({
     season:CURRENT_SEASON,
-    round_number:CURRENT_ROUND_NUMBER,
-    label:CURRENT_ROUND_LABEL,
+    round_number:roundNumber,
+    label:ROUND_LABEL_BY_NUMBER.get(roundNumber)||`Round ${roundNumber}`,
     bankroll_top_up:STARTING_BANKROLL
-  }],"season,round_number"))[0];
+  })),"season,round_number");
+  const roundsByNumber=new Map((rounds||[]).map((round)=>[Number(round.round_number),round]));
 
-  const games=await upsertRows("games",currentRoundGames.map((game)=>({
-    slug:game.id,
-    round_id:round.id,
-    venue:game.venue,
-    kickoff_at:game.kickoffAt||parseKickoffLabel(game.kickoff),
-    home_team_id:teamsByName.get(normalizeTeamName(game.homeTeam)).id,
-    away_team_id:teamsByName.get(normalizeTeamName(game.awayTeam)).id
-  })),"slug");
+  const games=await upsertRows("games",roundGames.map((game)=>{
+    const roundNumber=roundNumberByGameId.get(game.id);
+    const round=roundsByNumber.get(roundNumber);
+    return {
+      slug:game.id,
+      round_id:round.id,
+      venue:game.venue,
+      kickoff_at:game.kickoffAt||parseKickoffLabel(game.kickoff),
+      home_team_id:teamsByName.get(normalizeTeamName(game.homeTeam)).id,
+      away_team_id:teamsByName.get(normalizeTeamName(game.awayTeam)).id
+    };
+  }),"slug");
   const gamesBySlug=new Map(games.map((game)=>[game.slug,game]));
 
   const players=await upsertRows("players",localMarkets.map((market)=>({
@@ -51,47 +59,64 @@ async function ensureSupabaseSeedData(){
   })),"slug");
   const playersBySlug=new Map(players.map((player)=>[player.slug,player]));
 
-  const existingMarkets=await supabaseRequest("weekly_player_markets",{
-    query:{
-      select:"*",
-      round_id:`eq.${round.id}`
-    }
-  });
-  const existingMarketsByPlayerId=new Map((existingMarkets||[]).map((market)=>[market.player_id,market]));
+  const roundIds=[...roundsByNumber.values()].map((round)=>round.id).filter(Boolean);
+  const existingMarkets=roundIds.length
+    ? await supabaseRequest("weekly_player_markets",{
+      query:{
+        select:"*",
+        round_id:`in.(${roundIds.join(",")})`
+      }
+    })
+    : [];
+  const existingMarketsByKey=new Map((existingMarkets||[]).map((market)=>[`${market.round_id}:${market.player_id}`,market]));
 
-  const markets=await upsertRows("weekly_player_markets",localMarkets.map((market)=>({
-    round_id:round.id,
-    game_id:gamesBySlug.get(market.gameId).id,
-    player_id:playersBySlug.get(playerSlug(market)).id,
-    team_id:teamsByName.get(normalizeTeamName(market.team)).id,
-    opening_line:Number(market.initialLine),
-    current_line:Number(existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.current_line??market.initialLine),
-    season_average:Number(market.seasonAverage),
-    over_stake_total:Number(existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.over_stake_total??0),
-    under_stake_total:Number(existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.under_stake_total??0),
-    market_status:existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.market_status??"OPEN",
-    final_fantasy_score:existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.final_fantasy_score??null,
-    settled_at:existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.settled_at??null,
-    locked_at:existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.locked_at??null,
-    manual_override:Boolean(existingMarketsByPlayerId.get(playersBySlug.get(playerSlug(market)).id)?.manual_override)
-  })),"round_id,player_id");
-  const marketIdsByPlayerId=new Map(markets.map((market)=>[`${market.round_id}:${market.player_id}`,market]));
+  const markets=await upsertRows("weekly_player_markets",localMarkets.map((market)=>{
+    const roundNumber=roundNumberByGameId.get(market.gameId);
+    const round=roundsByNumber.get(roundNumber);
+    const player=playersBySlug.get(playerSlug(market));
+    const existing=existingMarketsByKey.get(`${round.id}:${player.id}`);
+    return {
+      round_id:round.id,
+      game_id:gamesBySlug.get(market.gameId).id,
+      player_id:player.id,
+      team_id:teamsByName.get(normalizeTeamName(market.team)).id,
+      opening_line:Number(market.initialLine),
+      current_line:Number(existing?.current_line??market.initialLine),
+      season_average:Number(market.seasonAverage),
+      over_stake_total:Number(existing?.over_stake_total??0),
+      under_stake_total:Number(existing?.under_stake_total??0),
+      market_status:existing?.market_status??"OPEN",
+      final_fantasy_score:existing?.final_fantasy_score??null,
+      settled_at:existing?.settled_at??null,
+      locked_at:existing?.locked_at??null,
+      manual_override:Boolean(existing?.manual_override)
+    };
+  }),"round_id,player_id");
+  const marketsByKey=new Map(markets.map((market)=>[`${market.round_id}:${market.player_id}`,market]));
 
   cachedContext={
-    round,
+    round:roundsByNumber.get(CURRENT_ROUND_NUMBER)||null,
+    roundsByNumber,
     teamsByName,
     gamesBySlug,
     playersBySlug,
-    marketsByLocalId:new Map(localMarkets.map((market)=>[
-      market.id,
-      {
-        localMarket:market,
-        market:marketIdsByPlayerId.get(`${round.id}:${playersBySlug.get(playerSlug(market)).id}`),
-        game:gamesBySlug.get(market.gameId),
-        player:playersBySlug.get(playerSlug(market)),
-        team:teamsByName.get(normalizeTeamName(market.team))
-      }
-    ]))
+    marketsByLocalId:new Map(localMarkets.map((market)=>{
+      const roundNumber=roundNumberByGameId.get(market.gameId);
+      const round=roundsByNumber.get(roundNumber)||null;
+      const player=playersBySlug.get(playerSlug(market));
+      return [
+        market.id,
+        {
+          localMarket:market,
+          roundNumber,
+          round,
+          market:round&&player?marketsByKey.get(`${round.id}:${player.id}`):null,
+          game:gamesBySlug.get(market.gameId),
+          player,
+          team:teamsByName.get(normalizeTeamName(market.team))
+        }
+      ];
+    }))
   };
 
   return cachedContext;
@@ -103,19 +128,19 @@ async function persistSupabaseTrade({userName,localMarket,trade,preTradeLine,pos
   }
   const context=await ensureSupabaseSeedData();
   const marketContext=context?.marketsByLocalId.get(localMarket.id);
-  if(!marketContext?.market){
+  if(!marketContext?.market||!marketContext?.round){
     throw new Error(`No Supabase market mapping found for ${localMarket.id}`);
   }
 
   const user=await ensureSupabaseDemoUser(userName);
   const tradeRows=await supabaseRequest("trades",{
     method:"POST",
-    query:{select:"id,user_id,market_id,stake"},
+    query:{select:"id,user_id,market_id,stake,status,matched_stake,unmatched_stake,refunded_stake"},
     headers:{Prefer:"return=representation"},
     body:{
       user_id:user.id,
       market_id:marketContext.market.id,
-      round_id:context.round.id,
+      round_id:marketContext.round.id,
       game_id:marketContext.game.id,
       player_id:marketContext.player.id,
       side:trade.side,
@@ -123,6 +148,12 @@ async function persistSupabaseTrade({userName,localMarket,trade,preTradeLine,pos
       pre_trade_line:preTradeLine,
       post_trade_line:postTradeLine,
       entry_line:trade.entryLine,
+      entry_under_line:Number.isFinite(Number(trade.entryUnderLine))?Number(trade.entryUnderLine):Number(trade.entryLine)||0,
+      entry_over_line:Number.isFinite(Number(trade.entryOverLine))?Number(trade.entryOverLine):Number(trade.entryLine)||0,
+      status:trade.status||"PENDING",
+      matched_stake:Number(trade.matchedStake)||0,
+      unmatched_stake:Number.isFinite(Number(trade.unmatchedStake))?Number(trade.unmatchedStake):Number(trade.stake)||0,
+      refunded_stake:Number(trade.refundedStake)||0,
       average_fill_rule:"MIDPOINT",
       placed_at:trade.timestamp
     }
@@ -134,7 +165,7 @@ async function persistSupabaseTrade({userName,localMarket,trade,preTradeLine,pos
     headers:{Prefer:"return=minimal"},
     body:{
       user_id:user.id,
-      round_id:context.round.id,
+      round_id:marketContext.round.id,
       trade_id:dbTrade?.id??null,
       entry_type:"TRADE_STAKE",
       amount:-Number(trade.stake),
@@ -145,7 +176,7 @@ async function persistSupabaseTrade({userName,localMarket,trade,preTradeLine,pos
 
   await upsertHolding({
     userId:user.id,
-    roundId:context.round.id,
+    roundId:marketContext.round.id,
     marketId:marketContext.market.id,
     playerId:marketContext.player.id,
     side:trade.side
@@ -181,7 +212,7 @@ async function persistSupabaseMarketState(localMarket,targetState){
   }
   const context=await ensureSupabaseSeedData();
   const marketContext=context?.marketsByLocalId.get(localMarket.id);
-  if(!marketContext?.market){
+  if(!marketContext?.market||!marketContext?.round){
     throw new Error(`No Supabase market mapping found for ${localMarket.id}`);
   }
 
@@ -196,12 +227,12 @@ async function persistSupabaseMarketState(localMarket,targetState){
   })),"username");
   const usersByName=new Map(users.map((user)=>[user.username,user]));
 
-  const tradeRows=await upsertRows("trades",(localMarket.trades||[]).map((trade)=>buildTradeRow(trade,localMarket,marketContext,context,usersByName)).filter(Boolean),"id");
+  const tradeRows=await upsertRows("trades",(localMarket.trades||[]).map((trade)=>buildTradeRow(trade,localMarket,marketContext,usersByName)).filter(Boolean),"id");
   const tradeIdsByLocalId=new Map((tradeRows||[]).map((row)=>[row.id,row.id]));
   await Promise.all([
-    upsertRows("matched_pairs",(localMarket.matchedPairs||[]).map((pair)=>buildMatchedPairRow(pair,marketContext,context,usersByName)).filter(Boolean),"id"),
-    syncMarketHoldings(localMarket,marketContext,context,usersByName),
-    syncWalletLedger(targetState,context.round.id,usersByName,tradeIdsByLocalId,{
+    upsertRows("matched_pairs",(localMarket.matchedPairs||[]).map((pair)=>buildMatchedPairRow(pair,marketContext,usersByName)).filter(Boolean),"id"),
+    syncMarketHoldings(localMarket,marketContext,usersByName),
+    syncWalletLedger(targetState,marketContext.round.id,usersByName,tradeIdsByLocalId,{
       marketId:localMarket.id,
       userNames
     }),
@@ -375,14 +406,14 @@ async function upsertHolding({userId,roundId,marketId,playerId,side}){
   });
 }
 
-async function syncMarketHoldings(localMarket,marketContext,context,usersByName){
+async function syncMarketHoldings(localMarket,marketContext,usersByName){
   const existingHoldings=await supabaseRequest("holdings",{
     query:{
       select:"id,user_id,side",
       market_id:`eq.${marketContext.market.id}`
     }
   });
-  const desiredHoldings=buildMarketHoldings(localMarket,marketContext,context,usersByName);
+  const desiredHoldings=buildMarketHoldings(localMarket,marketContext,usersByName);
   const existingByKey=new Map((existingHoldings||[]).map((holding)=>[`${holding.user_id}:${holding.side}`,holding]));
   const desiredKeys=new Set(desiredHoldings.map((holding)=>`${holding.user_id}:${holding.side}`));
   const staleIds=(existingHoldings||[])
@@ -417,7 +448,7 @@ async function syncMarketHoldings(localMarket,marketContext,context,usersByName)
   }
 }
 
-function buildMarketHoldings(localMarket,marketContext,context,usersByName){
+function buildMarketHoldings(localMarket,marketContext,usersByName){
   const holdings=new Map();
   (localMarket.trades||[]).forEach((trade)=>{
     if(trade.result||!(Number(trade.matchedStake)>0)){
@@ -430,7 +461,7 @@ function buildMarketHoldings(localMarket,marketContext,context,usersByName){
     const key=`${user.id}:${trade.side}`;
     const current=holdings.get(key)||{
       user_id:user.id,
-      round_id:context.round.id,
+      round_id:marketContext.round.id,
       market_id:marketContext.market.id,
       player_id:marketContext.player.id,
       side:trade.side,
@@ -458,7 +489,7 @@ function buildMarketHoldings(localMarket,marketContext,context,usersByName){
   }));
 }
 
-function buildTradeRow(trade,localMarket,marketContext,context,usersByName){
+function buildTradeRow(trade,localMarket,marketContext,usersByName){
   const user=usersByName.get(trade.userName);
   if(!user){
     return null;
@@ -467,7 +498,7 @@ function buildTradeRow(trade,localMarket,marketContext,context,usersByName){
     id:trade.id,
     user_id:user.id,
     market_id:marketContext.market.id,
-    round_id:context.round.id,
+    round_id:marketContext.round.id,
     game_id:marketContext.game.id,
     player_id:marketContext.player.id,
     side:trade.side,
@@ -492,7 +523,7 @@ function buildTradeRow(trade,localMarket,marketContext,context,usersByName){
   };
 }
 
-function buildMatchedPairRow(pair,marketContext,context,usersByName){
+function buildMatchedPairRow(pair,marketContext,usersByName){
   const overUser=usersByName.get(pair.overUserName);
   const underUser=usersByName.get(pair.underUserName);
   if(!overUser||!underUser){
@@ -501,7 +532,7 @@ function buildMatchedPairRow(pair,marketContext,context,usersByName){
   return {
     id:pair.id,
     market_id:marketContext.market.id,
-    round_id:context.round.id,
+    round_id:marketContext.round.id,
     game_id:marketContext.game.id,
     player_id:marketContext.player.id,
     created_at:pair.createdAt||new Date().toISOString(),

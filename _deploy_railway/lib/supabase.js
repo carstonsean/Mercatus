@@ -42,4 +42,33 @@ async function supabaseRequest(resource,{method="GET",query={},body,headers={}}=
   }
 }
 
-module.exports={supabaseRequest};
+async function supabaseRequestAll(resource,{method="GET",query={},body,headers={},pageSize=1000}={}){
+  if(String(method||"GET").toUpperCase()!=="GET"){
+    throw new Error("supabaseRequestAll only supports GET requests.");
+  }
+  const rows=[];
+  let offset=0;
+  while(true){
+    const page=await supabaseRequest(resource,{
+      method,
+      query,
+      body,
+      headers:{
+        "Range-Unit":"items",
+        Range:`${offset}-${offset+pageSize-1}`,
+        ...headers
+      }
+    });
+    if(!Array.isArray(page)||!page.length){
+      break;
+    }
+    rows.push(...page);
+    if(page.length<pageSize){
+      break;
+    }
+    offset+=pageSize;
+  }
+  return rows;
+}
+
+module.exports={supabaseRequest,supabaseRequestAll};

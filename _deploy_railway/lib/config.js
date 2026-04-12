@@ -25,12 +25,22 @@ function isSupabaseEnabled() {
   return USE_SUPABASE || isHostedEnvironment();
 }
 
+function getLocalSupabaseSafetyError() {
+  if (isHostedEnvironment()) return "";
+  if (isSupabaseConfigured()) return "";
+  if (USE_SUPABASE) {
+    return "USE_SUPABASE is enabled but Supabase credentials are missing. Falling back to local file-backed state.";
+  }
+  return "";
+}
+
 module.exports = {
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
   SUPABASE_SCHEMA,
   SUPABASE_REQUEST_TIMEOUT_MS,
   USE_SUPABASE,
+  getLocalSupabaseSafetyError,
   isSupabaseConfigured,
   isHostedEnvironment,
   isSupabaseEnabled

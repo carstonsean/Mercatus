@@ -171,3 +171,18 @@ The next implementation step is moving from `server.js` file-backed state to Sup
 - add scraping for official scores and team lists
 
 All future features and logic updates should also be checked against [docs/product-principles.md](C:\Users\carst\OneDrive\Desktop\NRL Predictions Market\docs\product-principles.md). If a change does not increase participation, trading activity, liquidity, or market efficiency, it should be reconsidered.
+
+## Persistence diagnostics
+
+To inspect the connected Supabase state directly:
+
+```bash
+npm run inspect:supabase
+```
+
+That script prints:
+
+- row counts for the main persistence tables
+- wallet balance sample rows
+- runtime overlay keys and size
+- the configured Supabase branch/environment from `.env`
