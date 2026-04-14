@@ -4,7 +4,19 @@ const crypto=require("crypto");
 const {ROOT_DIR,DEPLOY_DIR,RELEASE_FILES}=require("./release-manifest");
 
 function fileHash(filePath){
-  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+  let lastError=null;
+  for(let attempt=0;attempt<5;attempt+=1){
+    try{
+      return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+    }catch(error){
+      lastError=error;
+      if(error?.code!=="EBUSY"){
+        throw error;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,50);
+    }
+  }
+  throw lastError;
 }
 
 function auditFile(relativePath){

@@ -11,7 +11,7 @@
     "audit:release": "node scripts/audit-release.js",
     "sync:deploy-bundle": "node scripts/sync-deploy-bundle.js",
     "smoke:release": "node scripts/smoke-release.js",
-    "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2",
+    "import:fantasy-results": "node scripts/import-fantasy-results.js 2026 1,2,3,4,5,6",
     "migrate:supabase": "node scripts/migrate-state-to-supabase.js",
     "sync:supabase-runtime": "node scripts/sync-runtime-to-supabase.js",
     "inspect:supabase": "node scripts/inspect-supabase-state.js",
