@@ -435,7 +435,12 @@ async function handleApi(req,res,url){
   }
   if(req.method==="POST"&&url.pathname==="/api/trades"){
     const body=await parseJson(req);
-    const username=ensureUser(body.userName||"Demo Trader");
+    let username="";
+    try{
+      username=ensureAuthenticatedUserName(req);
+    }catch(error){
+      return json(res,401,{error:error.message||"Authentication required"});
+    }
     let persistHostedMarketState=useSupabase;
     if(useSupabase){
       try{
