@@ -22,6 +22,18 @@ async function fetchJson(pathname,body){
   return {ok:response.ok,status:response.status,json,text};
 }
 
+async function fetchJsonGet(pathname){
+  const response=await fetch(`${baseUrl}${pathname}`);
+  const text=await response.text();
+  let json=null;
+  try{
+    json=JSON.parse(text);
+  }catch(error){
+    json=null;
+  }
+  return {ok:response.ok,status:response.status,json,text};
+}
+
 async function run(){
   const failures=[];
   const index=await fetchText("/");
@@ -31,6 +43,8 @@ async function run(){
   const css=await fetchText(`/styles.css${assetVersion}`);
   const app=await fetchText(`/app.js${assetVersion}`);
   const onboarding=await fetchText(`/lib/onboarding-modal.js${assetVersion}`);
+  const botCreate=await fetchJson("/api/admin/bots/create",{});
+  const botStatus=await fetchJsonGet("/api/admin/bots/status");
 
   const checks=[
     ["GET / returns 200",index.ok],
@@ -49,7 +63,12 @@ async function run(){
     ["onboarding contains pm overlay",/pm-overlay/.test(onboarding.text)],
     ["POST /api/session returns 200",session.ok],
     ["session exposes active round number",Number.isFinite(Number(session.json?.state?.activeRoundNumber))],
-    ["session exposes build id",Boolean(session.json?.build?.id)]
+    ["session exposes build id",Boolean(session.json?.build?.id)],
+    ["POST /api/admin/bots/create returns 200",botCreate.ok],
+    ["bot create enables simulation",Boolean(botCreate.json?.botStatus?.simulationEnabled)],
+    ["bot create returns a visible bot roster",Number(botCreate.json?.state?.botSimulation?.bots?.length)>=1],
+    ["GET /api/admin/bots/status returns 200",botStatus.ok],
+    ["bot status reports at least one bot",Number(botStatus.json?.botStatus?.botCount)>=1]
   ];
 
   for(const [label,passed] of checks){
@@ -62,6 +81,7 @@ async function run(){
     baseUrl,
     buildId,
     activeRoundNumber:session.json?.state?.activeRoundNumber||null,
+    botStatus:botStatus.json?.botStatus||null,
     failures
   };
 
