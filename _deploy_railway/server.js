@@ -96,8 +96,11 @@ let popularPlayersCache=null;
 let popularPlayersCacheTime=0;
 let popularPlayersFetchPromise=null;
 
-let state=loadState();
+let state=null;
+state=loadState();
 let supabaseSeedReady=false;
+let supabaseRuntimeSnapshotQueue=Promise.resolve();
+const supabaseMarketPersistQueues=new Map();
 let lastSupabaseStateSyncAt=0;
 let lastSupabaseUnavailableAt=0;
 let supabaseStateSyncPromise=null;
@@ -246,7 +249,7 @@ async function handleApi(req,res,url){
     let shareSession=null;
     if(useSupabase){
       try{
-        await persistSupabaseMarketState(eligibleTrade.market,state);
+        await enqueueSupabaseMarketPersistence(eligibleTrade.market,state);
         shareSession=await createHostedShareSessionWithTimeout(authenticatedUserName,eligibleTrade.trade.id);
       }catch(error){
         if(!shouldFallbackShareSessionStorage(error)){
@@ -458,7 +461,7 @@ async function handleApi(req,res,url){
     if(useSupabase){
       persistStateSnapshotDeferred(true);
       if(persistHostedMarketState){
-        persistSupabaseMarketState(market,state).catch((error)=>{
+        enqueueSupabaseMarketPersistence(market,state).catch((error)=>{
           console.warn("Supabase trade persist failed; retaining trade in runtime overlay",error.message);
         });
       }
@@ -1155,7 +1158,7 @@ async function acceptHostedShareTrade(userName,shareSessionId,tradeId){
         if(!market){
           throw new Error("Matched trade could not be loaded");
         }
-        await persistSupabaseMarketState(market,state);
+        await enqueueSupabaseMarketPersistence(market,state);
         const updatedSession=state.shareSessions.find((entry)=>entry.id===shareSessionId);
         if(updatedSession?.status){
           await updateShareSessionStatus(shareSessionId,updatedSession.status,true);
@@ -1434,7 +1437,7 @@ async function persistStateSnapshot(useSupabase=SUPABASE_ENABLED){
     return;
   }
   try{
-    await persistSupabaseRuntimeState(state);
+    await enqueueSupabaseRuntimeSnapshot();
   }catch(error){
     console.warn("Supabase runtime snapshot failed",error.message);
   }
@@ -1446,9 +1449,34 @@ function persistStateSnapshotDeferred(useSupabase=SUPABASE_ENABLED){
   if(!useSupabase){
     return;
   }
-  persistSupabaseRuntimeState(state).catch((error)=>{
+  enqueueSupabaseRuntimeSnapshot().catch((error)=>{
     console.warn("Supabase runtime snapshot failed",error.message);
   });
+}
+
+function enqueueSupabaseRuntimeSnapshot(){
+  supabaseRuntimeSnapshotQueue=supabaseRuntimeSnapshotQueue
+    .catch(()=>null)
+    .then(()=>persistSupabaseRuntimeState(state));
+  return supabaseRuntimeSnapshotQueue;
+}
+
+function enqueueSupabaseMarketPersistence(market,targetState=state){
+  const marketId=market?.id;
+  if(!marketId){
+    return Promise.resolve(null);
+  }
+  const previousQueue=supabaseMarketPersistQueues.get(marketId)||Promise.resolve();
+  const nextQueue=previousQueue
+    .catch(()=>null)
+    .then(()=>persistSupabaseMarketState(market,targetState));
+  const cleanupQueue=nextQueue.finally(()=>{
+    if(supabaseMarketPersistQueues.get(marketId)===cleanupQueue){
+      supabaseMarketPersistQueues.delete(marketId);
+    }
+  });
+  supabaseMarketPersistQueues.set(marketId,cleanupQueue);
+  return cleanupQueue;
 }
 
 function buildQuickTakeMarketPayload(market){
@@ -3390,7 +3418,7 @@ async function persistSupabaseMarketsForEvents(events=[]){
     if(!market){
       continue;
     }
-    await persistSupabaseMarketState(market,state);
+    await enqueueSupabaseMarketPersistence(market,state);
   }
 }
 
