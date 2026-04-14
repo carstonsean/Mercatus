@@ -150,6 +150,15 @@ setInterval(()=>{
   });
 },POPULAR_PLAYERS_REFRESH_MS);
 
+function refreshSupabaseStateInBackground(label="Supabase"){
+  if(!SUPABASE_ENABLED){
+    return;
+  }
+  syncStateFromSupabase().catch((error)=>{
+    console.warn(`${label} sync failed`,error.message);
+  });
+}
+
 function serveStatic(res,pathname){
   const requestedPath=pathname==="/"?"/index.html":pathname;
   if(requestedPath==="/index.html"){
@@ -334,14 +343,14 @@ async function handleApi(req,res,url){
   if(req.method==="GET"&&(url.pathname==="/api/bootstrap"||url.pathname==="/api")){
     const username=ensureUser(url.searchParams.get("user")||"Demo Trader");
     if(useSupabase){
-      try{
-        if(Array.isArray(state?.markets)&&state.markets.length){
-          await syncStateFromSupabase();
-        }else{
+      if(Array.isArray(state?.markets)&&state.markets.length){
+        refreshSupabaseStateInBackground("Bootstrap Supabase");
+      }else{
+        try{
           await syncStateFromSupabase({force:true});
+        }catch(error){
+          console.warn("Bootstrap Supabase sync failed",error.message);
         }
-      }catch(error){
-        console.warn("Bootstrap Supabase sync failed",error.message);
       }
     }else{
       syncDerivedBalances();
@@ -357,14 +366,14 @@ async function handleApi(req,res,url){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
     if(useSupabase){
-      try{
-        if(Array.isArray(state?.markets)&&state.markets.length){
-          await syncStateFromSupabase();
-        }else{
+      if(Array.isArray(state?.markets)&&state.markets.length){
+        refreshSupabaseStateInBackground("Session Supabase");
+      }else{
+        try{
           await syncStateFromSupabase({force:true});
+        }catch(error){
+          console.warn("Session Supabase sync failed",error.message);
         }
-      }catch(error){
-        console.warn("Session Supabase sync failed",error.message);
       }
     }else{
       syncDerivedBalances();
