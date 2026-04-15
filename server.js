@@ -16,6 +16,7 @@ const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketS
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
 const {fetchSupabaseAppState}=require("./lib/supabase-state");
 const {fetchSupabaseRuntimeState,persistSupabaseRuntimeState}=require("./lib/supabase-runtime-state");
+const {fetchSupabaseActiveRoundSetting,persistSupabaseActiveRoundSetting}=require("./lib/supabase-active-round");
 
 const PORT=process.env.PORT?Number(process.env.PORT):8000;
 const BUILD_ID=String(
@@ -400,6 +401,9 @@ async function handleApi(req,res,url){
     state.activeRoundNumber=roundNumber;
     state.activeRoundLabel=buildRoundLabel(roundNumber);
     state.forceOpenGameIds=[];
+    if(useSupabase){
+      await persistSupabaseActiveRoundSetting(roundNumber);
+    }
     syncPrizePoolState(state);
     await persistStateSnapshot(useSupabase);
     return json(res,200,{state,prizePool:buildPrizePoolClientPayload()});
@@ -2673,18 +2677,28 @@ async function ensureSupabaseReady(){
   ]);
 }
 
-function validateHostedStateOrThrow(nextState,runtimeState){
+function hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState){
+  if(Number.isFinite(Number(activeRoundSetting?.activeRoundNumber))){
+    return Number(activeRoundSetting.activeRoundNumber);
+  }
+  if(Number.isFinite(Number(runtimeState?.activeRoundNumber))){
+    return Number(runtimeState.activeRoundNumber);
+  }
+  return Number(nextState?.activeRoundNumber);
+}
+
+function validateHostedStateOrThrow(nextState,activeRoundSetting,runtimeState){
   if(!HOSTED_ENVIRONMENT){
     return;
   }
-  const runtimeRoundNumber=Number(runtimeState?.activeRoundNumber);
-  if(!Number.isFinite(runtimeRoundNumber)){
-    throw new Error("Hosted state validation failed: runtime overlay is missing activeRoundNumber.");
+  const expectedRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState);
+  if(!Number.isFinite(expectedRoundNumber)){
+    throw new Error("Hosted state validation failed: active round is missing from durable settings and runtime overlay.");
   }
   const activeRoundMarkets=(Array.isArray(nextState?.markets)?nextState.markets:[])
-    .filter((market)=>getRoundNumberForMarket(market)===runtimeRoundNumber);
+    .filter((market)=>getRoundNumberForMarket(market)===expectedRoundNumber);
   if(!activeRoundMarkets.length){
-    throw new Error(`Hosted state validation failed: no markets were loaded for active round ${runtimeRoundNumber}.`);
+    throw new Error(`Hosted state validation failed: no markets were loaded for active round ${expectedRoundNumber}.`);
   }
 }
 
@@ -2705,13 +2719,17 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
   supabaseStateSyncPromise=(async()=>{
     const syncStartedAt=Date.now();
     try{
-      const runtimeState=await fetchSupabaseRuntimeState().catch((error)=>{
-        console.warn("Supabase runtime overlay fetch failed",error.message);
-        return null;
-      });
-      const activeRoundNumber=Number.isFinite(Number(runtimeState?.activeRoundNumber))
-        ? Number(runtimeState.activeRoundNumber)
-        : undefined;
+      const [activeRoundSetting,runtimeState]=await Promise.all([
+        fetchSupabaseActiveRoundSetting().catch((error)=>{
+          console.warn("Supabase active round fetch failed",error.message);
+          return null;
+        }),
+        fetchSupabaseRuntimeState().catch((error)=>{
+          console.warn("Supabase runtime overlay fetch failed",error.message);
+          return null;
+        })
+      ]);
+      const activeRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,state);
       const supabaseState=await fetchSupabaseAppState({activeRoundNumber});
       if(lastStateMutationAt>syncStartedAt){
         return state;
@@ -2719,7 +2737,7 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
       if(supabaseState){
         const mergedState=mergeSupabaseState(supabaseState,runtimeState,state);
         if(validateHostedState){
-          validateHostedStateOrThrow(mergedState,runtimeState);
+          validateHostedStateOrThrow(mergedState,activeRoundSetting,runtimeState);
         }
         state=mergedState;
       }else if(runtimeState){
@@ -2728,11 +2746,11 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
           ...runtimeState
         },{skipWalletBootstrap:true});
         if(validateHostedState){
-          validateHostedStateOrThrow(fallbackState,runtimeState);
+          validateHostedStateOrThrow(fallbackState,activeRoundSetting,runtimeState);
         }
         state=fallbackState;
       }else if(validateHostedState){
-        throw new Error("Hosted state validation failed: runtime overlay could not be loaded from Supabase.");
+        throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
       }
       lastSupabaseStateSyncAt=Date.now();
     }catch(error){

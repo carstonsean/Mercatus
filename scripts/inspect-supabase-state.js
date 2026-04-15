@@ -29,7 +29,8 @@ async function main() {
     wallet_ledger: await countRows("wallet_ledger", "id"),
     wallet_snapshots: await countRows("wallet_snapshots", "user_id"),
     share_sessions: await countRows("share_sessions", "id"),
-    app_runtime_state: await countRows("app_runtime_state", "id")
+    app_runtime_state: await countRows("app_runtime_state", "id"),
+    active_round_settings: await countRows("active_round_settings", "id").catch(() => 0)
   };
 
   const walletBalances = await supabaseRequest("wallet_balances", {
@@ -58,6 +59,20 @@ async function main() {
     roundMetricsHistory: Array.isArray(runtimeState.roundMetricsHistory) ? runtimeState.roundMetricsHistory.length : 0,
     prizePoolRounds: runtimeState.prizePool?.rounds ? Object.keys(runtimeState.prizePool.rounds).length : 0,
     jsonBytes: Buffer.byteLength(JSON.stringify(runtimeState), "utf8")
+  };
+
+  const activeRoundRows = await supabaseRequest("active_round_settings", {
+    query: {
+      select: "id,active_round_number,updated_at",
+      id: "eq.primary",
+      limit: 1
+    }
+  }).catch(() => []);
+  const activeRoundRow = activeRoundRows?.[0] || null;
+  summary.activeRoundSetting = {
+    present: Boolean(activeRoundRow),
+    activeRoundNumber: activeRoundRow?.active_round_number ?? null,
+    updatedAt: activeRoundRow?.updated_at || null
   };
 
   console.log(JSON.stringify(summary, null, 2));

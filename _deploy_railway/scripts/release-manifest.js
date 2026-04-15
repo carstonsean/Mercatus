@@ -23,6 +23,7 @@ const RELEASE_FILES=[
   "lib/bot-engine.js",
   "lib/supabase.js",
   "lib/supabase-dashboard.js",
+  "lib/supabase-active-round.js",
   "lib/supabase-market-sync.js",
   "lib/supabase-runtime-state.js",
   "lib/supabase-state.js",
@@ -40,6 +41,7 @@ const RELEASE_FILES=[
   "supabase/migrations/001_init_mercatus.sql",
   "supabase/migrations/002_orderbook_state.sql",
   "supabase/migrations/003_runtime_state.sql",
+  "supabase/migrations/004_active_round_settings.sql",
   "supabase/migrations/004_share_sessions.sql",
   "supabase/migrations/005_fix_share_holding_group_by.sql",
   "supabase/config.toml"
