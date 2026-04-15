@@ -1805,7 +1805,7 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
     row.querySelector(".projection-line").textContent = market.currentLine.toFixed(1);
     row.querySelector(".projection-move").textContent = `${movement.arrow} ${movement.label}`;
     row.querySelector(".projection-move").className = `projection-move ${movement.className}`;
-    row.querySelector(".market-confidence-slot").innerHTML = marketConfidenceMarkup(metrics.confidence, true);
+    row.querySelector(".market-confidence-slot")?.remove();
     row.addEventListener("click", () => {
       uiState.currentGameId = market.gameId;
       uiState.currentTeam = market.team;

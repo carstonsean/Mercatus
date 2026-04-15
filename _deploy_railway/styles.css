@@ -5898,8 +5898,8 @@ label {
 
 .home-group-card {
   --home-visible-rows: 5;
-  --home-card-row-gap: 6px;
-  --home-card-row-height: 52px;
+  --home-card-row-gap: 8px;
+  --home-card-row-height: 64px;
   display: grid;
   gap: 10px;
   padding: 14px;
@@ -6033,7 +6033,7 @@ label {
 .home-group-card-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--home-card-row-gap);
   min-height: 0;
   max-height: calc(
     (var(--home-card-row-height) * var(--home-visible-rows)) +
