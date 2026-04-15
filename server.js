@@ -133,23 +133,28 @@ const server=http.createServer(async (req,res)=>{
   }
 });
 
-server.listen(PORT,"0.0.0.0",()=>{
-  console.log(`Mercatus server running on http://0.0.0.0:${PORT}`);
-  fetchPopularPlayers().catch((error)=>{
-    console.warn("Initial popular players fetch failed",error.message);
-  });
+async function startServer(){
   if(SUPABASE_ENABLED){
-    syncStateFromSupabase().catch((error)=>{
-      console.warn("Initial Supabase state sync failed",error.message);
-    });
+    await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
   }
-});
-setInterval(runAutonomousBots,BOT_AUTOPLAY_INTERVAL_MS);
-setInterval(()=>{
-  fetchPopularPlayers(true).catch((error)=>{
-    console.warn("Scheduled popular players fetch failed",error.message);
+  server.listen(PORT,"0.0.0.0",()=>{
+    console.log(`Mercatus server running on http://0.0.0.0:${PORT}`);
+    fetchPopularPlayers().catch((error)=>{
+      console.warn("Initial popular players fetch failed",error.message);
+    });
   });
-},POPULAR_PLAYERS_REFRESH_MS);
+  setInterval(runAutonomousBots,BOT_AUTOPLAY_INTERVAL_MS);
+  setInterval(()=>{
+    fetchPopularPlayers(true).catch((error)=>{
+      console.warn("Scheduled popular players fetch failed",error.message);
+    });
+  },POPULAR_PLAYERS_REFRESH_MS);
+}
+
+startServer().catch((error)=>{
+  console.error("Mercatus startup failed",error.message||error);
+  process.exit(1);
+});
 
 function refreshSupabaseStateInBackground(label="Supabase"){
   if(!SUPABASE_ENABLED){
@@ -2668,7 +2673,22 @@ async function ensureSupabaseReady(){
   ]);
 }
 
-async function syncStateFromSupabase({force=false}={}){
+function validateHostedStateOrThrow(nextState,runtimeState){
+  if(!HOSTED_ENVIRONMENT){
+    return;
+  }
+  const runtimeRoundNumber=Number(runtimeState?.activeRoundNumber);
+  if(!Number.isFinite(runtimeRoundNumber)){
+    throw new Error("Hosted state validation failed: runtime overlay is missing activeRoundNumber.");
+  }
+  const activeRoundMarkets=(Array.isArray(nextState?.markets)?nextState.markets:[])
+    .filter((market)=>getRoundNumberForMarket(market)===runtimeRoundNumber);
+  if(!activeRoundMarkets.length){
+    throw new Error(`Hosted state validation failed: no markets were loaded for active round ${runtimeRoundNumber}.`);
+  }
+}
+
+async function syncStateFromSupabase({force=false,validateHostedState=false}={}){
   if(!SUPABASE_ENABLED){
     return state;
   }
@@ -2685,23 +2705,34 @@ async function syncStateFromSupabase({force=false}={}){
   supabaseStateSyncPromise=(async()=>{
     const syncStartedAt=Date.now();
     try{
-      const [supabaseState,runtimeState]=await Promise.all([
-        fetchSupabaseAppState(),
-        fetchSupabaseRuntimeState().catch((error)=>{
-          console.warn("Supabase runtime overlay fetch failed",error.message);
-          return null;
-        })
-      ]);
+      const runtimeState=await fetchSupabaseRuntimeState().catch((error)=>{
+        console.warn("Supabase runtime overlay fetch failed",error.message);
+        return null;
+      });
+      const activeRoundNumber=Number.isFinite(Number(runtimeState?.activeRoundNumber))
+        ? Number(runtimeState.activeRoundNumber)
+        : undefined;
+      const supabaseState=await fetchSupabaseAppState({activeRoundNumber});
       if(lastStateMutationAt>syncStartedAt){
         return state;
       }
       if(supabaseState){
-        state=mergeSupabaseState(supabaseState,runtimeState,state);
+        const mergedState=mergeSupabaseState(supabaseState,runtimeState,state);
+        if(validateHostedState){
+          validateHostedStateOrThrow(mergedState,runtimeState);
+        }
+        state=mergedState;
       }else if(runtimeState){
-        state=normalizeState({
+        const fallbackState=normalizeState({
           ...buildFreshState(),
           ...runtimeState
         },{skipWalletBootstrap:true});
+        if(validateHostedState){
+          validateHostedStateOrThrow(fallbackState,runtimeState);
+        }
+        state=fallbackState;
+      }else if(validateHostedState){
+        throw new Error("Hosted state validation failed: runtime overlay could not be loaded from Supabase.");
       }
       lastSupabaseStateSyncAt=Date.now();
     }catch(error){

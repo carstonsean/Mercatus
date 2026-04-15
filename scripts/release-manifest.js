@@ -35,6 +35,7 @@ const RELEASE_FILES=[
   "scripts/smoke-release.js",
   "scripts/sync-deploy-bundle.js",
   "scripts/sync-runtime-to-supabase.js",
+  "scripts/verify-hosted-state.js",
   "scripts/cron-import-scores.js",
   "supabase/migrations/001_init_mercatus.sql",
   "supabase/migrations/002_orderbook_state.sql",

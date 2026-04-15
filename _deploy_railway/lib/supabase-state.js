@@ -2,12 +2,15 @@ const {supabaseRequest,supabaseRequestAll}=require("./supabase");
 const {ensureSupabaseSeedData,CURRENT_ROUND_NUMBER}=require("./supabase-market-sync");
 const {isSupabaseConfigured}=require("./config");
 
-async function fetchSupabaseAppState(){
+async function fetchSupabaseAppState({activeRoundNumber}={}){
   if(!isSupabaseConfigured()){
     return null;
   }
   const context=await ensureSupabaseSeedData();
-  const activeRound=context?.roundsByNumber?.get(CURRENT_ROUND_NUMBER);
+  const requestedRoundNumber=Number.isFinite(Number(activeRoundNumber))
+    ? Number(activeRoundNumber)
+    : CURRENT_ROUND_NUMBER;
+  const activeRound=context?.roundsByNumber?.get(requestedRoundNumber);
   const roundIds=activeRound?.id ? [activeRound.id] : [];
 
   const [markets,trades,balances,users,matchedPairs]=await Promise.all([
@@ -155,7 +158,8 @@ async function fetchSupabaseAppState(){
   return {
     bankrolls:Object.fromEntries((balances||[]).map((row)=>[row.username,Number(row.current_balance)||0])),
     userNames:(users||[]).map((user)=>user.username).filter(Boolean),
-    markets:[...marketByLocalId.values()]
+    markets:[...marketByLocalId.values()],
+    activeRoundNumber:requestedRoundNumber
   };
 }
 
