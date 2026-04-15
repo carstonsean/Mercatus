@@ -105,6 +105,7 @@ let lastSupabaseStateSyncAt=0;
 let lastSupabaseUnavailableAt=0;
 let supabaseStateSyncPromise=null;
 let lastStateMutationAt=Date.now();
+let lastBotAutoplayStatus=buildBotAutoplayStatus("startup");
 persistState();
 
 const MIME_TYPES={
@@ -661,20 +662,29 @@ async function handleApi(req,res,url){
     state.bankrolls[bot.userName]=bot.startingBankroll;
     syncDerivedBalances();
     syncPrizePoolState(state);
+    lastBotAutoplayStatus=buildBotAutoplayStatus("bot-created");
     await persistStateSnapshot(useSupabase);
-    return json(res,200,{state,bot});
+    return json(res,200,{state,bot,botStatus:lastBotAutoplayStatus});
+  }
+  if(req.method==="GET"&&url.pathname==="/api/admin/bots/status"){
+    return json(res,200,{botStatus:buildBotAutoplayStatus("status-requested")});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/run"){
     const body=await parseJson(req);
     const ticks=Math.max(1,Math.min(100,Number(body.ticks)||1));
     const result=runBotTicks(ticks);
+    lastBotAutoplayStatus=buildBotAutoplayStatus("manual-run",{
+      ticks,
+      events:result.events.length,
+      executedEvents:result.events.filter((event)=>event.executed).length
+    });
     if(useSupabase){
       await persistSupabaseMarketsForEvents(result.events);
       await persistStateSnapshot(true);
     }else{
       await persistStateSnapshot(false);
     }
-    return json(res,200,{state,botSimulation:state.botSimulation,events:result.events});
+    return json(res,200,{state,botSimulation:state.botSimulation,events:result.events,botStatus:lastBotAutoplayStatus});
   }
   json(res,404,{error:"Not found"});
 }
@@ -1431,7 +1441,7 @@ function buildFreshState(){
     prizePool:buildFreshPrizePoolState(),
     botSimulation:{
       config:botSimulation,
-      bots:[]
+      bots:createBotRoster(botSimulation)
     }
   };
   return nextState;
@@ -1637,17 +1647,26 @@ function buildClientMarketTradeMetrics(market,trades){
   const volume=trades.reduce((sum,trade)=>sum+(Number(trade?.stake)||0),0);
   const openTrades=trades.filter((trade)=>!trade?.result&&trade?.status!=="CANCELLED");
   const matchedTrades=trades.filter((trade)=>(Number(trade?.matchedStake)||0)>0);
+  const matchedTradeCount=matchedTrades.length;
+  const uniqueTraders=new Set(trades.map((trade)=>trade?.userName).filter(Boolean)).size;
   return {
     tradeCount:trades.length,
     volume,
     liveExposure:openTrades.reduce((sum,trade)=>sum+(Number(trade?.matchedStake)||0),0),
     availableLiquidity:openTrades.reduce((sum,trade)=>sum+(Number(trade?.unmatchedStake)||0),0),
     unmatchedOrderCount:openTrades.filter((trade)=>(Number(trade?.unmatchedStake)||0)>0).length,
-    matchedTradeCount:matchedTrades.length,
-    uniqueTraders:new Set(trades.map((trade)=>trade?.userName).filter(Boolean)).size,
+    matchedTradeCount,
+    uniqueTraders,
     netPressure:Number(market?.netPressure)||0,
-    confidence:0
+    confidence:marketConfidenceScore({matchedTradeCount,volume,uniqueTraders})
   };
+}
+
+function marketConfidenceScore({matchedTradeCount,volume,uniqueTraders}){
+  const matchedSignal=1-Math.exp(-(Number(matchedTradeCount)||0)/6);
+  const volumeSignal=1-Math.exp(-(Number(volume)||0)/220);
+  const traderSignal=1-Math.exp(-(Number(uniqueTraders)||0)/5);
+  return Math.round(Math.min(0.97,matchedSignal*0.45+volumeSignal*0.4+traderSignal*0.15)*100);
 }
 
 function buildHostedBotSimulationSnapshot(botSimulation){
@@ -1657,10 +1676,12 @@ function buildHostedBotSimulationSnapshot(botSimulation){
   return {
     config:{
       enabled:Boolean(config.enabled),
+      defaultBotCount:Math.max(0,Number(config.defaultBotCount)||0),
+      tick:Number(config.tick)||0,
       maxLogs:0,
-      logs:[]
+      logs:Array.isArray(config.logs)?cloneValue(config.logs.slice(0,40)):[]
     },
-    bots:[]
+    bots:Array.isArray(botSimulation?.bots)?cloneValue(botSimulation.bots):[]
   };
 }
 
@@ -1847,7 +1868,8 @@ function normalizeState(rawState,options={}){
     ? rawState.walletTransactions.map((transaction)=>normalizeWalletTransaction(transaction,{bankrolls}))
     : [];
   const botConfig=normalizeSimulationConfig(rawState.botSimulation?.config||DEFAULT_SIMULATION_CONFIG);
-  const bots=(rawState.botSimulation?.bots||createBotRoster(botConfig))
+  const rawBots=Array.isArray(rawState.botSimulation?.bots)?rawState.botSimulation.bots:[];
+  const bots=(rawBots.length?rawBots:createBotRoster(botConfig))
     .map((bot)=>normalizeRandomProbBot(bot))
     .filter(Boolean);
   const persistedMarkets=Array.isArray(rawState.markets)?rawState.markets:[];
@@ -2388,11 +2410,11 @@ function renderIndexHtmlWithMetadata(metadata){
 
 function applyAssetVersion(html){
   return String(html)
-    .replace(/(\.\/styles\.css)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/lib\/derived-fantasy-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/lib\/onboarding-modal\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/seed-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/app\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`);
+    .replace(/((?:\.\/|\/)styles\.css)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)lib\/derived-fantasy-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)lib\/onboarding-modal\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)seed-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)app\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`);
 }
 
 function escapeHtmlText(value){
@@ -3404,19 +3426,30 @@ function runBotTicks(ticks){
 function runAutonomousBots(){
   try{
     if(HOSTED_ENVIRONMENT&&!HOSTED_BOT_AUTOPLAY_ENABLED){
+      lastBotAutoplayStatus=buildBotAutoplayStatus("skipped-hosted-disabled");
       return;
     }
     if(!state?.botSimulation?.config?.enabled){
+      lastBotAutoplayStatus=buildBotAutoplayStatus("skipped-disabled");
       return;
     }
     if(!state?.botSimulation?.bots?.length){
+      state.botSimulation.bots=createBotRoster(state.botSimulation.config);
+    }
+    if(!state?.botSimulation?.bots?.length){
+      lastBotAutoplayStatus=buildBotAutoplayStatus("skipped-no-bots");
       return;
     }
     const activeBots=state.botSimulation.bots.filter((bot)=>getUserBankroll(bot.userName)>=1);
     if(!activeBots.length){
+      lastBotAutoplayStatus=buildBotAutoplayStatus("skipped-no-funded-bots");
       return;
     }
     const result=runBotTicks(1);
+    lastBotAutoplayStatus=buildBotAutoplayStatus("tick-complete",{
+      events:result.events.length,
+      executedEvents:result.events.filter((event)=>event.executed).length
+    });
     if(result.events.length){
       if(SUPABASE_ENABLED){
         persistSupabaseMarketsForEvents(result.events)
@@ -3429,8 +3462,29 @@ function runAutonomousBots(){
       }
     }
   }catch(error){
+    lastBotAutoplayStatus=buildBotAutoplayStatus("failed",{error:error.message||String(error)});
     console.warn("Bot autoplay failed",error);
   }
+}
+
+function buildBotAutoplayStatus(reason,extra={}){
+  const botSimulation=state?.botSimulation||{};
+  const bots=Array.isArray(botSimulation.bots)?botSimulation.bots:[];
+  const eligibleMarkets=Array.isArray(state?.markets)
+    ? state.markets.filter((market)=>getRoundNumberForMarket(market)===getActiveRoundNumber(state)&&!isMarketLocked(market)).length
+    : 0;
+  return {
+    reason,
+    timestamp:new Date().toISOString(),
+    hostedEnvironment:HOSTED_ENVIRONMENT,
+    hostedAutoplayEnabled:HOSTED_BOT_AUTOPLAY_ENABLED,
+    simulationEnabled:Boolean(botSimulation?.config?.enabled),
+    botCount:bots.length,
+    activeBotCount:bots.filter((bot)=>getUserBankroll(bot.userName)>=1).length,
+    eligibleMarketCount:eligibleMarkets,
+    tick:Number(botSimulation?.config?.tick)||0,
+    ...extra
+  };
 }
 
 async function persistSupabaseMarketsForEvents(events=[]){
