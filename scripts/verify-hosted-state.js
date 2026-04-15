@@ -4,6 +4,7 @@ const {supabaseRequestAll}=require("../lib/supabase");
 const {fetchSupabaseRuntimeState}=require("../lib/supabase-runtime-state");
 const {ensureSupabaseSeedData}=require("../lib/supabase-market-sync");
 const {isSupabaseConfigured}=require("../lib/config");
+const {fetchSupabaseActiveRoundSetting}=require("../lib/supabase-active-round");
 
 async function main(){
   if(!isSupabaseConfigured()){
@@ -11,8 +12,13 @@ async function main(){
   }
 
   const runtimeState=await fetchSupabaseRuntimeState();
+  const activeRoundSetting=await fetchSupabaseActiveRoundSetting();
   const context=await ensureSupabaseSeedData();
-  const activeRoundNumber=Number(runtimeState?.activeRoundNumber);
+  const settingsActiveRoundNumber=Number(activeRoundSetting?.activeRoundNumber);
+  const runtimeActiveRoundNumber=Number(runtimeState?.activeRoundNumber);
+  const activeRoundNumber=Number.isFinite(settingsActiveRoundNumber)
+    ? settingsActiveRoundNumber
+    : runtimeActiveRoundNumber;
   const activeRound=context?.roundsByNumber?.get(activeRoundNumber)||null;
   const roundIds=[...((context?.roundsByNumber&&context.roundsByNumber.values())||[])].map((round)=>round.id).filter(Boolean);
 
@@ -45,8 +51,12 @@ async function main(){
   const activeRoundMatchedPairCount=activeRoundId ? matchedPairs.filter((pair)=>pair.round_id===activeRoundId).length : 0;
 
   const summary={
-    runtimeActiveRoundNumber:Number.isFinite(activeRoundNumber)?activeRoundNumber:null,
+    activeRoundSource:Number.isFinite(settingsActiveRoundNumber)?"settings":"runtime",
+    configuredActiveRoundNumber:Number.isFinite(activeRoundNumber)?activeRoundNumber:null,
+    settingsActiveRoundNumber:Number.isFinite(settingsActiveRoundNumber)?settingsActiveRoundNumber:null,
+    runtimeActiveRoundNumber:Number.isFinite(runtimeActiveRoundNumber)?runtimeActiveRoundNumber:null,
     runtimeOverlayPresent:Boolean(runtimeState),
+    activeRoundSettingPresent:Boolean(activeRoundSetting),
     roundCount:roundIds.length,
     totalMarketCount:markets.length,
     totalTradeCount:trades.length,
@@ -63,10 +73,16 @@ async function main(){
     summary.failures.push("Runtime overlay row is missing.");
   }
   if(!Number.isFinite(activeRoundNumber)){
-    summary.failures.push("Runtime overlay is missing activeRoundNumber.");
+    summary.failures.push("Active round is missing from both dedicated settings and runtime overlay.");
   }
   if(Number.isFinite(activeRoundNumber)&&!activeRound){
     summary.failures.push(`Runtime active round ${activeRoundNumber} is not mapped in seeded round metadata.`);
+  }
+  if(!activeRoundSetting){
+    summary.warnings.push("Dedicated active round setting is missing; hosted round selection is falling back to runtime overlay.");
+  }
+  if(Number.isFinite(settingsActiveRoundNumber)&&Number.isFinite(runtimeActiveRoundNumber)&&settingsActiveRoundNumber!==runtimeActiveRoundNumber){
+    summary.warnings.push(`Dedicated active round setting (${settingsActiveRoundNumber}) does not match runtime overlay (${runtimeActiveRoundNumber}).`);
   }
   if(activeRound&&activeRoundMarketCount===0){
     summary.failures.push(`No markets were found for active round ${activeRoundNumber}.`);
