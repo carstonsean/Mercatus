@@ -186,3 +186,16 @@ That script prints:
 - wallet balance sample rows
 - runtime overlay keys and size
 - the configured Supabase branch/environment from `.env`
+
+To verify that hosted state still points at the expected live round before or after a deploy:
+
+```bash
+npm run verify:hosted-state
+```
+
+That script checks:
+
+- whether the runtime overlay row exists
+- whether `activeRoundNumber` is present in the runtime overlay
+- whether the active round still has markets in Supabase
+- whether the active round has unexpectedly dropped to zero trades or matched pairs while older rounds still contain live data
