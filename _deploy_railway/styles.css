@@ -4376,10 +4376,6 @@ label {
 }
 
 .market-confidence.compact .market-confidence-label,
-.market-confidence.compact .market-confidence-body,
-.market-confidence.compact .market-confidence-dial,
-.market-confidence.compact .market-confidence-needle,
-.market-confidence.compact .market-confidence-pivot,
 .market-confidence.compact .market-confidence-info {
   display: none;
 }

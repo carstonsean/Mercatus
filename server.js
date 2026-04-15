@@ -1647,17 +1647,26 @@ function buildClientMarketTradeMetrics(market,trades){
   const volume=trades.reduce((sum,trade)=>sum+(Number(trade?.stake)||0),0);
   const openTrades=trades.filter((trade)=>!trade?.result&&trade?.status!=="CANCELLED");
   const matchedTrades=trades.filter((trade)=>(Number(trade?.matchedStake)||0)>0);
+  const matchedTradeCount=matchedTrades.length;
+  const uniqueTraders=new Set(trades.map((trade)=>trade?.userName).filter(Boolean)).size;
   return {
     tradeCount:trades.length,
     volume,
     liveExposure:openTrades.reduce((sum,trade)=>sum+(Number(trade?.matchedStake)||0),0),
     availableLiquidity:openTrades.reduce((sum,trade)=>sum+(Number(trade?.unmatchedStake)||0),0),
     unmatchedOrderCount:openTrades.filter((trade)=>(Number(trade?.unmatchedStake)||0)>0).length,
-    matchedTradeCount:matchedTrades.length,
-    uniqueTraders:new Set(trades.map((trade)=>trade?.userName).filter(Boolean)).size,
+    matchedTradeCount,
+    uniqueTraders,
     netPressure:Number(market?.netPressure)||0,
-    confidence:0
+    confidence:marketConfidenceScore({matchedTradeCount,volume,uniqueTraders})
   };
+}
+
+function marketConfidenceScore({matchedTradeCount,volume,uniqueTraders}){
+  const matchedSignal=1-Math.exp(-(Number(matchedTradeCount)||0)/6);
+  const volumeSignal=1-Math.exp(-(Number(volume)||0)/220);
+  const traderSignal=1-Math.exp(-(Number(uniqueTraders)||0)/5);
+  return Math.round(Math.min(0.97,matchedSignal*0.45+volumeSignal*0.4+traderSignal*0.15)*100);
 }
 
 function buildHostedBotSimulationSnapshot(botSimulation){
@@ -2401,11 +2410,11 @@ function renderIndexHtmlWithMetadata(metadata){
 
 function applyAssetVersion(html){
   return String(html)
-    .replace(/(\.\/styles\.css)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/lib\/derived-fantasy-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/lib\/onboarding-modal\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/seed-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
-    .replace(/(\.\/app\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`);
+    .replace(/((?:\.\/|\/)styles\.css)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)lib\/derived-fantasy-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)lib\/onboarding-modal\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)seed-data\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`)
+    .replace(/((?:\.\/|\/)app\.js)(\?v=[^"]+)?/g,`$1?v=${ASSET_VERSION}`);
 }
 
 function escapeHtmlText(value){
