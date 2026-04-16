@@ -5786,8 +5786,10 @@ function getVisibleMarkets() {
 }
 
 function syncQuickTakeQueue() {
-  const sortedOpenIds = state.markets
-    .filter(isMarketOpen)
+  const openMarkets = state.markets.filter(isMarketOpen);
+  const postOnlyMarkets = openMarkets.filter((market) => !hasRestingQuickTakeLiquidity(market));
+  const quickTakeSourceMarkets = postOnlyMarkets.length ? postOnlyMarkets : openMarkets;
+  const sortedOpenIds = quickTakeSourceMarkets
     .sort(compareQuickTakeMarkets)
     .map((market) => market.id);
   const openIdSet = new Set(sortedOpenIds);
@@ -5820,6 +5822,14 @@ function syncQuickTakeQueue() {
   if (uiState.quickPickActiveIndex !== nextActiveIndex) {
     uiState.quickPickActiveIndex = nextActiveIndex;
   }
+}
+
+function hasRestingQuickTakeLiquidity(market) {
+  return Array.isArray(market?.trades) && market.trades.some((trade) =>
+    trade &&
+    ["PENDING", "PARTIALLY_MATCHED"].includes(String(trade.status || "")) &&
+    Number(trade.unmatchedStake) > 0
+  );
 }
 
 function getQuickTakeQueueMarkets() {
