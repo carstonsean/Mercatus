@@ -497,13 +497,12 @@ async function handleApi(req,res,url,sessionContext){
     }catch(error){
       return json(res,401,{error:error.message||"Authentication required"});
     }
-    let persistHostedMarketState=useSupabase;
     if(useSupabase){
       try{
         await ensureSupabaseReady();
       }catch(error){
-        persistHostedMarketState=false;
-        console.warn("Supabase unavailable for trade request; falling back to runtime overlay persistence",error.message);
+        console.warn("Supabase unavailable for trade request; rejecting hosted trade",error.message);
+        return json(res,503,{error:"Trading is temporarily unavailable. Please try again."});
       }
     }
     if(!useSupabase){
@@ -525,32 +524,42 @@ async function handleApi(req,res,url,sessionContext){
     if(stake>bankroll){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
-    const trade=executeProjectionTrade(market,{userName:username,side,stake});
-    lastStateMutationAt=Date.now();
-    syncPrizePoolState(state);
-    if(useSupabase){
-      const backendUser=await getSupabaseDemoUser(username);
-      await logAnalyticsEvent({
-        eventType:"trade_placed",
-        sessionId:sessionContext.sessionId,
-        userId:backendUser?.id||null,
-        metadata:{
-          username,
-          market_id:String(market.id),
-          side,
-          stake
-        }
-      });
-    }
-    if(useSupabase){
-      persistStateSnapshotDeferred(true);
-      if(persistHostedMarketState){
-        enqueueSupabaseMarketPersistence(market,state).catch((error)=>{
-          console.warn("Supabase trade persist failed; retaining trade in runtime overlay",error.message);
+    const stateSnapshot=useSupabase?cloneValue(state):null;
+    let trade=null;
+    try{
+      trade=executeProjectionTrade(market,{userName:username,side,stake});
+      lastStateMutationAt=Date.now();
+      syncPrizePoolState(state);
+      if(useSupabase){
+        await enqueueSupabaseMarketPersistence(market,state);
+        enqueueSupabaseRuntimeSnapshot().catch((error)=>{
+          console.warn("Supabase runtime snapshot failed after durable trade persist",error.message);
         });
+        getSupabaseDemoUser(username)
+          .then((backendUser)=>logAnalyticsEvent({
+            eventType:"trade_placed",
+            sessionId:sessionContext.sessionId,
+            userId:backendUser?.id||null,
+            metadata:{
+              username,
+              market_id:String(market.id),
+              side,
+              stake
+            }
+          }))
+          .catch((error)=>{
+            console.warn("Trade analytics logging failed",error.message);
+          });
+      }else{
+        await persistStateSnapshot(false);
       }
-    }else{
-      await persistStateSnapshot(false);
+    }catch(error){
+      if(useSupabase&&stateSnapshot){
+        state=normalizeState(stateSnapshot,{skipWalletBootstrap:true});
+        syncPrizePoolState(state);
+      }
+      console.warn("Trade request failed; rolling back in-memory state",error.message);
+      return json(res,503,{error:"Trading is temporarily unavailable. Please try again."});
     }
     if(body.quickPick||body.quickTake){
       return json(res,200,{
