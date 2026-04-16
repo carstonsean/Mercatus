@@ -12,7 +12,6 @@ const AUTH_TOKEN_KEY = "authToken";
 const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
 const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
-const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 5000;
 const PRIZE_POOL_POLL_MS = 10000;
 const ONBOARDING_POPUP_DELAY_MS = 800;
@@ -162,6 +161,11 @@ let popularFeaturedRequest = null;
 let appChromeRenderKey = "";
 let isStakeInputInteractionActive = false;
 let pendingRenderAfterStakeInput = false;
+let adminAnalyticsRefreshTimer = null;
+let adminSignupsChart = null;
+let adminActiveUsersChart = null;
+let marketViewTrackKey = "";
+let marketViewTrackedAt = 0;
 const MAX_SINGLE_BID = 10;
 
 const uiState = {
@@ -243,7 +247,11 @@ const uiState = {
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
-  adminTradeLimit: 60
+  adminTradeLimit: 60,
+  adminAnalyticsOverview: null,
+  adminAnalyticsTrends: null,
+  adminAnalyticsFunnel: null,
+  adminAnalyticsLoading: false
 };
 
 const elements = {
@@ -349,6 +357,10 @@ const elements = {
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
+  adminAnalyticsOverview: document.getElementById("admin-analytics-overview"),
+  adminAnalyticsFunnel: document.getElementById("admin-analytics-funnel"),
+  adminSignupsChart: document.getElementById("admin-signups-chart"),
+  adminActiveUsersChart: document.getElementById("admin-active-users-chart"),
   adminContactList: document.getElementById("admin-contact-list"),
   adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
@@ -537,8 +549,8 @@ function bindEvents() {
     scrollHomeCarouselTo(button.dataset.homePanelTarget);
   });
 
-  elements.openAdminButton?.addEventListener("click", () => {
-    handleOpenAdminTools();
+  elements.openAdminButton?.addEventListener("click", async () => {
+    await handleOpenAdminTools();
   });
   elements.openShareableContentButton?.addEventListener("click", () => {
     openShareableContentLibrary();
@@ -551,6 +563,7 @@ function bindEvents() {
     closeShareableContentOutput();
     uiState.adminOpen = false;
     uiState.adminShareableView = "main";
+    stopAdminAnalyticsPolling();
     renderAdminShell();
   });
 
@@ -683,15 +696,21 @@ function hasAdminAccess() {
   return window.sessionStorage.getItem(ADMIN_ACCESS_KEY) === "granted";
 }
 
-function requestAdminAccess() {
+async function requestAdminAccess() {
   if (hasAdminAccess()) return true;
   const password = window.prompt("Enter admin password");
-  if (password !== ADMIN_PASSWORD) {
-    showToast("Admin access denied", "Incorrect password.");
+  if (!password) {
     return false;
   }
-  window.sessionStorage.setItem(ADMIN_ACCESS_KEY, "granted");
-  return true;
+  try {
+    await api("/api/admin/auth", { password }, { includeUserName: false });
+    window.sessionStorage.setItem(ADMIN_ACCESS_KEY, "granted");
+    return true;
+  } catch (error) {
+    window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+    showToast("Admin access denied", error.message || "Incorrect password.");
+    return false;
+  }
 }
 
 function applySharedSnapshot(response) {
@@ -716,8 +735,11 @@ function applySharedSnapshot(response) {
   prizePoolState = response.prizePool || null;
 }
 
-async function syncSession() {
-  const response = await api("/api/session", { userName: currentUserName() });
+async function syncSession(options = {}) {
+  const response = await api("/api/session", {
+    userName: currentUserName(),
+    logUserAuthEvent: Boolean(options.logUserAuthEvent)
+  });
   applySharedSnapshot(response);
   if (popularFeaturedRoundNumber !== activeRoundNumber()) {
     popularFeaturedMarketIds = [];
@@ -739,7 +761,7 @@ async function completeLogin(userName) {
     localStorage.setItem(USER_NAME_KEY, userName);
     localStorage.setItem(HAS_AUTHENTICATED_KEY, "true");
     randomizeQuickPickOrder();
-    await syncSession();
+    await syncSession({ logUserAuthEvent: true });
     localStorage.setItem(AUTH_TOKEN_KEY, "true");
     syncSelectedMarket();
     renderAll();
@@ -890,10 +912,53 @@ async function handleLogout() {
   startLiveSync();
 }
 
-function handleOpenAdminTools() {
-  if (!requestAdminAccess()) return;
+async function handleOpenAdminTools() {
+  if (!await requestAdminAccess()) return;
   uiState.adminOpen = true;
   renderAdminShell();
+  await refreshAdminAnalytics(true);
+}
+
+function startAdminAnalyticsPolling() {
+  if (adminAnalyticsRefreshTimer) return;
+  adminAnalyticsRefreshTimer = window.setInterval(() => {
+    void refreshAdminAnalytics(false);
+  }, 60000);
+}
+
+function stopAdminAnalyticsPolling() {
+  if (adminAnalyticsRefreshTimer) {
+    window.clearInterval(adminAnalyticsRefreshTimer);
+    adminAnalyticsRefreshTimer = null;
+  }
+}
+
+async function refreshAdminAnalytics(forceLoadingState) {
+  if (!uiState.adminOpen || !hasAdminAccess()) return;
+  if (forceLoadingState) {
+    uiState.adminAnalyticsLoading = true;
+    renderAdminAnalytics();
+  }
+  try {
+    const [overview, trends, funnel] = await Promise.all([
+      apiGet("/api/admin/analytics/overview"),
+      apiGet("/api/admin/analytics/trends"),
+      apiGet("/api/admin/analytics/funnel")
+    ]);
+    uiState.adminAnalyticsOverview = overview;
+    uiState.adminAnalyticsTrends = trends;
+    uiState.adminAnalyticsFunnel = funnel;
+  } catch (error) {
+    if (String(error.message || "").toLowerCase().includes("admin access")) {
+      window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+      uiState.adminOpen = false;
+      stopAdminAnalyticsPolling();
+    }
+  } finally {
+    uiState.adminAnalyticsLoading = false;
+    renderAdminAnalytics();
+    renderAdminShell();
+  }
 }
 
 function shouldShowHowItWorksToolbarButton() {
@@ -1179,6 +1244,7 @@ function renderAll() {
   safelyRender("admin shell", renderAdminShell);
   safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
+  safelyRender("admin analytics", renderAdminAnalytics);
   safelyRender("admin contact inbox", renderAdminContactInbox);
   safelyRender("admin markets", renderAdminMarkets);
   safelyRender("bot simulation", renderBotSimulation);
@@ -1813,6 +1879,7 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
       uiState.expandedMarketId = expandable && uiState.expandedMarketId !== market.id ? market.id : "";
       uiState.focusStakeMarketId = "";
       uiState.activeScreen = "markets";
+      trackMarketViewed(market.id, "market-list");
       renderAll();
     });
     if (isExpanded) {
@@ -1913,6 +1980,7 @@ function openInlineTrade(market, side) {
   uiState.marketTradeSides[market.id] = side;
   uiState.focusStakeMarketId = market.id;
   uiState.activeScreen = "markets";
+  trackMarketViewed(market.id, "inline-trade");
   renderAll();
 }
 
@@ -4146,6 +4214,11 @@ function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
   elements.adminShell.classList.toggle("shareable-active", uiState.adminShareableView !== "main");
+  if (uiState.adminOpen) {
+    startAdminAnalyticsPolling();
+  } else {
+    stopAdminAnalyticsPolling();
+  }
   if (elements.adminRoundSelect) {
     elements.adminRoundSelect.innerHTML = getAvailableRoundOptions()
       .map((roundNumber) => `<option value="${roundNumber}">${roundLabelForNumber(roundNumber)}</option>`)
@@ -4920,6 +4993,134 @@ function renderAdminDashboard() {
     );
   }
   elements.adminDashboard.innerHTML = cards.join("");
+}
+
+function renderAdminAnalytics() {
+  if (!elements.adminAnalyticsOverview || !elements.adminAnalyticsFunnel) return;
+  if (!uiState.adminOpen) {
+    elements.adminAnalyticsOverview.innerHTML = "";
+    elements.adminAnalyticsFunnel.innerHTML = "";
+    return;
+  }
+  const overview = uiState.adminAnalyticsOverview;
+  const funnel = uiState.adminAnalyticsFunnel;
+  const loadingMarkup = `<div class="section-meta">Loading analytics…</div>`;
+  elements.adminAnalyticsOverview.innerHTML = overview
+    ? [
+        adminDashboardCard("Active now", formatWholeNumber(overview.active_users_now), "Unique sessions active in the last 15 minutes"),
+        adminDashboardCard("Signups today", formatWholeNumber(overview.signups_today), "New users created today"),
+        adminDashboardCard("Signups this week", formatWholeNumber(overview.signups_this_week), "New users created this week"),
+        adminDashboardCard("Total users", formatWholeNumber(overview.total_users), "All users in the platform"),
+        adminDashboardCard("Trades today", formatWholeNumber(overview.trades_today), "Trades placed today")
+      ].join("")
+    : uiState.adminAnalyticsLoading ? loadingMarkup : `<div class="section-meta">Analytics data is not available yet.</div>`;
+  elements.adminAnalyticsFunnel.innerHTML = funnel
+    ? [
+        adminDashboardCard("Total visitors", formatWholeNumber(funnel.total_unique_visitors), "Unique visitor sessions tracked"),
+        adminDashboardCard("Total signups", formatWholeNumber(funnel.total_signups), "Users who completed signup"),
+        adminDashboardCard("Conversion rate", `${Number(funnel.conversion_rate || 0).toFixed(1)}%`, "Signups divided by unique visitors")
+      ].join("")
+    : uiState.adminAnalyticsLoading ? loadingMarkup : `<div class="section-meta">Open admin analytics to start loading data.</div>`;
+  renderAdminAnalyticsCharts();
+}
+
+function renderAdminAnalyticsCharts() {
+  const trends = uiState.adminAnalyticsTrends;
+  if (!trends || typeof window.Chart !== "function") return;
+  const signupsSeries = Array.isArray(trends.daily_signups) ? trends.daily_signups : [];
+  const activeSeries = Array.isArray(trends.daily_active_users) ? trends.daily_active_users : [];
+  const labels = signupsSeries.map((entry) => formatChartDate(entry.date));
+  adminSignupsChart = renderAdminLineChart(adminSignupsChart, elements.adminSignupsChart, {
+    labels,
+    label: "Daily Signups",
+    data: signupsSeries.map((entry) => Number(entry.count) || 0)
+  });
+  adminActiveUsersChart = renderAdminLineChart(adminActiveUsersChart, elements.adminActiveUsersChart, {
+    labels: activeSeries.map((entry) => formatChartDate(entry.date)),
+    label: "Daily Active Users",
+    data: activeSeries.map((entry) => Number(entry.count) || 0)
+  });
+}
+
+function renderAdminLineChart(existingChart, canvas, { labels, label, data }) {
+  if (!canvas || typeof window.Chart !== "function") return existingChart;
+  existingChart?.destroy();
+  const styles = getComputedStyle(document.documentElement);
+  const lineColor = styles.getPropertyValue("--color-accent").trim() || "#68d9ff";
+  const gridColor = styles.getPropertyValue("--border-subtle").trim() || "rgba(255,255,255,0.12)";
+  const textColor = styles.getPropertyValue("--text-secondary").trim() || "rgba(255,255,255,0.72)";
+  return new window.Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        borderColor: lineColor,
+        backgroundColor: "transparent",
+        borderWidth: 2,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor,
+            maxRotation: 0,
+            autoSkip: true
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor,
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
+function formatWholeNumber(value) {
+  return WHOLE_NUMBER_FORMATTER.format(Number(value) || 0);
+}
+
+function formatChartDate(dateValue) {
+  const date = new Date(`${dateValue}T00:00:00Z`);
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function trackMarketViewed(marketId, source = "markets") {
+  const market = findMarket(marketId);
+  if (!market) return;
+  const nextKey = String(market.id);
+  const now = Date.now();
+  if (marketViewTrackKey === nextKey && now - marketViewTrackedAt < 15000) return;
+  marketViewTrackKey = nextKey;
+  marketViewTrackedAt = now;
+  void api("/api/analytics/market-view", {
+    marketId: market.id,
+    source
+  }, {
+    includeUserName: isAuthenticated()
+  }).catch(() => {});
 }
 
 function skipQuickTake(marketId, card) {
@@ -6478,6 +6679,7 @@ function openMarketFromHome(marketId) {
   uiState.currentTeam = market.team;
   uiState.selectedMarketId = market.id;
   uiState.expandedMarketId = market.id;
+  trackMarketViewed(market.id, "home");
   renderAll();
   scrollExpandedMarketIntoView(market.id);
 }
@@ -7511,16 +7713,19 @@ function selectTextContent(node) {
   return true;
 }
 
-async function api(url, payload) {
+async function api(url, payload, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (options.includeUserName !== false) {
+      headers["X-User-Name"] = currentUserName();
+    }
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Name": currentUserName()
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal
     });

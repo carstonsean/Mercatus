@@ -8087,6 +8087,22 @@ label {
   gap: 12px;
 }
 
+.admin-analytics-trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.admin-analytics-chart-card {
+  min-height: 300px;
+}
+
+.admin-analytics-chart-card canvas {
+  width: 100% !important;
+  height: 220px !important;
+}
+
 .admin-dashboard-card,
 .admin-market-card {
   padding: 14px;

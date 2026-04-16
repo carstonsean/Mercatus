@@ -493,6 +493,34 @@
       <section class="admin-panel">
         <div class="section-heading compact-heading">
           <div>
+            <p class="eyebrow">Analytics</p>
+            <h3>Platform activity</h3>
+            <p class="section-meta">Live traffic, signup momentum, and visitor conversion inside the existing admin workspace.</p>
+          </div>
+        </div>
+        <div id="admin-analytics-overview" class="admin-dashboard-grid"></div>
+        <div class="admin-analytics-trends-grid">
+          <div class="stack-form admin-analytics-chart-card">
+            <div>
+              <p class="panel-label">Daily signups</p>
+              <p class="section-meta">Last 30 days</p>
+            </div>
+            <canvas id="admin-signups-chart" height="220"></canvas>
+          </div>
+          <div class="stack-form admin-analytics-chart-card">
+            <div>
+              <p class="panel-label">Daily active users</p>
+              <p class="section-meta">Last 30 days</p>
+            </div>
+            <canvas id="admin-active-users-chart" height="220"></canvas>
+          </div>
+        </div>
+        <div id="admin-analytics-funnel" class="admin-dashboard-grid"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="section-heading compact-heading">
+          <div>
             <p class="eyebrow">Live markets</p>
             <h3>Market board</h3>
           </div>
@@ -645,6 +673,7 @@
   <script src="/lib/derived-fantasy-data.js?v=2.4"></script>
   <script src="/lib/onboarding-modal.js?v=2.4"></script>
   <script src="/seed-data.js?v=2.4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/app.js?v=2.4"></script>
 </body>
 </html>

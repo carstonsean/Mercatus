@@ -4,13 +4,13 @@
 const http=require("http");
 const fs=require("fs");
 const path=require("path");
-const {randomUUID}=require("crypto");
+const {createHash,randomUUID,timingSafeEqual}=require("crypto");
 require("./lib/load-env");
 const {HALF_POINT,roundGames,TEAM_COLORS,buildRoundMarkets,roundToHalf}=require("./seed-data.js");
 const derivedData=require("./lib/derived-fantasy-data.js");
 const {DEFAULT_SIMULATION_CONFIG,normalizeSimulationConfig,createBotRoster,createRandomProbBot,runSimulationTick}=require("./lib/bot-engine");
 const {USE_SUPABASE,isHostedEnvironment,isSupabaseEnabled,getLocalSupabaseSafetyError}=require("./lib/config");
-const {supabaseRequest}=require("./lib/supabase");
+const {supabaseRequest,supabaseRequestAll}=require("./lib/supabase");
 const {ensureSupabaseDemoUser,getSupabaseDemoUser}=require("./lib/supabase-users");
 const {ensureSupabaseSeedData,getSupabaseAvailableBalance,persistSupabaseMarketState}=require("./lib/supabase-market-sync");
 const {fetchSupabaseDashboard}=require("./lib/supabase-dashboard");
@@ -78,6 +78,11 @@ const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
 const SHARE_SESSION_CREATE_TIMEOUT_MS=4000;
 const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
+const SESSION_COOKIE_NAME="crowdiq_session_id";
+const SESSION_COOKIE_MAX_AGE_MS=30*24*60*60*1000;
+const ADMIN_COOKIE_NAME="crowdiq_admin_session";
+const ADMIN_SESSION_MAX_AGE_MS=12*60*60*1000;
+const ADMIN_PASSWORD=String(process.env.ADMIN_PASSWORD||"binthechin");
 const HOSTED_ENVIRONMENT=isHostedEnvironment();
 const SUPABASE_ENABLED=isSupabaseEnabled();
 const HOSTED_BOT_AUTOPLAY_ENABLED=String(process.env.ENABLE_HOSTED_BOTS||"").toLowerCase()==="true";
@@ -107,6 +112,7 @@ let lastSupabaseUnavailableAt=0;
 let supabaseStateSyncPromise=null;
 let lastStateMutationAt=Date.now();
 let lastBotAutoplayStatus=buildBotAutoplayStatus("startup");
+const adminSessions=new Map();
 persistState();
 
 const MIME_TYPES={
@@ -119,15 +125,18 @@ const MIME_TYPES={
 const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url,`http://${req.headers.host}`);
+    const sessionContext=ensureSessionContext(req,res);
     if(url.pathname==="/api"||url.pathname.startsWith("/api/")){
-      await handleApi(req,res,url);
+      await handleApi(req,res,url,sessionContext);
       return;
     }
     if(isChallengePath(url.pathname)){
-      await serveChallengePage(res,url.pathname,shouldUseSupabaseForRequest(req));
+      await trackPageViewRequest(req,url,sessionContext);
+      await serveChallengePage(res,url.pathname,shouldUseSupabaseForRequest(req),sessionContext);
       return;
     }
-    serveStatic(res,url.pathname);
+    await trackPageViewRequest(req,url,sessionContext);
+    serveStatic(res,url.pathname,sessionContext);
   }catch(error){
     res.writeHead(500,{"Content-Type":"application/json; charset=utf-8"});
     res.end(JSON.stringify({error:error.message||"Server error"}));
@@ -166,7 +175,7 @@ function refreshSupabaseStateInBackground(label="Supabase"){
   });
 }
 
-function serveStatic(res,pathname){
+function serveStatic(res,pathname,sessionContext=null){
   const requestedPath=pathname==="/"?"/index.html":pathname;
   if(requestedPath==="/index.html"){
     const publicOrigin=getPublicAppOrigin();
@@ -176,13 +185,15 @@ function serveStatic(res,pathname){
       url:`${publicOrigin}/`,
       image:`${publicOrigin}/social-preview.svg`
     });
-    res.writeHead(200,{
+    const headers={
       "Content-Type":"text/html; charset=utf-8",
       "Cache-Control":"no-store, no-cache, must-revalidate, proxy-revalidate",
       "Pragma":"no-cache",
       "Expires":"0",
       "Surrogate-Control":"no-store"
-    });
+    };
+    appendPendingCookies(headers,sessionContext);
+    res.writeHead(200,headers);
     res.end(html);
     return;
   }
@@ -208,13 +219,37 @@ function serveStatic(res,pathname){
       headers["Expires"]="0";
       headers["Surrogate-Control"]="no-store";
     }
+    appendPendingCookies(headers,sessionContext);
     res.writeHead(200,headers);
     res.end(data);
   });
 }
 
-async function handleApi(req,res,url){
+async function handleApi(req,res,url,sessionContext){
   const useSupabase=shouldUseSupabaseForRequest(req);
+  if(req.method==="POST"&&url.pathname==="/api/admin/auth"){
+    const body=await parseJson(req);
+    const submittedPassword=String(body.password||"");
+    if(!safeConstantCompare(submittedPassword,ADMIN_PASSWORD)){
+      clearAdminSession(sessionContext);
+      return json(res,401,{error:"Incorrect admin password"},sessionContext);
+    }
+    createAdminSession(sessionContext);
+    return json(res,200,{ok:true},sessionContext);
+  }
+  if(req.method==="POST"&&url.pathname==="/api/analytics/market-view"){
+    const body=await parseJson(req);
+    await logMarketViewedEvent(req,sessionContext,{
+      marketId:body.marketId,
+      source:body.source
+    },useSupabase);
+    return json(res,200,{ok:true},sessionContext);
+  }
+  if(url.pathname.startsWith("/api/admin/")&&url.pathname!=="/api/admin/auth"){
+    if(!hasAdminAccess(sessionContext)){
+      return json(res,403,{error:"Admin access required"},sessionContext);
+    }
+  }
   if(req.method==="POST"&&url.pathname==="/api/share/create"){
     const body=await parseJson(req);
     let authenticatedUserName="";
@@ -372,6 +407,7 @@ async function handleApi(req,res,url){
   if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
     const body=await parseJson(req);
     const username=ensureUser(body.userName||"Demo Trader");
+    const shouldLogAuthEvent=body.logUserAuthEvent!==false;
     if(useSupabase){
       if(Array.isArray(state?.markets)&&state.markets.length){
         refreshSupabaseStateInBackground("Session Supabase");
@@ -387,6 +423,16 @@ async function handleApi(req,res,url){
     }
     syncPrizePoolState(state);
     const backendUser=await syncBackendUser(username,useSupabase);
+    if(useSupabase&&shouldLogAuthEvent&&backendUser?.id){
+      await logAnalyticsEvent({
+        eventType:backendUser.created?"user_signup":"user_login",
+        sessionId:sessionContext.sessionId,
+        userId:backendUser.id,
+        metadata:{
+          username:backendUser.username
+        }
+      });
+    }
     return json(res,200,{state:buildClientStateSnapshot(state,{
       useSupabase,
       currentUserName:username
@@ -482,6 +528,20 @@ async function handleApi(req,res,url){
     const trade=executeProjectionTrade(market,{userName:username,side,stake});
     lastStateMutationAt=Date.now();
     syncPrizePoolState(state);
+    if(useSupabase){
+      const backendUser=await getSupabaseDemoUser(username);
+      await logAnalyticsEvent({
+        eventType:"trade_placed",
+        sessionId:sessionContext.sessionId,
+        userId:backendUser?.id||null,
+        metadata:{
+          username,
+          market_id:String(market.id),
+          side,
+          stake
+        }
+      });
+    }
     if(useSupabase){
       persistStateSnapshotDeferred(true);
       if(persistHostedMarketState){
@@ -695,7 +755,331 @@ async function handleApi(req,res,url){
     }
     return json(res,200,{state,botSimulation:state.botSimulation,events:result.events,botStatus:lastBotAutoplayStatus});
   }
+  if(req.method==="GET"&&url.pathname==="/api/admin/analytics/overview"){
+    const overview=await buildAnalyticsOverview(useSupabase);
+    return json(res,200,overview,sessionContext);
+  }
+  if(req.method==="GET"&&url.pathname==="/api/admin/analytics/trends"){
+    const trends=await buildAnalyticsTrends(useSupabase);
+    return json(res,200,trends,sessionContext);
+  }
+  if(req.method==="GET"&&url.pathname==="/api/admin/analytics/funnel"){
+    const funnel=await buildAnalyticsFunnel(useSupabase);
+    return json(res,200,funnel,sessionContext);
+  }
   json(res,404,{error:"Not found"});
+}
+
+function ensureSessionContext(req,res){
+  const cookies=parseCookies(req?.headers?.cookie||"");
+  const sessionId=String(cookies[SESSION_COOKIE_NAME]||"").trim()||randomUUID();
+  const context={
+    req,
+    res,
+    cookies,
+    sessionId,
+    pendingCookies:[]
+  };
+  if(!cookies[SESSION_COOKIE_NAME]){
+    setCookie(context,SESSION_COOKIE_NAME,sessionId,{
+      maxAgeMs:SESSION_COOKIE_MAX_AGE_MS,
+      httpOnly:true
+    });
+  }
+  context.adminSessionToken=String(cookies[ADMIN_COOKIE_NAME]||"").trim();
+  context.isAdmin=Boolean(resolveAdminSession(context.adminSessionToken));
+  return context;
+}
+
+function parseCookies(cookieHeader){
+  return String(cookieHeader||"")
+    .split(";")
+    .map((entry)=>entry.trim())
+    .filter(Boolean)
+    .reduce((result,entry)=>{
+      const separatorIndex=entry.indexOf("=");
+      if(separatorIndex===-1){
+        return result;
+      }
+      const key=entry.slice(0,separatorIndex).trim();
+      const value=entry.slice(separatorIndex+1).trim();
+      if(key){
+        result[key]=decodeURIComponent(value);
+      }
+      return result;
+    },{});
+}
+
+function serializeCookie(name,value,{maxAgeMs,httpOnly=false}={}){
+  const parts=[
+    `${name}=${encodeURIComponent(String(value||""))}`,
+    "Path=/",
+    "SameSite=Lax"
+  ];
+  if(Number.isFinite(maxAgeMs)){
+    parts.push(`Max-Age=${Math.max(0,Math.floor(maxAgeMs/1000))}`);
+    parts.push(`Expires=${new Date(Date.now()+Math.max(0,maxAgeMs)).toUTCString()}`);
+  }
+  if(httpOnly){
+    parts.push("HttpOnly");
+  }
+  return parts.join("; ");
+}
+
+function setCookie(sessionContext,name,value,options={}){
+  if(!sessionContext){
+    return;
+  }
+  sessionContext.pendingCookies.push(serializeCookie(name,value,options));
+}
+
+function appendPendingCookies(headers,sessionContext){
+  if(sessionContext?.pendingCookies?.length){
+    headers["Set-Cookie"]=sessionContext.pendingCookies;
+    sessionContext.pendingCookies=[];
+  }
+}
+
+function createAdminSession(sessionContext){
+  const token=randomUUID();
+  adminSessions.set(token,{
+    expiresAt:Date.now()+ADMIN_SESSION_MAX_AGE_MS
+  });
+  sessionContext.adminSessionToken=token;
+  sessionContext.isAdmin=true;
+  setCookie(sessionContext,ADMIN_COOKIE_NAME,token,{
+    maxAgeMs:ADMIN_SESSION_MAX_AGE_MS,
+    httpOnly:true
+  });
+}
+
+function clearAdminSession(sessionContext){
+  if(sessionContext?.adminSessionToken){
+    adminSessions.delete(sessionContext.adminSessionToken);
+  }
+  if(sessionContext){
+    sessionContext.adminSessionToken="";
+    sessionContext.isAdmin=false;
+    setCookie(sessionContext,ADMIN_COOKIE_NAME,"",{
+      maxAgeMs:0,
+      httpOnly:true
+    });
+  }
+}
+
+function resolveAdminSession(token){
+  if(!token){
+    return null;
+  }
+  const record=adminSessions.get(token);
+  if(!record){
+    return null;
+  }
+  if(record.expiresAt<=Date.now()){
+    adminSessions.delete(token);
+    return null;
+  }
+  return record;
+}
+
+function hasAdminAccess(sessionContext){
+  return Boolean(sessionContext?.isAdmin);
+}
+
+function safeConstantCompare(left,right){
+  const leftBuffer=Buffer.from(String(left||""),"utf8");
+  const rightBuffer=Buffer.from(String(right||""),"utf8");
+  if(leftBuffer.length!==rightBuffer.length){
+    const leftHash=createHash("sha256").update(leftBuffer).digest();
+    const rightHash=createHash("sha256").update(rightBuffer).digest();
+    return timingSafeEqual(leftHash,rightHash)&&false;
+  }
+  return timingSafeEqual(leftBuffer,rightBuffer);
+}
+
+async function trackPageViewRequest(req,url,sessionContext){
+  if(!SUPABASE_ENABLED||req.method!=="GET"){
+    return;
+  }
+  if(url.pathname!=="/"&&url.pathname!=="/index.html"&&!isChallengePath(url.pathname)){
+    return;
+  }
+  await logRequestAnalyticsEvent(req,sessionContext,"page_view",{
+    path:url.pathname
+  });
+}
+
+async function logMarketViewedEvent(req,sessionContext,{marketId,source}={},useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase||!marketId){
+    return;
+  }
+  const market=findMarket(String(marketId));
+  if(!market){
+    return;
+  }
+  await logRequestAnalyticsEvent(req,sessionContext,"market_viewed",{
+    market_id:String(market.id),
+    player_name:market.playerName,
+    team:market.team,
+    source:source||"app"
+  });
+}
+
+async function logRequestAnalyticsEvent(req,sessionContext,eventType,metadata=null){
+  const userName=String(req?.headers?.["x-user-name"]||"").trim();
+  let backendUser=null;
+  if(userName){
+    backendUser=await getSupabaseDemoUser(userName);
+  }
+  await logAnalyticsEvent({
+    eventType,
+    sessionId:sessionContext?.sessionId||randomUUID(),
+    userId:backendUser?.id||null,
+    metadata
+  });
+}
+
+async function logAnalyticsEvent({eventType,userId=null,sessionId,metadata=null,createdAt=null}){
+  if(!SUPABASE_ENABLED||!eventType||!sessionId){
+    return;
+  }
+  try{
+    await supabaseRequest("analytics_events",{
+      method:"POST",
+      headers:{Prefer:"return=minimal"},
+      body:{
+        event_type:String(eventType),
+        user_id:userId||null,
+        session_id:String(sessionId),
+        created_at:createdAt||new Date().toISOString(),
+        metadata:metadata&&typeof metadata==="object"?metadata:null
+      }
+    });
+  }catch(error){
+    if(!/analytics_events/i.test(String(error?.message||""))){
+      console.warn("Analytics event write failed",error.message);
+    }
+  }
+}
+
+async function fetchAnalyticsEvents(query={}){
+  if(!SUPABASE_ENABLED){
+    return [];
+  }
+  try{
+    return await supabaseRequestAll("analytics_events",{
+      query:{
+        select:"event_type,user_id,session_id,created_at,metadata",
+        ...query
+      }
+    });
+  }catch(error){
+    if(/analytics_events/i.test(String(error?.message||""))){
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function buildAnalyticsOverview(useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
+    return {
+      active_users_now:0,
+      signups_today:0,
+      signups_this_week:0,
+      total_users:0,
+      trades_today:0
+    };
+  }
+  const now=new Date();
+  const fifteenMinutesAgo=new Date(now.getTime()-(15*60*1000)).toISOString();
+  const todayStart=startOfUtcDay(now);
+  const weekStart=startOfUtcDay(new Date(now.getTime()-(now.getUTCDay()*24*60*60*1000)));
+  const [activeEvents,signupTodayEvents,signupWeekEvents,tradeTodayEvents,users]=await Promise.all([
+    fetchAnalyticsEvents({created_at:`gte.${fifteenMinutesAgo}`}),
+    fetchAnalyticsEvents({event_type:"eq.user_signup",created_at:`gte.${todayStart.toISOString()}`}),
+    fetchAnalyticsEvents({event_type:"eq.user_signup",created_at:`gte.${weekStart.toISOString()}`}),
+    fetchAnalyticsEvents({event_type:"eq.trade_placed",created_at:`gte.${todayStart.toISOString()}`}),
+    fetchUsers()
+  ]);
+  return {
+    active_users_now:new Set(activeEvents.map((event)=>String(event.session_id||"")).filter(Boolean)).size,
+    signups_today:signupTodayEvents.length,
+    signups_this_week:signupWeekEvents.length,
+    total_users:users.length,
+    trades_today:tradeTodayEvents.length
+  };
+}
+
+async function buildAnalyticsTrends(useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
+    return {daily_signups:[],daily_active_users:[]};
+  }
+  const today=startOfUtcDay(new Date());
+  const rangeStart=new Date(today.getTime()-(29*24*60*60*1000));
+  const [signupEvents,allEvents]=await Promise.all([
+    fetchAnalyticsEvents({event_type:"eq.user_signup",created_at:`gte.${rangeStart.toISOString()}`}),
+    fetchAnalyticsEvents({created_at:`gte.${rangeStart.toISOString()}`})
+  ]);
+  const signupCounts=new Map();
+  const activeByDay=new Map();
+  signupEvents.forEach((event)=>{
+    const key=toUtcDateKey(event.created_at);
+    signupCounts.set(key,(signupCounts.get(key)||0)+1);
+  });
+  allEvents.forEach((event)=>{
+    const key=toUtcDateKey(event.created_at);
+    if(!activeByDay.has(key)){
+      activeByDay.set(key,new Set());
+    }
+    if(event.session_id){
+      activeByDay.get(key).add(String(event.session_id));
+    }
+  });
+  const daily_signups=[];
+  const daily_active_users=[];
+  for(let index=0;index<30;index+=1){
+    const date=new Date(rangeStart.getTime()+(index*24*60*60*1000));
+    const key=toUtcDateKey(date);
+    daily_signups.push({date:key,count:signupCounts.get(key)||0});
+    daily_active_users.push({date:key,count:activeByDay.get(key)?.size||0});
+  }
+  return {daily_signups,daily_active_users};
+}
+
+async function buildAnalyticsFunnel(useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
+    return {total_unique_visitors:0,total_signups:0,conversion_rate:0};
+  }
+  const [events,signups]=await Promise.all([
+    fetchAnalyticsEvents(),
+    fetchAnalyticsEvents({event_type:"eq.user_signup"})
+  ]);
+  const totalUniqueVisitors=new Set(events.map((event)=>String(event.session_id||"")).filter(Boolean)).size;
+  const totalSignups=signups.length;
+  return {
+    total_unique_visitors:totalUniqueVisitors,
+    total_signups:totalSignups,
+    conversion_rate:totalUniqueVisitors?Number(((totalSignups/totalUniqueVisitors)*100).toFixed(1)):0
+  };
+}
+
+async function fetchUsers(){
+  if(!SUPABASE_ENABLED){
+    return [];
+  }
+  return supabaseRequestAll("users",{
+    query:{select:"id"}
+  });
+}
+
+function startOfUtcDay(value){
+  const date=new Date(value);
+  return new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()));
+}
+
+function toUtcDateKey(value){
+  return new Date(value).toISOString().slice(0,10);
 }
 
 function ensureAuthenticatedUserName(req){
@@ -2382,17 +2766,19 @@ function isChallengePath(pathname){
   return /^\/challenge\/[^/]+\/?$/.test(String(pathname||""));
 }
 
-async function serveChallengePage(res,pathname,useSupabase=SUPABASE_ENABLED){
+async function serveChallengePage(res,pathname,useSupabase=SUPABASE_ENABLED,sessionContext=null){
   const shareId=decodeURIComponent(String(pathname||"").replace(/^\/challenge\//,"").replace(/\/$/,""));
   const metadata=await buildChallengeMetadata(shareId,useSupabase);
   const html=renderIndexHtmlWithMetadata(metadata);
-  res.writeHead(200,{
+  const headers={
     "Content-Type":"text/html; charset=utf-8",
     "Cache-Control":"no-store, no-cache, must-revalidate, proxy-revalidate",
     "Pragma":"no-cache",
     "Expires":"0",
     "Surrogate-Control":"no-store"
-  });
+  };
+  appendPendingCookies(headers,sessionContext);
+  res.writeHead(200,headers);
   res.end(html);
 }
 
@@ -3578,8 +3964,10 @@ function parseJson(req){
   });
 }
 
-function json(res,status,payload){
-  res.writeHead(status,{"Content-Type":"application/json; charset=utf-8"});
+function json(res,status,payload,sessionContext=null){
+  const headers={"Content-Type":"application/json; charset=utf-8"};
+  appendPendingCookies(headers,sessionContext);
+  res.writeHead(status,headers);
   res.end(JSON.stringify(payload));
 }
 
