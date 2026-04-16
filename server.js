@@ -2691,9 +2691,17 @@ function validateHostedStateOrThrow(nextState,activeRoundSetting,runtimeState){
   if(!HOSTED_ENVIRONMENT){
     return;
   }
+  const configuredRoundNumber=Number(activeRoundSetting?.activeRoundNumber);
+  const runtimeRoundNumber=Number(runtimeState?.activeRoundNumber);
+  if(Number.isFinite(configuredRoundNumber)&&Number.isFinite(runtimeRoundNumber)&&configuredRoundNumber!==runtimeRoundNumber){
+    throw new Error(`Hosted state validation failed: active round setting ${configuredRoundNumber} does not match runtime overlay ${runtimeRoundNumber}.`);
+  }
   const expectedRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState);
   if(!Number.isFinite(expectedRoundNumber)){
     throw new Error("Hosted state validation failed: active round is missing from durable settings and runtime overlay.");
+  }
+  if(Number(nextState?.activeRoundNumber)!==expectedRoundNumber){
+    throw new Error(`Hosted state validation failed: merged state round ${Number(nextState?.activeRoundNumber)||"(missing)"} does not match expected round ${expectedRoundNumber}.`);
   }
   const activeRoundMarkets=(Array.isArray(nextState?.markets)?nextState.markets:[])
     .filter((market)=>getRoundNumberForMarket(market)===expectedRoundNumber);
@@ -2735,15 +2743,18 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
         return state;
       }
       if(supabaseState){
-        const mergedState=mergeSupabaseState(supabaseState,runtimeState,state);
+        const mergedState=mergeSupabaseState(supabaseState,runtimeState,state,activeRoundSetting);
         if(validateHostedState){
           validateHostedStateOrThrow(mergedState,activeRoundSetting,runtimeState);
         }
         state=mergedState;
       }else if(runtimeState){
+        const fallbackActiveRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,state);
         const fallbackState=normalizeState({
           ...buildFreshState(),
-          ...runtimeState
+          ...runtimeState,
+          activeRoundNumber:fallbackActiveRoundNumber,
+          activeRoundLabel:buildRoundLabel(fallbackActiveRoundNumber)
         },{skipWalletBootstrap:true});
         if(validateHostedState){
           validateHostedStateOrThrow(fallbackState,activeRoundSetting,runtimeState);
@@ -2783,15 +2794,16 @@ function buildBackendPayload(backendUser,dashboard=null,useSupabase=SUPABASE_ENA
   };
 }
 
-function mergeSupabaseState(supabaseState,runtimeState,currentState=state){
+function mergeSupabaseState(supabaseState,runtimeState,currentState=state,activeRoundSetting=null){
   const overlay=runtimeState&&typeof runtimeState==="object"?runtimeState:{};
   const bankrolls=computeHostedBankrolls(supabaseState,overlay,currentState);
+  const activeRoundNumber=hostedActiveRoundNumber(activeRoundSetting,overlay,supabaseState);
   return normalizeState({
     ...buildFreshState(),
     bankrolls,
     markets:supabaseState?.markets||[],
-    activeRoundNumber:overlay.activeRoundNumber??currentState?.activeRoundNumber,
-    activeRoundLabel:overlay.activeRoundLabel??currentState?.activeRoundLabel,
+    activeRoundNumber,
+    activeRoundLabel:buildRoundLabel(activeRoundNumber),
     forceOpenGameIds:Array.isArray(overlay.forceOpenGameIds)?overlay.forceOpenGameIds:(currentState?.forceOpenGameIds||[]),
     walletTransactions:Array.isArray(overlay.walletTransactions)?overlay.walletTransactions:(currentState?.walletTransactions||[]),
     shareSessions:Array.isArray(overlay.shareSessions)?overlay.shareSessions:(currentState?.shareSessions||[]),

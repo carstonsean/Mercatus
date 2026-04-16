@@ -42,8 +42,8 @@ const RELEASE_FILES=[
   "supabase/migrations/002_orderbook_state.sql",
   "supabase/migrations/003_runtime_state.sql",
   "supabase/migrations/004_active_round_settings.sql",
-  "supabase/migrations/004_share_sessions.sql",
-  "supabase/migrations/005_fix_share_holding_group_by.sql",
+  "supabase/migrations/005_share_sessions.sql",
+  "supabase/migrations/006_share_trade_rpc.sql",
   "supabase/config.toml"
 ].filter((relativePath)=>fs.existsSync(path.join(ROOT_DIR,relativePath)));
 

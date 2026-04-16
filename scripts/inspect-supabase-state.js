@@ -28,7 +28,7 @@ async function main() {
     matched_pairs: await countRows("matched_pairs", "id"),
     wallet_ledger: await countRows("wallet_ledger", "id"),
     wallet_snapshots: await countRows("wallet_snapshots", "user_id"),
-    share_sessions: await countRows("share_sessions", "id"),
+    share_sessions: await countRows("share_sessions", "id").catch(() => 0),
     app_runtime_state: await countRows("app_runtime_state", "id"),
     active_round_settings: await countRows("active_round_settings", "id").catch(() => 0)
   };
