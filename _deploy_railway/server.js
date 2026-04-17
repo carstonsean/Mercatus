@@ -3502,10 +3502,10 @@ function validateHostedStateOrThrow(nextState,activeRoundSetting,runtimeState){
   }
   const configuredRoundNumber=Number(activeRoundSetting?.activeRoundNumber);
   const runtimeRoundNumber=Number(runtimeState?.activeRoundNumber);
+  const expectedRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState);
   if(Number.isFinite(configuredRoundNumber)&&Number.isFinite(runtimeRoundNumber)&&configuredRoundNumber!==runtimeRoundNumber){
     throw new Error(`Hosted state validation failed: active round setting ${configuredRoundNumber} does not match runtime overlay ${runtimeRoundNumber}.`);
   }
-  const expectedRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState);
   if(!Number.isFinite(expectedRoundNumber)){
     throw new Error("Hosted state validation failed: active round is missing from durable settings and runtime overlay.");
   }
