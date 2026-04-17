@@ -13,6 +13,7 @@ const ROUND_LABEL_BY_NUMBER=new Map(ALL_ROUND_NUMBERS.map((roundNumber)=>[
 const STARTING_BANKROLL=200;
 
 let cachedContext=null;
+let cachedContextPromise=null;
 
 async function ensureSupabaseSeedData(){
   if(!isSupabaseConfigured()){
@@ -21,105 +22,120 @@ async function ensureSupabaseSeedData(){
   if(cachedContext){
     return cachedContext;
   }
+  if(cachedContextPromise){
+    return cachedContextPromise;
+  }
 
-  const localMarkets=buildRoundMarkets();
-  const roundNumberByGameId=new Map(roundGames.map((game)=>[game.id,parseRoundNumber(game.roundLabel)]));
+  cachedContextPromise=(async()=>{
+    const localMarkets=buildRoundMarkets();
+    const roundNumberByGameId=new Map(roundGames.map((game)=>[game.id,parseRoundNumber(game.roundLabel)]));
 
-  const teams=await upsertTeams();
-  const teamsByName=new Map(teams.map((team)=>[team.name,team]));
+    const teams=await upsertTeams();
+    const teamsByName=new Map(teams.map((team)=>[team.name,team]));
 
-  const rounds=await upsertRows("rounds",ALL_ROUND_NUMBERS.map((roundNumber)=>({
-    season:CURRENT_SEASON,
-    round_number:roundNumber,
-    label:ROUND_LABEL_BY_NUMBER.get(roundNumber)||`Round ${roundNumber}`,
-    bankroll_top_up:STARTING_BANKROLL
-  })),"season,round_number");
-  const roundsByNumber=new Map((rounds||[]).map((round)=>[Number(round.round_number),round]));
+    const rounds=await upsertRows("rounds",ALL_ROUND_NUMBERS.map((roundNumber)=>({
+      season:CURRENT_SEASON,
+      round_number:roundNumber,
+      label:ROUND_LABEL_BY_NUMBER.get(roundNumber)||`Round ${roundNumber}`,
+      bankroll_top_up:STARTING_BANKROLL
+    })),"season,round_number");
+    const roundsByNumber=new Map((rounds||[]).map((round)=>[Number(round.round_number),round]));
 
-  const games=await upsertRows("games",roundGames.map((game)=>{
-    const roundNumber=roundNumberByGameId.get(game.id);
-    const round=roundsByNumber.get(roundNumber);
-    return {
-      slug:game.id,
-      round_id:round.id,
-      venue:game.venue,
-      kickoff_at:game.kickoffAt||parseKickoffLabel(game.kickoff),
-      home_team_id:teamsByName.get(normalizeTeamName(game.homeTeam)).id,
-      away_team_id:teamsByName.get(normalizeTeamName(game.awayTeam)).id
-    };
-  }),"slug");
-  const gamesBySlug=new Map(games.map((game)=>[game.slug,game]));
+    const games=await upsertRows("games",roundGames.map((game)=>{
+      const roundNumber=roundNumberByGameId.get(game.id);
+      const round=roundsByNumber.get(roundNumber);
+      return {
+        slug:game.id,
+        round_id:round.id,
+        venue:game.venue,
+        kickoff_at:game.kickoffAt||parseKickoffLabel(game.kickoff),
+        home_team_id:teamsByName.get(normalizeTeamName(game.homeTeam)).id,
+        away_team_id:teamsByName.get(normalizeTeamName(game.awayTeam)).id
+      };
+    }),"slug");
+    const gamesBySlug=new Map(games.map((game)=>[game.slug,game]));
 
-  const players=await upsertRows("players",localMarkets.map((market)=>({
-    slug:playerSlug(market),
-    full_name:market.playerName,
-    team_id:teamsByName.get(normalizeTeamName(market.team)).id,
-    position:market.position,
-    jersey_number:market.jerseyNumber
-  })),"slug");
-  const playersBySlug=new Map(players.map((player)=>[player.slug,player]));
-
-  const roundIds=[...roundsByNumber.values()].map((round)=>round.id).filter(Boolean);
-  const existingMarkets=roundIds.length
-    ? await supabaseRequest("weekly_player_markets",{
-      query:{
-        select:"*",
-        round_id:`in.(${roundIds.join(",")})`
-      }
-    })
-    : [];
-  const existingMarketsByKey=new Map((existingMarkets||[]).map((market)=>[`${market.round_id}:${market.player_id}`,market]));
-
-  const markets=await upsertRows("weekly_player_markets",localMarkets.map((market)=>{
-    const roundNumber=roundNumberByGameId.get(market.gameId);
-    const round=roundsByNumber.get(roundNumber);
-    const player=playersBySlug.get(playerSlug(market));
-    const existing=existingMarketsByKey.get(`${round.id}:${player.id}`);
-    return {
-      round_id:round.id,
-      game_id:gamesBySlug.get(market.gameId).id,
-      player_id:player.id,
+    const players=await upsertRows("players",localMarkets.map((market)=>({
+      slug:playerSlug(market),
+      full_name:market.playerName,
       team_id:teamsByName.get(normalizeTeamName(market.team)).id,
-      opening_line:Number(market.initialLine),
-      current_line:Number(existing?.current_line??market.initialLine),
-      season_average:Number(market.seasonAverage),
-      over_stake_total:Number(existing?.over_stake_total??0),
-      under_stake_total:Number(existing?.under_stake_total??0),
-      market_status:existing?.market_status??"OPEN",
-      final_fantasy_score:existing?.final_fantasy_score??null,
-      settled_at:existing?.settled_at??null,
-      locked_at:existing?.locked_at??null,
-      manual_override:Boolean(existing?.manual_override)
-    };
-  }),"round_id,player_id");
-  const marketsByKey=new Map(markets.map((market)=>[`${market.round_id}:${market.player_id}`,market]));
+      position:market.position,
+      jersey_number:market.jerseyNumber
+    })),"slug");
+    const playersBySlug=new Map(players.map((player)=>[player.slug,player]));
 
-  cachedContext={
-    round:roundsByNumber.get(CURRENT_ROUND_NUMBER)||null,
-    roundsByNumber,
-    teamsByName,
-    gamesBySlug,
-    playersBySlug,
-    marketsByLocalId:new Map(localMarkets.map((market)=>{
-      const roundNumber=roundNumberByGameId.get(market.gameId);
-      const round=roundsByNumber.get(roundNumber)||null;
-      const player=playersBySlug.get(playerSlug(market));
-      return [
-        market.id,
-        {
-          localMarket:market,
-          roundNumber,
-          round,
-          market:round&&player?marketsByKey.get(`${round.id}:${player.id}`):null,
-          game:gamesBySlug.get(market.gameId),
-          player,
-          team:teamsByName.get(normalizeTeamName(market.team))
+    const roundIds=[...roundsByNumber.values()].map((round)=>round.id).filter(Boolean);
+    const existingMarkets=roundIds.length
+      ? await supabaseRequest("weekly_player_markets",{
+        query:{
+          select:"*",
+          round_id:`in.(${roundIds.join(",")})`
         }
-      ];
-    }))
-  };
+      })
+      : [];
+    const existingMarketsByKey=new Map((existingMarkets||[]).map((market)=>[`${market.round_id}:${market.player_id}`,market]));
 
-  return cachedContext;
+    const markets=await upsertRows("weekly_player_markets",localMarkets.map((market)=>{
+      const roundNumber=roundNumberByGameId.get(market.gameId);
+      const round=roundsByNumber.get(roundNumber);
+      const player=playersBySlug.get(playerSlug(market));
+      const existing=existingMarketsByKey.get(`${round.id}:${player.id}`);
+      return {
+        round_id:round.id,
+        game_id:gamesBySlug.get(market.gameId).id,
+        player_id:player.id,
+        team_id:teamsByName.get(normalizeTeamName(market.team)).id,
+        opening_line:Number(market.initialLine),
+        current_line:Number(existing?.current_line??market.initialLine),
+        season_average:Number(market.seasonAverage),
+        over_stake_total:Number(existing?.over_stake_total??0),
+        under_stake_total:Number(existing?.under_stake_total??0),
+        market_status:existing?.market_status??"OPEN",
+        final_fantasy_score:existing?.final_fantasy_score??null,
+        settled_at:existing?.settled_at??null,
+        locked_at:existing?.locked_at??null,
+        manual_override:Boolean(existing?.manual_override)
+      };
+    }),"round_id,player_id");
+    const marketsByKey=new Map(markets.map((market)=>[`${market.round_id}:${market.player_id}`,market]));
+
+    cachedContext={
+      round:roundsByNumber.get(CURRENT_ROUND_NUMBER)||null,
+      roundsByNumber,
+      teamsByName,
+      gamesBySlug,
+      playersBySlug,
+      marketsByLocalId:new Map(localMarkets.map((market)=>{
+        const roundNumber=roundNumberByGameId.get(market.gameId);
+        const round=roundsByNumber.get(roundNumber)||null;
+        const player=playersBySlug.get(playerSlug(market));
+        return [
+          market.id,
+          {
+            localMarket:market,
+            roundNumber,
+            round,
+            market:round&&player?marketsByKey.get(`${round.id}:${player.id}`):null,
+            game:gamesBySlug.get(market.gameId),
+            player,
+            team:teamsByName.get(normalizeTeamName(market.team))
+          }
+        ];
+      }))
+    };
+
+    return cachedContext;
+  })();
+  try{
+    return await cachedContextPromise;
+  }catch(error){
+    cachedContextPromise=null;
+    throw error;
+  }finally{
+    if(cachedContext){
+      cachedContextPromise=null;
+    }
+  }
 }
 
 async function persistSupabaseTrade({userName,localMarket,trade,preTradeLine,postTradeLine}){
