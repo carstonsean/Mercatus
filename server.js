@@ -3387,10 +3387,10 @@ function validateHostedStateOrThrow(nextState,activeRoundSetting,runtimeState){
   }
   const configuredRoundNumber=Number(activeRoundSetting?.activeRoundNumber);
   const runtimeRoundNumber=Number(runtimeState?.activeRoundNumber);
+  const expectedRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState);
   if(Number.isFinite(configuredRoundNumber)&&Number.isFinite(runtimeRoundNumber)&&configuredRoundNumber!==runtimeRoundNumber){
     throw new Error(`Hosted state validation failed: active round setting ${configuredRoundNumber} does not match runtime overlay ${runtimeRoundNumber}.`);
   }
-  const expectedRoundNumber=hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState);
   if(!Number.isFinite(expectedRoundNumber)){
     throw new Error("Hosted state validation failed: active round is missing from durable settings and runtime overlay.");
   }
@@ -3454,17 +3454,17 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
           validateHostedStateOrThrow(fallbackState,activeRoundSetting,runtimeState);
         }
         state=fallbackState;
-      }else if(validateHostedState){
-        throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
-      }
-      const botCleanupResult=reconcileSelfCrossingBotLiquidity(state);
-      if(botCleanupResult.cancelledTradeCount>0){
-        console.warn(`Cleared ${botCleanupResult.cancelledTradeCount} self-crossing bot orders across ${botCleanupResult.changedMarketIds.length} markets during Supabase sync.`);
-        enqueueSupabaseBotCleanupPersistence(botCleanupResult.changedMarketIds,state).catch((error)=>{
-          console.warn("Supabase bot cleanup persistence failed",error.message);
-        });
-      }
-      lastSupabaseStateSyncAt=Date.now();
+        }else if(validateHostedState){
+          throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
+        }
+        const botCleanupResult=reconcileSelfCrossingBotLiquidity(state);
+        if(botCleanupResult.cancelledTradeCount>0){
+          console.warn(`Cleared ${botCleanupResult.cancelledTradeCount} self-crossing bot orders across ${botCleanupResult.changedMarketIds.length} markets during Supabase sync.`);
+          enqueueSupabaseBotCleanupPersistence(botCleanupResult.changedMarketIds,state).catch((error)=>{
+            console.warn("Supabase bot cleanup persistence failed",error.message);
+          });
+        }
+        lastSupabaseStateSyncAt=Date.now();
     }catch(error){
       console.warn("Supabase state sync failed",error.message);
       lastSupabaseUnavailableAt=Date.now();
