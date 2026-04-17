@@ -445,9 +445,13 @@ async function handleApi(req,res,url,sessionContext){
     if(!AVAILABLE_ROUND_NUMBERS.includes(roundNumber)){
       return json(res,400,{error:"That round is not available in the current dataset."});
     }
+    const previousRoundNumber=getActiveRoundNumber(state);
     state.activeRoundNumber=roundNumber;
     state.activeRoundLabel=buildRoundLabel(roundNumber);
     state.forceOpenGameIds=[];
+    if(previousRoundNumber!==roundNumber){
+      await resetBotBankrollsForRound(roundNumber,{useSupabase,targetState:state});
+    }
     if(useSupabase){
       await persistSupabaseActiveRoundSetting(roundNumber);
     }
@@ -2791,6 +2795,117 @@ function recordWalletEvent(userName,transaction,targetState=state){
   },targetState);
 }
 
+function getBotBankrollResetRoundNumber(targetState=state){
+  return Number(targetState?.botSimulation?.config?.lastBankrollResetRoundNumber)||null;
+}
+
+async function persistSupabaseWalletTransactions(transactions=[],roundNumber=getActiveRoundNumber(state)){
+  const rows=Array.isArray(transactions)?transactions.filter((transaction)=>transaction?.id&&transaction?.userName):[];
+  if(!rows.length){
+    return;
+  }
+  const context=await ensureSupabaseSeedData();
+  const roundId=context?.roundsByNumber?.get(Number(roundNumber))?.id||null;
+  for(const transaction of rows){
+    const user=await ensureSupabaseDemoUser(transaction.userName);
+    if(!user?.id){
+      continue;
+    }
+    const ledgerRow={
+      user_id:user.id,
+      round_id:roundId,
+      trade_id:null,
+      entry_type:"ADMIN_ADJUSTMENT",
+      amount:Number(transaction.amount)||0,
+      balance_after:Number(transaction.balanceAfter)||0,
+      note:transaction.subtitle||transaction.title||"Bot bankroll reset",
+      created_at:transaction.createdAt||new Date().toISOString(),
+      external_ledger_key:transaction.id
+    };
+    const existingRows=await supabaseRequest("wallet_ledger",{
+      query:{
+        select:"id",
+        external_ledger_key:`eq.${transaction.id}`,
+        limit:1
+      }
+    });
+    if(existingRows?.[0]?.id){
+      await supabaseRequest("wallet_ledger",{
+        method:"PATCH",
+        query:{id:`eq.${existingRows[0].id}`},
+        headers:{Prefer:"return=minimal"},
+        body:ledgerRow
+      });
+    }else{
+      await supabaseRequest("wallet_ledger",{
+        method:"POST",
+        headers:{Prefer:"return=minimal"},
+        body:ledgerRow
+      });
+    }
+    await supabaseRequest("wallet_snapshots",{
+      method:"POST",
+      query:{
+        on_conflict:"user_id",
+        select:"user_id"
+      },
+      headers:{Prefer:"return=representation,resolution=merge-duplicates"},
+      body:{
+        user_id:user.id,
+        username:user.username,
+        current_balance:Number(transaction.balanceAfter)||0,
+        updated_at:transaction.createdAt||new Date().toISOString()
+      }
+    });
+  }
+}
+
+async function resetBotBankrollsForRound(targetRoundNumber,{useSupabase=SUPABASE_ENABLED,targetState=state,force=false}={}){
+  const roundNumber=normalizeRoundNumber(targetRoundNumber);
+  const bots=Array.isArray(targetState?.botSimulation?.bots)?targetState.botSimulation.bots:[];
+  const currentResetRoundNumber=getBotBankrollResetRoundNumber(targetState);
+  if(!force&&currentResetRoundNumber===roundNumber){
+    return {resetCount:0,adjustedAmount:0,roundNumber};
+  }
+  const createdAt=new Date().toISOString();
+  const resetTransactions=[];
+  let adjustedAmount=0;
+  bots.forEach((bot)=>{
+    if(!bot?.userName){
+      return;
+    }
+    ensureWalletAccount(bot.userName,targetState);
+    const currentBalance=Number(getUserBankroll(bot.userName,targetState))||0;
+    const delta=Number((STARTING_BANKROLL-currentBalance).toFixed(2));
+    if(Math.abs(delta)>0.001){
+      const transaction=applyWalletDelta(bot.userName,delta,{
+        type:"ROUND_RESET",
+        title:"Bot bankroll reset",
+        subtitle:`${buildRoundLabel(roundNumber)} bankroll reset to ${formatCurrency(STARTING_BANKROLL)}`,
+        createdAt
+      },targetState);
+      resetTransactions.push(transaction);
+      adjustedAmount+=Math.abs(delta);
+    }
+    targetState.bankrolls[bot.userName]=STARTING_BANKROLL;
+    bot.bankroll=STARTING_BANKROLL;
+  });
+  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+  targetState.botSimulation.config={
+    ...(targetState.botSimulation.config||{}),
+    lastBankrollResetRoundNumber:roundNumber
+  };
+  syncDerivedBalances(targetState);
+  if(useSupabase&&resetTransactions.length){
+    await persistSupabaseWalletTransactions(resetTransactions,roundNumber);
+  }
+  return {
+    resetCount:resetTransactions.length,
+    adjustedAmount:Number(adjustedAmount.toFixed(2)),
+    roundNumber
+  };
+}
+
 function currentPrizePoolRoundKey(){
   return String(getActiveRoundNumber(state)||1);
 }
@@ -3454,17 +3569,24 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
           validateHostedStateOrThrow(fallbackState,activeRoundSetting,runtimeState);
         }
         state=fallbackState;
-        }else if(validateHostedState){
-          throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
-        }
-        const botCleanupResult=reconcileSelfCrossingBotLiquidity(state);
-        if(botCleanupResult.cancelledTradeCount>0){
-          console.warn(`Cleared ${botCleanupResult.cancelledTradeCount} self-crossing bot orders across ${botCleanupResult.changedMarketIds.length} markets during Supabase sync.`);
-          enqueueSupabaseBotCleanupPersistence(botCleanupResult.changedMarketIds,state).catch((error)=>{
-            console.warn("Supabase bot cleanup persistence failed",error.message);
-          });
-        }
-        lastSupabaseStateSyncAt=Date.now();
+      }else if(validateHostedState){
+        throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
+      }
+      const botCleanupResult=reconcileSelfCrossingBotLiquidity(state);
+      const botResetResult=await resetBotBankrollsForRound(getActiveRoundNumber(state),{useSupabase,targetState:state});
+      if(botResetResult.resetCount>0){
+        console.warn(`Reset ${botResetResult.resetCount} bot bankrolls for ${buildRoundLabel(botResetResult.roundNumber)}.`);
+        enqueueSupabaseRuntimeSnapshot().catch((error)=>{
+          console.warn("Supabase runtime snapshot failed after bot bankroll reset",error.message);
+        });
+      }
+      if(botCleanupResult.cancelledTradeCount>0){
+        console.warn(`Cleared ${botCleanupResult.cancelledTradeCount} self-crossing bot orders across ${botCleanupResult.changedMarketIds.length} markets during Supabase sync.`);
+        enqueueSupabaseBotCleanupPersistence(botCleanupResult.changedMarketIds,state).catch((error)=>{
+          console.warn("Supabase bot cleanup persistence failed",error.message);
+        });
+      }
+      lastSupabaseStateSyncAt=Date.now();
     }catch(error){
       console.warn("Supabase state sync failed",error.message);
       lastSupabaseUnavailableAt=Date.now();
