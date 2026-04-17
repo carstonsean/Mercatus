@@ -107,6 +107,7 @@ state=loadState();
 let supabaseSeedReady=false;
 let supabaseRuntimeSnapshotQueue=Promise.resolve();
 const supabaseMarketPersistQueues=new Map();
+let supabaseBotCleanupQueue=Promise.resolve();
 let lastSupabaseStateSyncAt=0;
 let lastSupabaseUnavailableAt=0;
 let supabaseStateSyncPromise=null;
@@ -1905,6 +1906,26 @@ function enqueueSupabaseMarketPersistence(market,targetState=state){
   return cleanupQueue;
 }
 
+function enqueueSupabaseBotCleanupPersistence(marketIds=[],targetState=state){
+  const uniqueMarketIds=[...new Set((marketIds||[]).filter(Boolean))];
+  if(!uniqueMarketIds.length){
+    return Promise.resolve(null);
+  }
+  supabaseBotCleanupQueue=supabaseBotCleanupQueue
+    .catch(()=>null)
+    .then(async()=>{
+      for(const marketId of uniqueMarketIds){
+        const market=(targetState?.markets||[]).find((entry)=>entry?.id===marketId);
+        if(!market){
+          continue;
+        }
+        await enqueueSupabaseMarketPersistence(market,targetState);
+      }
+      await enqueueSupabaseRuntimeSnapshot();
+    });
+  return supabaseBotCleanupQueue;
+}
+
 function buildQuickTakeMarketPayload(market){
   return {
     id:market.id,
@@ -3150,6 +3171,13 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
       }else if(validateHostedState){
         throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
       }
+      const botCleanupResult=reconcileSelfCrossingBotLiquidity(state);
+      if(botCleanupResult.cancelledTradeCount>0){
+        console.warn(`Cleared ${botCleanupResult.cancelledTradeCount} self-crossing bot orders across ${botCleanupResult.changedMarketIds.length} markets during Supabase sync.`);
+        enqueueSupabaseBotCleanupPersistence(botCleanupResult.changedMarketIds,state).catch((error)=>{
+          console.warn("Supabase bot cleanup persistence failed",error.message);
+        });
+      }
       lastSupabaseStateSyncAt=Date.now();
     }catch(error){
       console.warn("Supabase state sync failed",error.message);
@@ -3199,6 +3227,84 @@ function mergeSupabaseState(supabaseState,runtimeState,currentState=state,active
     prizePool:overlay.prizePool??currentState?.prizePool,
     botSimulation:overlay.botSimulation??currentState?.botSimulation
   },{skipWalletBootstrap:true});
+}
+
+function reconcileSelfCrossingBotLiquidity(targetState=state){
+  const changedMarketIds=[];
+  let cancelledTradeCount=0;
+  let refundedStakeTotal=0;
+  (targetState?.markets||[]).forEach((market)=>{
+    const result=clearSelfCrossingBotLiquidity(market,targetState);
+    if(result.cancelledTradeCount>0){
+      changedMarketIds.push(market.id);
+      cancelledTradeCount+=result.cancelledTradeCount;
+      refundedStakeTotal+=result.refundedStakeTotal;
+    }
+  });
+  if(changedMarketIds.length){
+    syncDerivedBalances(targetState);
+  }
+  return {changedMarketIds,cancelledTradeCount,refundedStakeTotal};
+}
+
+function clearSelfCrossingBotLiquidity(market,targetState=state,preferredSide=null){
+  const openBotTrades=(market?.trades||[]).filter((trade)=>
+    trade &&
+    isBotTrade(trade) &&
+    ["PENDING","PARTIALLY_MATCHED"].includes(String(trade.status||"")) &&
+    Number(trade.unmatchedStake)>0
+  );
+  if(!openBotTrades.length){
+    return {cancelledTradeCount:0,refundedStakeTotal:0};
+  }
+  const byUserName=new Map();
+  openBotTrades.forEach((trade)=>{
+    const key=String(trade.userName||"").trim().toLowerCase();
+    if(!key){
+      return;
+    }
+    const list=byUserName.get(key)||[];
+    list.push(trade);
+    byUserName.set(key,list);
+  });
+  const nowIso=new Date().toISOString();
+  let cancelledTradeCount=0;
+  let refundedStakeTotal=0;
+  const previousNetPressure=Number(market.netPressure)||0;
+  byUserName.forEach((tradesForUser)=>{
+    const hasOver=tradesForUser.some((trade)=>trade.side==="OVER");
+    const hasUnder=tradesForUser.some((trade)=>trade.side==="UNDER");
+    if(!hasOver||!hasUnder){
+      return;
+    }
+    const sortedByRecent=tradesForUser.slice().sort((left,right)=>new Date(right.timestamp)-new Date(left.timestamp));
+    const keepSide=preferredSide&&["OVER","UNDER"].includes(preferredSide)
+      ? preferredSide
+      : sortedByRecent[0]?.side||"OVER";
+    tradesForUser
+      .filter((trade)=>trade.side!==keepSide&&(Number(trade.unmatchedStake)||0)>0)
+      .forEach((trade)=>{
+        const refunded=refundReservedStake(trade,trade.unmatchedStake,market,{
+          type:"TRADE_REFUND",
+          title:"Bot order cleared",
+          subtitle:`Conflicting ${trade.side.toLowerCase()} bot order removed`,
+          marketId:market.id,
+          tradeId:trade.id,
+          createdAt:nowIso
+        });
+        trade.unmatchedStake=0;
+        trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
+        if(refunded>0){
+          cancelledTradeCount+=1;
+          refundedStakeTotal+=refunded;
+        }
+      });
+  });
+  if(cancelledTradeCount>0){
+    updateMarketTotals(market);
+    applyTradePressure(market,(Number(market.netPressure)||0)-previousNetPressure);
+  }
+  return {cancelledTradeCount,refundedStakeTotal};
 }
 
 function computeHostedBankrolls(supabaseState,runtimeOverlay={},currentState=state){
@@ -3836,6 +3942,7 @@ function runBotTicks(ticks){
       if(bankroll<1){
         return {...event,executed:false,reason:`${event.reason} Bot bankroll too low.`};
       }
+      const cleanupResult=clearSelfCrossingBotLiquidity(market,state,event.side);
       const bot=state.botSimulation.bots.find((entry)=>entry.id===event.botId)||state.botSimulation.bots.find((entry)=>entry.userName===event.botName)||null;
       const trade=executeProjectionTrade(market,{
         userName:event.botName,
@@ -3849,7 +3956,8 @@ function runBotTicks(ticks){
         ...event,
         executed:true,
         tradeId:trade.id,
-        tradeStatus:trade.status
+        tradeStatus:trade.status,
+        conflictCleared:cleanupResult.cancelledTradeCount>0
       };
     });
     aggregatedEvents=aggregatedEvents.concat(executedEvents);
@@ -3863,7 +3971,7 @@ function runBotTicks(ticks){
       side:event.side,
       projection:event.projection,
       edge:event.edge,
-      reason:event.executed?`${event.reason} ${event.tradeStatus==="MATCHED"?"Matched immediately.":event.tradeStatus==="PARTIALLY_MATCHED"?"Partially matched, rest posted.":"Posted to book."}`:`${event.reason}`,
+      reason:event.executed?`${event.reason} ${event.conflictCleared?"Removed conflicting same-bot liquidity first. ":""}${event.tradeStatus==="MATCHED"?"Matched immediately.":event.tradeStatus==="PARTIALLY_MATCHED"?"Partially matched, rest posted.":"Posted to book."}`:`${event.reason}`,
       executed:event.executed
     })),...(state.botSimulation.config.logs||[])].slice(0,state.botSimulation.config.maxLogs||120);
   }
