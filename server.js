@@ -766,16 +766,24 @@ async function handleApi(req,res,url,sessionContext){
     return json(res,200,{state,botSimulation:state.botSimulation,events:result.events,botStatus:lastBotAutoplayStatus});
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/analytics/overview"){
-    const overview=await buildAnalyticsOverview(useSupabase);
+    const overview=await buildAnalyticsOverview(useSupabase,url.searchParams.get("range"));
     return json(res,200,overview,sessionContext);
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/analytics/trends"){
-    const trends=await buildAnalyticsTrends(useSupabase);
+    const trends=await buildAnalyticsTrends(useSupabase,url.searchParams.get("range"));
     return json(res,200,trends,sessionContext);
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/analytics/funnel"){
-    const funnel=await buildAnalyticsFunnel(useSupabase);
+    const funnel=await buildAnalyticsFunnel(useSupabase,url.searchParams.get("range"));
     return json(res,200,funnel,sessionContext);
+  }
+  if(req.method==="GET"&&url.pathname==="/api/admin/analytics/sources"){
+    const sources=await buildAnalyticsSources(useSupabase,url.searchParams.get("range"));
+    return json(res,200,sources,sessionContext);
+  }
+  if(req.method==="GET"&&url.pathname==="/api/admin/analytics/returning"){
+    const returning=await buildReturningAnalytics(useSupabase,url.searchParams.get("range"));
+    return json(res,200,returning,sessionContext);
   }
   json(res,404,{error:"Not found"});
 }
@@ -916,6 +924,8 @@ async function trackPageViewRequest(req,url,sessionContext){
   }
   await logRequestAnalyticsEvent(req,sessionContext,"page_view",{
     path:url.pathname
+  },{
+    source:String(url.searchParams.get("utm_source")||"").trim()||"direct"
   });
 }
 
@@ -935,7 +945,7 @@ async function logMarketViewedEvent(req,sessionContext,{marketId,source}={},useS
   });
 }
 
-async function logRequestAnalyticsEvent(req,sessionContext,eventType,metadata=null){
+async function logRequestAnalyticsEvent(req,sessionContext,eventType,metadata=null,{source=null}={}){
   const userName=String(req?.headers?.["x-user-name"]||"").trim();
   let backendUser=null;
   if(userName){
@@ -945,11 +955,12 @@ async function logRequestAnalyticsEvent(req,sessionContext,eventType,metadata=nu
     eventType,
     sessionId:sessionContext?.sessionId||randomUUID(),
     userId:backendUser?.id||null,
-    metadata
+    metadata,
+    source
   });
 }
 
-async function logAnalyticsEvent({eventType,userId=null,sessionId,metadata=null,createdAt=null}){
+async function logAnalyticsEvent({eventType,userId=null,sessionId,metadata=null,createdAt=null,source=null}){
   if(!SUPABASE_ENABLED||!eventType||!sessionId){
     return;
   }
@@ -962,7 +973,8 @@ async function logAnalyticsEvent({eventType,userId=null,sessionId,metadata=null,
         user_id:userId||null,
         session_id:String(sessionId),
         created_at:createdAt||new Date().toISOString(),
-        metadata:metadata&&typeof metadata==="object"?metadata:null
+        metadata:metadata&&typeof metadata==="object"?metadata:null,
+        source:source?String(source):null
       }
     });
   }catch(error){
@@ -979,11 +991,27 @@ async function fetchAnalyticsEvents(query={}){
   try{
     return await supabaseRequestAll("analytics_events",{
       query:{
-        select:"event_type,user_id,session_id,created_at,metadata",
+        select:"event_type,user_id,session_id,created_at,metadata,source",
         ...query
       }
     });
   }catch(error){
+    if(/column .*source/i.test(String(error?.message||""))){
+      try{
+        const rows=await supabaseRequestAll("analytics_events",{
+          query:{
+            select:"event_type,user_id,session_id,created_at,metadata",
+            ...query
+          }
+        });
+        return rows.map((row)=>({...row,source:null}));
+      }catch(fallbackError){
+        if(/analytics_events/i.test(String(fallbackError?.message||""))){
+          return [];
+        }
+        throw fallbackError;
+      }
+    }
     if(/analytics_events/i.test(String(error?.message||""))){
       return [];
     }
@@ -991,86 +1019,153 @@ async function fetchAnalyticsEvents(query={}){
   }
 }
 
-async function buildAnalyticsOverview(useSupabase=SUPABASE_ENABLED){
-  if(!useSupabase){
-    return {
-      active_users_now:0,
-      signups_today:0,
-      signups_this_week:0,
-      total_users:0,
-      trades_today:0
-    };
-  }
-  const now=new Date();
-  const fifteenMinutesAgo=new Date(now.getTime()-(15*60*1000)).toISOString();
-  const todayStart=startOfUtcDay(now);
-  const weekStart=startOfUtcDay(new Date(now.getTime()-(now.getUTCDay()*24*60*60*1000)));
-  const [activeEvents,signupTodayEvents,signupWeekEvents,tradeTodayEvents,users]=await Promise.all([
-    fetchAnalyticsEvents({created_at:`gte.${fifteenMinutesAgo}`}),
-    fetchAnalyticsEvents({event_type:"eq.user_signup",created_at:`gte.${todayStart.toISOString()}`}),
-    fetchAnalyticsEvents({event_type:"eq.user_signup",created_at:`gte.${weekStart.toISOString()}`}),
-    fetchAnalyticsEvents({event_type:"eq.trade_placed",created_at:`gte.${todayStart.toISOString()}`}),
-    fetchUsers()
-  ]);
+async function buildAnalyticsOverview(useSupabase=SUPABASE_ENABLED,rangeKey="30d"){
+  const analytics=await buildAnalyticsPayload(useSupabase,rangeKey);
   return {
-    active_users_now:new Set(activeEvents.map((event)=>String(event.session_id||"")).filter(Boolean)).size,
-    signups_today:signupTodayEvents.length,
-    signups_this_week:signupWeekEvents.length,
-    total_users:users.length,
-    trades_today:tradeTodayEvents.length
+    range:analytics.range,
+    cards:{
+      active_users:buildMetricCardPayload({
+        label:"Active Users",
+        value:uniqueSessionCount(analytics.current.events),
+        previousValue:uniqueSessionCount(analytics.previous.events),
+        meta:`Unique sessions in ${analytics.range.label.toLowerCase()}`,
+        sparkline:buildDailyUniqueSessionSeries(analytics.current.events,analytics.range.currentStart,analytics.range.currentEnd)
+      }),
+      signups:buildMetricCardPayload({
+        label:"Signups",
+        value:countEventsOfType(analytics.current.events,"user_signup"),
+        previousValue:countEventsOfType(analytics.previous.events,"user_signup"),
+        meta:`New users in ${analytics.range.label.toLowerCase()}`,
+        sparkline:buildDailyEventCountSeries(analytics.current.events,analytics.range.currentStart,analytics.range.currentEnd,"user_signup")
+      }),
+      visitors:buildMetricCardPayload({
+        label:"Visitors",
+        value:uniqueSessionCount(filterPageViewEvents(analytics.current.events)),
+        previousValue:uniqueSessionCount(filterPageViewEvents(analytics.previous.events)),
+        meta:`Tracked visitor sessions in ${analytics.range.label.toLowerCase()}`,
+        sparkline:buildDailyUniqueSessionSeries(filterPageViewEvents(analytics.current.events),analytics.range.currentStart,analytics.range.currentEnd)
+      }),
+      total_users:buildMetricCardPayload({
+        label:"Total Users",
+        value:countUsersAtMoment(analytics.users,analytics.range.currentEnd),
+        previousValue:countUsersAtMoment(analytics.users,analytics.range.previousEnd),
+        meta:"All registered users",
+        sparkline:buildDailyCumulativeUserSeries(analytics.users,analytics.range.currentStart,analytics.range.currentEnd)
+      }),
+      trades:buildMetricCardPayload({
+        label:"Trades",
+        value:countEventsOfType(analytics.current.events,"trade_placed"),
+        previousValue:countEventsOfType(analytics.previous.events,"trade_placed"),
+        meta:`Trades placed in ${analytics.range.label.toLowerCase()}`,
+        sparkline:buildDailyEventCountSeries(analytics.current.events,analytics.range.currentStart,analytics.range.currentEnd,"trade_placed")
+      }),
+      return_rate:buildMetricCardPayload({
+        label:"Return Rate",
+        value:analytics.returning.current.rate,
+        previousValue:analytics.returning.previous.rate,
+        meta:"Registered users with more than one login",
+        sparkline:analytics.returning.daily.map((entry)=>entry.rate),
+        format:"percentage"
+      })
+    }
   };
 }
 
-async function buildAnalyticsTrends(useSupabase=SUPABASE_ENABLED){
-  if(!useSupabase){
-    return {daily_signups:[],daily_active_users:[]};
-  }
-  const today=startOfUtcDay(new Date());
-  const rangeStart=new Date(today.getTime()-(29*24*60*60*1000));
-  const [signupEvents,allEvents]=await Promise.all([
-    fetchAnalyticsEvents({event_type:"eq.user_signup",created_at:`gte.${rangeStart.toISOString()}`}),
-    fetchAnalyticsEvents({created_at:`gte.${rangeStart.toISOString()}`})
-  ]);
-  const signupCounts=new Map();
-  const activeByDay=new Map();
-  signupEvents.forEach((event)=>{
-    const key=toUtcDateKey(event.created_at);
-    signupCounts.set(key,(signupCounts.get(key)||0)+1);
-  });
-  allEvents.forEach((event)=>{
-    const key=toUtcDateKey(event.created_at);
-    if(!activeByDay.has(key)){
-      activeByDay.set(key,new Set());
-    }
-    if(event.session_id){
-      activeByDay.get(key).add(String(event.session_id));
-    }
-  });
-  const daily_signups=[];
-  const daily_active_users=[];
-  for(let index=0;index<30;index+=1){
-    const date=new Date(rangeStart.getTime()+(index*24*60*60*1000));
-    const key=toUtcDateKey(date);
-    daily_signups.push({date:key,count:signupCounts.get(key)||0});
-    daily_active_users.push({date:key,count:activeByDay.get(key)?.size||0});
-  }
-  return {daily_signups,daily_active_users};
+async function buildAnalyticsTrends(useSupabase=SUPABASE_ENABLED,rangeKey="30d"){
+  const analytics=await buildAnalyticsPayload(useSupabase,rangeKey);
+  return {
+    range:analytics.range,
+    daily_signups:buildDailyEventSeriesWithDates(analytics.current.events,analytics.range.currentStart,analytics.range.currentEnd,"user_signup"),
+    daily_active_users:buildDailyUniqueSessionSeriesWithDates(analytics.current.events,analytics.range.currentStart,analytics.range.currentEnd)
+  };
 }
 
-async function buildAnalyticsFunnel(useSupabase=SUPABASE_ENABLED){
-  if(!useSupabase){
-    return {total_unique_visitors:0,total_signups:0,conversion_rate:0};
-  }
-  const [events,signups]=await Promise.all([
-    fetchAnalyticsEvents(),
-    fetchAnalyticsEvents({event_type:"eq.user_signup"})
-  ]);
-  const totalUniqueVisitors=new Set(events.map((event)=>String(event.session_id||"")).filter(Boolean)).size;
-  const totalSignups=signups.length;
+async function buildAnalyticsFunnel(useSupabase=SUPABASE_ENABLED,rangeKey="30d"){
+  const analytics=await buildAnalyticsPayload(useSupabase,rangeKey);
+  const totalUniqueVisitors=uniqueSessionCount(filterPageViewEvents(analytics.current.events));
+  const totalSignups=countEventsOfType(analytics.current.events,"user_signup");
   return {
+    range:analytics.range,
     total_unique_visitors:totalUniqueVisitors,
     total_signups:totalSignups,
-    conversion_rate:totalUniqueVisitors?Number(((totalSignups/totalUniqueVisitors)*100).toFixed(1)):0
+    conversion_rate:totalUniqueVisitors?roundPercentage((totalSignups/totalUniqueVisitors)*100):0
+  };
+}
+
+async function buildAnalyticsSources(useSupabase=SUPABASE_ENABLED,rangeKey="30d"){
+  const analytics=await buildAnalyticsPayload(useSupabase,rangeKey);
+  const sourceMap=new Map();
+  filterPageViewEvents(analytics.current.events).forEach((event)=>{
+    const source=String(event.source||"").trim()||"direct";
+    if(!sourceMap.has(source)){
+      sourceMap.set(source,new Set());
+    }
+    if(event.session_id){
+      sourceMap.get(source).add(String(event.session_id));
+    }
+  });
+  return {
+    range:analytics.range,
+    sources:[...sourceMap.entries()]
+      .map(([source,sessions])=>({source,sessions:sessions.size}))
+      .sort((left,right)=>right.sessions-left.sessions||left.source.localeCompare(right.source))
+  };
+}
+
+async function buildReturningAnalytics(useSupabase=SUPABASE_ENABLED,rangeKey="30d"){
+  const analytics=await buildAnalyticsPayload(useSupabase,rangeKey);
+  return {
+    range:analytics.range,
+    return_rate:analytics.returning.current.rate,
+    previous_return_rate:analytics.returning.previous.rate,
+    comparison:buildComparisonPayload(analytics.returning.current.rate,analytics.returning.previous.rate),
+    daily_return_rate:analytics.returning.daily
+  };
+}
+
+async function buildAnalyticsPayload(useSupabase=SUPABASE_ENABLED,rangeKey="30d"){
+  if(!useSupabase){
+    const emptyRange=buildAnalyticsRange(rangeKey,new Date());
+    return {
+      range:emptyRange,
+      users:[],
+      current:{events:[]},
+      previous:{events:[]},
+      returning:{
+        current:{rate:0},
+        previous:{rate:0},
+        daily:[]
+      }
+    };
+  }
+  const now=new Date();
+  const baseRange=buildAnalyticsRange(rangeKey,now);
+  const [events,users]=await Promise.all([
+    fetchAnalyticsEvents(baseRange.fetchStart?{created_at:`gte.${baseRange.fetchStart.toISOString()}`} : {}),
+    fetchUsers()
+  ]);
+  const earliestEventDate=events.length?new Date(Math.min(...events.map((event)=>new Date(event.created_at).getTime()))):null;
+  const earliestUserDate=users.length?new Date(Math.min(...users.map((user)=>new Date(user.created_at).getTime()))):null;
+  const earliestKnownDate=earliestEventDate&&earliestUserDate
+    ? new Date(Math.min(earliestEventDate.getTime(),earliestUserDate.getTime()))
+    : earliestEventDate||earliestUserDate;
+  const finalizedRange=baseRange.key==="all"
+    ? buildAnalyticsRange(rangeKey,now,earliestKnownDate)
+    : baseRange;
+  const currentEvents=filterEventsInWindow(events,finalizedRange.currentStart,finalizedRange.currentEnd);
+  const previousEvents=finalizedRange.previousStart&&finalizedRange.previousEnd
+    ? filterEventsInWindow(events,finalizedRange.previousStart,finalizedRange.previousEnd)
+    : [];
+  return {
+    range:finalizedRange,
+    users,
+    current:{events:currentEvents},
+    previous:{events:previousEvents},
+    returning:{
+      current:calculateReturningRate(currentEvents,users,finalizedRange.currentEnd),
+      previous:calculateReturningRate(previousEvents,users,finalizedRange.previousEnd),
+      daily:buildDailyReturningRateSeries(currentEvents,users,finalizedRange.currentStart,finalizedRange.currentEnd)
+    }
   };
 }
 
@@ -1079,8 +1174,199 @@ async function fetchUsers(){
     return [];
   }
   return supabaseRequestAll("users",{
-    query:{select:"id"}
+    query:{select:"id,created_at"}
   });
+}
+
+function buildAnalyticsRange(rangeKey="30d",now=new Date(),earliestDate=null){
+  const key=normalizeAnalyticsRangeKey(rangeKey);
+  let currentStart;
+  if(key==="today"){
+    currentStart=startOfUtcDay(now);
+  }else if(key==="7d"){
+    currentStart=startOfUtcDay(new Date(now.getTime()-(6*24*60*60*1000)));
+  }else if(key==="30d"){
+    currentStart=startOfUtcDay(new Date(now.getTime()-(29*24*60*60*1000)));
+  }else{
+    currentStart=startOfUtcDay(earliestDate||now);
+  }
+  const currentEnd=now;
+  const duration=Math.max(currentEnd.getTime()-currentStart.getTime(),1);
+  return {
+    key,
+    label:key==="today"?"Today":key==="7d"?"Last 7 Days":key==="30d"?"Last 30 Days":"All Time",
+    currentStart,
+    currentEnd,
+    previousStart:key==="all"?null:new Date(currentStart.getTime()-duration),
+    previousEnd:key==="all"?null:new Date(currentStart),
+    fetchStart:key==="all"?null:new Date(currentStart.getTime()-duration)
+  };
+}
+
+function normalizeAnalyticsRangeKey(rangeKey){
+  const submitted=String(rangeKey||"30d").trim().toLowerCase();
+  if(submitted==="today"||submitted==="7d"||submitted==="30d"||submitted==="all"){
+    return submitted;
+  }
+  return "30d";
+}
+
+function filterEventsInWindow(events,start,end){
+  const startMs=start?new Date(start).getTime():-Infinity;
+  const endMs=end?new Date(end).getTime():Infinity;
+  return events.filter((event)=>{
+    const eventTime=new Date(event.created_at).getTime();
+    return eventTime>=startMs&&eventTime<endMs;
+  });
+}
+
+function countEventsOfType(events,eventType){
+  return events.filter((event)=>event.event_type===eventType).length;
+}
+
+function filterPageViewEvents(events){
+  return events.filter((event)=>event.event_type==="page_view");
+}
+
+function uniqueSessionCount(events){
+  return new Set(events.map((event)=>String(event.session_id||"")).filter(Boolean)).size;
+}
+
+function countUsersAtMoment(users,endMoment){
+  if(!endMoment){
+    return 0;
+  }
+  const endMs=new Date(endMoment).getTime();
+  return users.filter((user)=>new Date(user.created_at).getTime()<=endMs).length;
+}
+
+function buildDailyEventSeriesWithDates(events,start,end,eventType){
+  const counts=new Map();
+  events.filter((event)=>event.event_type===eventType).forEach((event)=>{
+    const key=toUtcDateKey(event.created_at);
+    counts.set(key,(counts.get(key)||0)+1);
+  });
+  return buildDailyDateKeys(start,end).map((date)=>({date,count:counts.get(date)||0}));
+}
+
+function buildDailyEventCountSeries(events,start,end,eventType){
+  return buildDailyEventSeriesWithDates(events,start,end,eventType).map((entry)=>entry.count);
+}
+
+function buildDailyUniqueSessionSeriesWithDates(events,start,end){
+  const sessionsByDate=new Map();
+  events.forEach((event)=>{
+    const key=toUtcDateKey(event.created_at);
+    if(!sessionsByDate.has(key)){
+      sessionsByDate.set(key,new Set());
+    }
+    if(event.session_id){
+      sessionsByDate.get(key).add(String(event.session_id));
+    }
+  });
+  return buildDailyDateKeys(start,end).map((date)=>({date,count:sessionsByDate.get(date)?.size||0}));
+}
+
+function buildDailyUniqueSessionSeries(events,start,end){
+  return buildDailyUniqueSessionSeriesWithDates(events,start,end).map((entry)=>entry.count);
+}
+
+function buildDailyCumulativeUserSeries(users,start,end){
+  return buildDailyDateKeys(start,end).map((dateKey)=>{
+    const endOfDay=new Date(`${dateKey}T23:59:59.999Z`);
+    return countUsersAtMoment(users,endOfDay);
+  });
+}
+
+function calculateReturningRate(events,users,endMoment){
+  const registeredUsers=countUsersAtMoment(users,endMoment);
+  if(!registeredUsers){
+    return {rate:0,returningUsers:0,registeredUsers:0};
+  }
+  const loginCounts=new Map();
+  events.filter((event)=>event.event_type==="user_login"&&event.user_id).forEach((event)=>{
+    const key=String(event.user_id);
+    loginCounts.set(key,(loginCounts.get(key)||0)+1);
+  });
+  const returningUsers=[...loginCounts.values()].filter((count)=>count>=2).length;
+  return {
+    rate:roundPercentage((returningUsers/registeredUsers)*100),
+    returningUsers,
+    registeredUsers
+  };
+}
+
+function buildDailyReturningRateSeries(events,users,start,end){
+  const loginEvents=events.filter((event)=>event.event_type==="user_login"&&event.user_id);
+  return buildDailyDateKeys(start,end).map((dateKey)=>{
+    const startOfDay=new Date(`${dateKey}T00:00:00.000Z`);
+    const endOfDay=new Date(`${dateKey}T23:59:59.999Z`);
+    const dayEvents=loginEvents.filter((event)=>{
+      const eventTime=new Date(event.created_at).getTime();
+      return eventTime>=startOfDay.getTime()&&eventTime<=endOfDay.getTime();
+    });
+    const metric=calculateReturningRate(dayEvents,users,endOfDay);
+    return {
+      date:dateKey,
+      rate:metric.rate
+    };
+  });
+}
+
+function buildMetricCardPayload({label,value,previousValue,meta,sparkline,format="number"}){
+  return {
+    label,
+    value,
+    previous_value:previousValue,
+    display_value:formatMetricValue(value,format),
+    meta,
+    comparison:buildComparisonPayload(value,previousValue),
+    sparkline:Array.isArray(sparkline)?sparkline:[]
+  };
+}
+
+function buildComparisonPayload(currentValue,previousValue){
+  if(!Number.isFinite(Number(currentValue))||!Number.isFinite(Number(previousValue))){
+    return {direction:"flat",percentage:null,label:"-"};
+  }
+  const current=Number(currentValue)||0;
+  const previous=Number(previousValue)||0;
+  if(previous===0){
+    return current===0
+      ? {direction:"flat",percentage:0,label:"-"}
+      : {direction:"flat",percentage:null,label:"-"};
+  }
+  const percentage=((current-previous)/Math.abs(previous))*100;
+  if(Math.abs(percentage)<0.05){
+    return {direction:"flat",percentage:0,label:"-"};
+  }
+  return {
+    direction:percentage>0?"up":"down",
+    percentage:roundPercentage(Math.abs(percentage)),
+    label:`${percentage>0?"↑":"↓"} ${roundPercentage(Math.abs(percentage)).toFixed(1)}%`
+  };
+}
+
+function formatMetricValue(value,format="number"){
+  if(format==="percentage"){
+    return `${roundPercentage(Number(value)||0).toFixed(1)}%`;
+  }
+  return Number.isFinite(Number(value))?Math.round(Number(value)):0;
+}
+
+function buildDailyDateKeys(start,end){
+  const keys=[];
+  const cursor=startOfUtcDay(start);
+  const endDay=startOfUtcDay(end||start);
+  while(cursor.getTime()<=endDay.getTime()){
+    keys.push(toUtcDateKey(cursor));
+    cursor.setUTCDate(cursor.getUTCDate()+1);
+  }
+  return keys;
+}
+
+function roundPercentage(value){
+  return Number(Number(value||0).toFixed(1));
 }
 
 function startOfUtcDay(value){

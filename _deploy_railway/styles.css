@@ -8087,6 +8087,70 @@ label {
   gap: 12px;
 }
 
+.admin-analytics-trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.admin-analytics-chart-card {
+  min-height: 300px;
+}
+
+.admin-analytics-chart-card canvas {
+  width: 100% !important;
+  height: 220px !important;
+}
+
+.admin-analytics-card {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-analytics-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 24px;
+}
+
+.admin-analytics-comparison {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.admin-analytics-comparison.is-up {
+  color: var(--green);
+}
+
+.admin-analytics-comparison.is-down {
+  color: var(--red);
+}
+
+.admin-sparkline {
+  width: 88px;
+  height: 24px;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.admin-sparkline path {
+  fill: none;
+  stroke: var(--color-accent, #68d9ff);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.95;
+}
+
+.admin-sparkline-empty {
+  opacity: 0.18;
+}
+
 .admin-dashboard-card,
 .admin-market-card {
   padding: 14px;

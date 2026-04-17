@@ -2,8 +2,17 @@ const fs=require("fs");
 const path=require("path");
 
 const ENV_PATH=path.join(__dirname,"..",".env");
+const HOSTED_ENVIRONMENT=Boolean(
+  process.env.RAILWAY_ENVIRONMENT ||
+  process.env.RAILWAY_PROJECT_ID ||
+  process.env.RAILWAY_SERVICE_ID ||
+  process.env.RAILWAY_STATIC_URL ||
+  process.env.RENDER ||
+  process.env.VERCEL ||
+  process.env.FLY_APP_NAME
+);
 
-if(fs.existsSync(ENV_PATH)){
+if(!HOSTED_ENVIRONMENT&&fs.existsSync(ENV_PATH)){
   const raw=fs.readFileSync(ENV_PATH,"utf8");
   raw.split(/\r?\n/).forEach((line)=>{
     const trimmed=line.trim();

@@ -15,7 +15,7 @@ async function fetchSupabaseAppState({activeRoundNumber}={}){
 
   const [markets,trades,balances,users,matchedPairs]=await Promise.all([
     roundIds.length
-      ? supabaseRequest("weekly_player_markets",{
+      ? supabaseRequestAll("weekly_player_markets",{
         query:{
           select:"id,round_id,game_id,player_id,team_id,market_status,opening_line,current_line,season_average,over_stake_total,under_stake_total,final_fantasy_score,settled_at,locked_at,manual_override",
           round_id:`in.(${roundIds.join(",")})`
@@ -23,7 +23,7 @@ async function fetchSupabaseAppState({activeRoundNumber}={}){
       })
       : [],
     roundIds.length
-      ? supabaseRequest("trades",{
+      ? supabaseRequestAll("trades",{
         query:{
           select:"id,market_id,user_id,side,stake,entry_line,entry_under_line,entry_over_line,placed_at,resolved_outcome,payout,profit_loss,settled_at,status,matched_stake,unmatched_stake,refunded_stake,engine_version",
           round_id:`in.(${roundIds.join(",")})`,
@@ -40,7 +40,7 @@ async function fetchSupabaseAppState({activeRoundNumber}={}){
       query:{select:"id,username"}
     }),
     roundIds.length
-      ? supabaseRequest("matched_pairs",{
+      ? supabaseRequestAll("matched_pairs",{
         query:{
           select:"id,market_id,status,stake,over_user_id,under_user_id,over_order_id,under_order_id,over_entry_line,under_entry_line,winner_user_id,voided,platform_revenue,created_at",
           round_id:`in.(${roundIds.join(",")})`,

@@ -164,6 +164,7 @@ let pendingRenderAfterStakeInput = false;
 let adminAnalyticsRefreshTimer = null;
 let adminSignupsChart = null;
 let adminActiveUsersChart = null;
+let adminSourcesChart = null;
 let marketViewTrackKey = "";
 let marketViewTrackedAt = 0;
 const MAX_SINGLE_BID = 10;
@@ -248,8 +249,11 @@ const uiState = {
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
   adminTradeLimit: 60,
+  adminAnalyticsRange: "30d",
   adminAnalyticsOverview: null,
   adminAnalyticsTrends: null,
+  adminAnalyticsSources: null,
+  adminAnalyticsReturning: null,
   adminAnalyticsFunnel: null,
   adminAnalyticsLoading: false
 };
@@ -357,10 +361,12 @@ const elements = {
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
+  adminAnalyticsControls: document.getElementById("admin-analytics-controls"),
   adminAnalyticsOverview: document.getElementById("admin-analytics-overview"),
   adminAnalyticsFunnel: document.getElementById("admin-analytics-funnel"),
   adminSignupsChart: document.getElementById("admin-signups-chart"),
   adminActiveUsersChart: document.getElementById("admin-active-users-chart"),
+  adminSourcesChart: document.getElementById("admin-sources-chart"),
   adminContactList: document.getElementById("admin-contact-list"),
   adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
@@ -623,6 +629,16 @@ function bindEvents() {
       uiState.adminTradeLimit = Number(limitButton.dataset.adminTradeLimit);
       renderAdminTable();
     }
+  });
+
+  elements.adminAnalyticsControls?.addEventListener("click", (event) => {
+    const rangeButton = event.target.closest("[data-analytics-range]");
+    if (!rangeButton) return;
+    const nextRange = rangeButton.dataset.analyticsRange;
+    if (!nextRange || nextRange === uiState.adminAnalyticsRange) return;
+    uiState.adminAnalyticsRange = nextRange;
+    renderAdminAnalyticsControls();
+    void refreshAdminAnalytics(true);
   });
 
   bindSwipeNavigation();
@@ -937,16 +953,22 @@ async function refreshAdminAnalytics(forceLoadingState) {
   if (!uiState.adminOpen || !hasAdminAccess()) return;
   if (forceLoadingState) {
     uiState.adminAnalyticsLoading = true;
+    renderAdminAnalyticsControls();
     renderAdminAnalytics();
   }
   try {
-    const [overview, trends, funnel] = await Promise.all([
-      apiGet("/api/admin/analytics/overview"),
-      apiGet("/api/admin/analytics/trends"),
-      apiGet("/api/admin/analytics/funnel")
+    const range = uiState.adminAnalyticsRange;
+    const [overview, trends, sources, returning, funnel] = await Promise.all([
+      apiGet(`/api/admin/analytics/overview?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/trends?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/sources?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/returning?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/funnel?range=${encodeURIComponent(range)}`)
     ]);
     uiState.adminAnalyticsOverview = overview;
     uiState.adminAnalyticsTrends = trends;
+    uiState.adminAnalyticsSources = sources;
+    uiState.adminAnalyticsReturning = returning;
     uiState.adminAnalyticsFunnel = funnel;
   } catch (error) {
     if (String(error.message || "").toLowerCase().includes("admin access")) {
@@ -956,6 +978,7 @@ async function refreshAdminAnalytics(forceLoadingState) {
     }
   } finally {
     uiState.adminAnalyticsLoading = false;
+    renderAdminAnalyticsControls();
     renderAdminAnalytics();
     renderAdminShell();
   }
@@ -1242,6 +1265,7 @@ function renderAll() {
   safelyRender("leaderboard", renderLeaderboard);
   safelyRender("profile summary", renderProfileSummary);
   safelyRender("admin shell", renderAdminShell);
+  safelyRender("admin analytics controls", renderAdminAnalyticsControls);
   safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
   safelyRender("admin analytics", renderAdminAnalytics);
@@ -4995,29 +5019,57 @@ function renderAdminDashboard() {
   elements.adminDashboard.innerHTML = cards.join("");
 }
 
+function renderAdminAnalyticsControls() {
+  if (!elements.adminAnalyticsControls) return;
+  if (!uiState.adminOpen) {
+    elements.adminAnalyticsControls.innerHTML = "";
+    return;
+  }
+  const options = [
+    ["today", "Today"],
+    ["7d", "Last 7 Days"],
+    ["30d", "Last 30 Days"],
+    ["all", "All Time"]
+  ];
+  elements.adminAnalyticsControls.innerHTML = options
+    .map(([value, label]) => `<button class="portfolio-chip ${uiState.adminAnalyticsRange === value ? "active" : ""}" type="button" data-analytics-range="${value}">${label}</button>`)
+    .join("");
+}
+
 function renderAdminAnalytics() {
   if (!elements.adminAnalyticsOverview || !elements.adminAnalyticsFunnel) return;
   if (!uiState.adminOpen) {
     elements.adminAnalyticsOverview.innerHTML = "";
     elements.adminAnalyticsFunnel.innerHTML = "";
+    adminSignupsChart?.destroy();
+    adminActiveUsersChart?.destroy();
+    adminSourcesChart?.destroy();
+    adminSignupsChart = null;
+    adminActiveUsersChart = null;
+    adminSourcesChart = null;
     return;
   }
   const overview = uiState.adminAnalyticsOverview;
+  const returning = uiState.adminAnalyticsReturning;
   const funnel = uiState.adminAnalyticsFunnel;
   const loadingMarkup = `<div class="section-meta">Loading analytics…</div>`;
-  elements.adminAnalyticsOverview.innerHTML = overview
+  elements.adminAnalyticsOverview.innerHTML = overview?.cards
     ? [
-        adminDashboardCard("Active now", formatWholeNumber(overview.active_users_now), "Unique sessions active in the last 15 minutes"),
-        adminDashboardCard("Signups today", formatWholeNumber(overview.signups_today), "New users created today"),
-        adminDashboardCard("Signups this week", formatWholeNumber(overview.signups_this_week), "New users created this week"),
-        adminDashboardCard("Total users", formatWholeNumber(overview.total_users), "All users in the platform"),
-        adminDashboardCard("Trades today", formatWholeNumber(overview.trades_today), "Trades placed today")
+        adminAnalyticsCard(overview.cards.active_users),
+        adminAnalyticsCard(overview.cards.signups),
+        adminAnalyticsCard(overview.cards.visitors),
+        adminAnalyticsCard(overview.cards.total_users),
+        adminAnalyticsCard(overview.cards.trades),
+        adminAnalyticsCard({
+          ...overview.cards.return_rate,
+          sparkline: Array.isArray(returning?.daily_return_rate) ? returning.daily_return_rate.map((entry) => Number(entry.rate) || 0) : (overview.cards.return_rate?.sparkline || [])
+        })
       ].join("")
     : uiState.adminAnalyticsLoading ? loadingMarkup : `<div class="section-meta">Analytics data is not available yet.</div>`;
   elements.adminAnalyticsFunnel.innerHTML = funnel
     ? [
-        adminDashboardCard("Total visitors", formatWholeNumber(funnel.total_unique_visitors), "Unique visitor sessions tracked"),
-        adminDashboardCard("Total signups", formatWholeNumber(funnel.total_signups), "Users who completed signup"),
+        adminDashboardCard("Total visitors", formatWholeNumber(funnel.total_unique_visitors), `Unique visitor sessions in ${formatAnalyticsRangeLabel(funnel.range?.label)}`),
+        adminDashboardCard("Total signups", formatWholeNumber(funnel.total_signups), `Users who completed signup in ${formatAnalyticsRangeLabel(funnel.range?.label)}`),
         adminDashboardCard("Conversion rate", `${Number(funnel.conversion_rate || 0).toFixed(1)}%`, "Signups divided by unique visitors")
       ].join("")
     : uiState.adminAnalyticsLoading ? loadingMarkup : `<div class="section-meta">Open admin analytics to start loading data.</div>`;
@@ -5026,9 +5078,10 @@ function renderAdminAnalytics() {
 
 function renderAdminAnalyticsCharts() {
   const trends = uiState.adminAnalyticsTrends;
-  if (!trends || typeof window.Chart !== "function") return;
-  const signupsSeries = Array.isArray(trends.daily_signups) ? trends.daily_signups : [];
-  const activeSeries = Array.isArray(trends.daily_active_users) ? trends.daily_active_users : [];
+  const sources = uiState.adminAnalyticsSources;
+  if (typeof window.Chart !== "function") return;
+  const signupsSeries = Array.isArray(trends?.daily_signups) ? trends.daily_signups : [];
+  const activeSeries = Array.isArray(trends?.daily_active_users) ? trends.daily_active_users : [];
   const labels = signupsSeries.map((entry) => formatChartDate(entry.date));
   adminSignupsChart = renderAdminLineChart(adminSignupsChart, elements.adminSignupsChart, {
     labels,
@@ -5039,6 +5092,11 @@ function renderAdminAnalyticsCharts() {
     labels: activeSeries.map((entry) => formatChartDate(entry.date)),
     label: "Daily Active Users",
     data: activeSeries.map((entry) => Number(entry.count) || 0)
+  });
+  adminSourcesChart = renderAdminBarChart(adminSourcesChart, elements.adminSourcesChart, {
+    labels: Array.isArray(sources?.sources) ? sources.sources.map((entry) => entry.source) : [],
+    label: "Sessions",
+    data: Array.isArray(sources?.sources) ? sources.sources.map((entry) => Number(entry.sessions) || 0) : []
   });
 }
 
@@ -5096,6 +5154,96 @@ function renderAdminLineChart(existingChart, canvas, { labels, label, data }) {
       }
     }
   });
+}
+
+function renderAdminBarChart(existingChart, canvas, { labels, label, data }) {
+  if (!canvas || typeof window.Chart !== "function") return existingChart;
+  existingChart?.destroy();
+  const styles = getComputedStyle(document.documentElement);
+  const fillColor = styles.getPropertyValue("--color-accent").trim() || "#68d9ff";
+  const gridColor = styles.getPropertyValue("--border-subtle").trim() || "rgba(255,255,255,0.12)";
+  const textColor = styles.getPropertyValue("--text-secondary").trim() || "rgba(255,255,255,0.72)";
+  return new window.Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        backgroundColor: fillColor,
+        borderRadius: 8,
+        maxBarThickness: 48
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: textColor
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor,
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
+function adminAnalyticsCard(card) {
+  if (!card) return "";
+  return `<article class="admin-dashboard-card admin-analytics-card"><p class="panel-label">${escapeHtml(card.label || "")}</p><strong>${escapeHtml(String(card.display_value ?? ""))}</strong><div class="admin-analytics-card-row"><span class="admin-analytics-comparison ${comparisonClassName(card.comparison)}">${escapeHtml(formatComparisonLabel(card.comparison))}</span>${sparklineMarkup(card.sparkline)}</div><p class="section-meta">${escapeHtml(card.meta || "")}</p></article>`;
+}
+
+function sparklineMarkup(points) {
+  if (!Array.isArray(points) || !points.length) {
+    return `<span class="admin-sparkline admin-sparkline-empty" aria-hidden="true"></span>`;
+  }
+  const width = 88;
+  const height = 24;
+  const normalized = points.map((value) => Number(value) || 0);
+  const min = Math.min(...normalized);
+  const max = Math.max(...normalized);
+  const range = max - min || 1;
+  const path = normalized.map((value, index) => {
+    const x = normalized.length === 1 ? width / 2 : (index / (normalized.length - 1)) * width;
+    const y = height - (((value - min) / range) * (height - 4)) - 2;
+    return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(" ");
+  return `<svg class="admin-sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"></path></svg>`;
+}
+
+function comparisonClassName(comparison) {
+  if (!comparison || !comparison.direction) return "is-flat";
+  return comparison.direction === "up" ? "is-up" : comparison.direction === "down" ? "is-down" : "is-flat";
+}
+
+function formatComparisonLabel(comparison) {
+  if (!comparison || comparison.percentage == null || comparison.direction === "flat") {
+    return "—";
+  }
+  return comparison.label || "—";
+}
+
+function formatAnalyticsRangeLabel(label) {
+  return String(label || "the selected range").toLowerCase();
 }
 
 function formatWholeNumber(value) {
