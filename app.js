@@ -12,7 +12,6 @@ const AUTH_TOKEN_KEY = "authToken";
 const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
 const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
-const ADMIN_PASSWORD = "binthechin";
 const LIVE_SYNC_MS = 5000;
 const PRIZE_POOL_POLL_MS = 10000;
 const ONBOARDING_POPUP_DELAY_MS = 800;
@@ -162,6 +161,12 @@ let popularFeaturedRequest = null;
 let appChromeRenderKey = "";
 let isStakeInputInteractionActive = false;
 let pendingRenderAfterStakeInput = false;
+let adminAnalyticsRefreshTimer = null;
+let adminSignupsChart = null;
+let adminActiveUsersChart = null;
+let adminSourcesChart = null;
+let marketViewTrackKey = "";
+let marketViewTrackedAt = 0;
 const MAX_SINGLE_BID = 10;
 
 const uiState = {
@@ -243,7 +248,14 @@ const uiState = {
   adminMarketFilter: "ACTIVE",
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
-  adminTradeLimit: 60
+  adminTradeLimit: 60,
+  adminAnalyticsRange: "30d",
+  adminAnalyticsOverview: null,
+  adminAnalyticsTrends: null,
+  adminAnalyticsSources: null,
+  adminAnalyticsReturning: null,
+  adminAnalyticsFunnel: null,
+  adminAnalyticsLoading: false
 };
 
 const elements = {
@@ -349,6 +361,12 @@ const elements = {
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
+  adminAnalyticsControls: document.getElementById("admin-analytics-controls"),
+  adminAnalyticsOverview: document.getElementById("admin-analytics-overview"),
+  adminAnalyticsFunnel: document.getElementById("admin-analytics-funnel"),
+  adminSignupsChart: document.getElementById("admin-signups-chart"),
+  adminActiveUsersChart: document.getElementById("admin-active-users-chart"),
+  adminSourcesChart: document.getElementById("admin-sources-chart"),
   adminContactList: document.getElementById("admin-contact-list"),
   adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
@@ -537,8 +555,8 @@ function bindEvents() {
     scrollHomeCarouselTo(button.dataset.homePanelTarget);
   });
 
-  elements.openAdminButton?.addEventListener("click", () => {
-    handleOpenAdminTools();
+  elements.openAdminButton?.addEventListener("click", async () => {
+    await handleOpenAdminTools();
   });
   elements.openShareableContentButton?.addEventListener("click", () => {
     openShareableContentLibrary();
@@ -551,6 +569,7 @@ function bindEvents() {
     closeShareableContentOutput();
     uiState.adminOpen = false;
     uiState.adminShareableView = "main";
+    stopAdminAnalyticsPolling();
     renderAdminShell();
   });
 
@@ -610,6 +629,16 @@ function bindEvents() {
       uiState.adminTradeLimit = Number(limitButton.dataset.adminTradeLimit);
       renderAdminTable();
     }
+  });
+
+  elements.adminAnalyticsControls?.addEventListener("click", (event) => {
+    const rangeButton = event.target.closest("[data-analytics-range]");
+    if (!rangeButton) return;
+    const nextRange = rangeButton.dataset.analyticsRange;
+    if (!nextRange || nextRange === uiState.adminAnalyticsRange) return;
+    uiState.adminAnalyticsRange = nextRange;
+    renderAdminAnalyticsControls();
+    void refreshAdminAnalytics(true);
   });
 
   bindSwipeNavigation();
@@ -683,15 +712,21 @@ function hasAdminAccess() {
   return window.sessionStorage.getItem(ADMIN_ACCESS_KEY) === "granted";
 }
 
-function requestAdminAccess() {
+async function requestAdminAccess() {
   if (hasAdminAccess()) return true;
   const password = window.prompt("Enter admin password");
-  if (password !== ADMIN_PASSWORD) {
-    showToast("Admin access denied", "Incorrect password.");
+  if (!password) {
     return false;
   }
-  window.sessionStorage.setItem(ADMIN_ACCESS_KEY, "granted");
-  return true;
+  try {
+    await api("/api/admin/auth", { password }, { includeUserName: false });
+    window.sessionStorage.setItem(ADMIN_ACCESS_KEY, "granted");
+    return true;
+  } catch (error) {
+    window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+    showToast("Admin access denied", error.message || "Incorrect password.");
+    return false;
+  }
 }
 
 function applySharedSnapshot(response) {
@@ -716,8 +751,11 @@ function applySharedSnapshot(response) {
   prizePoolState = response.prizePool || null;
 }
 
-async function syncSession() {
-  const response = await api("/api/session", { userName: currentUserName() });
+async function syncSession(options = {}) {
+  const response = await api("/api/session", {
+    userName: currentUserName(),
+    logUserAuthEvent: Boolean(options.logUserAuthEvent)
+  });
   applySharedSnapshot(response);
   if (popularFeaturedRoundNumber !== activeRoundNumber()) {
     popularFeaturedMarketIds = [];
@@ -739,7 +777,7 @@ async function completeLogin(userName) {
     localStorage.setItem(USER_NAME_KEY, userName);
     localStorage.setItem(HAS_AUTHENTICATED_KEY, "true");
     randomizeQuickPickOrder();
-    await syncSession();
+    await syncSession({ logUserAuthEvent: true });
     localStorage.setItem(AUTH_TOKEN_KEY, "true");
     syncSelectedMarket();
     renderAll();
@@ -890,10 +928,60 @@ async function handleLogout() {
   startLiveSync();
 }
 
-function handleOpenAdminTools() {
-  if (!requestAdminAccess()) return;
+async function handleOpenAdminTools() {
+  if (!await requestAdminAccess()) return;
   uiState.adminOpen = true;
   renderAdminShell();
+  await refreshAdminAnalytics(true);
+}
+
+function startAdminAnalyticsPolling() {
+  if (adminAnalyticsRefreshTimer) return;
+  adminAnalyticsRefreshTimer = window.setInterval(() => {
+    void refreshAdminAnalytics(false);
+  }, 60000);
+}
+
+function stopAdminAnalyticsPolling() {
+  if (adminAnalyticsRefreshTimer) {
+    window.clearInterval(adminAnalyticsRefreshTimer);
+    adminAnalyticsRefreshTimer = null;
+  }
+}
+
+async function refreshAdminAnalytics(forceLoadingState) {
+  if (!uiState.adminOpen || !hasAdminAccess()) return;
+  if (forceLoadingState) {
+    uiState.adminAnalyticsLoading = true;
+    renderAdminAnalyticsControls();
+    renderAdminAnalytics();
+  }
+  try {
+    const range = uiState.adminAnalyticsRange;
+    const [overview, trends, sources, returning, funnel] = await Promise.all([
+      apiGet(`/api/admin/analytics/overview?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/trends?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/sources?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/returning?range=${encodeURIComponent(range)}`),
+      apiGet(`/api/admin/analytics/funnel?range=${encodeURIComponent(range)}`)
+    ]);
+    uiState.adminAnalyticsOverview = overview;
+    uiState.adminAnalyticsTrends = trends;
+    uiState.adminAnalyticsSources = sources;
+    uiState.adminAnalyticsReturning = returning;
+    uiState.adminAnalyticsFunnel = funnel;
+  } catch (error) {
+    if (String(error.message || "").toLowerCase().includes("admin access")) {
+      window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+      uiState.adminOpen = false;
+      stopAdminAnalyticsPolling();
+    }
+  } finally {
+    uiState.adminAnalyticsLoading = false;
+    renderAdminAnalyticsControls();
+    renderAdminAnalytics();
+    renderAdminShell();
+  }
 }
 
 function shouldShowHowItWorksToolbarButton() {
@@ -1177,8 +1265,10 @@ function renderAll() {
   safelyRender("leaderboard", renderLeaderboard);
   safelyRender("profile summary", renderProfileSummary);
   safelyRender("admin shell", renderAdminShell);
+  safelyRender("admin analytics controls", renderAdminAnalyticsControls);
   safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
+  safelyRender("admin analytics", renderAdminAnalytics);
   safelyRender("admin contact inbox", renderAdminContactInbox);
   safelyRender("admin markets", renderAdminMarkets);
   safelyRender("bot simulation", renderBotSimulation);
@@ -1813,6 +1903,7 @@ function renderMarketRows(container, markets, emptyMessage, options = {}) {
       uiState.expandedMarketId = expandable && uiState.expandedMarketId !== market.id ? market.id : "";
       uiState.focusStakeMarketId = "";
       uiState.activeScreen = "markets";
+      trackMarketViewed(market.id, "market-list");
       renderAll();
     });
     if (isExpanded) {
@@ -1913,6 +2004,7 @@ function openInlineTrade(market, side) {
   uiState.marketTradeSides[market.id] = side;
   uiState.focusStakeMarketId = market.id;
   uiState.activeScreen = "markets";
+  trackMarketViewed(market.id, "inline-trade");
   renderAll();
 }
 
@@ -4146,6 +4238,11 @@ function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
   elements.adminShell.classList.toggle("shareable-active", uiState.adminShareableView !== "main");
+  if (uiState.adminOpen) {
+    startAdminAnalyticsPolling();
+  } else {
+    stopAdminAnalyticsPolling();
+  }
   if (elements.adminRoundSelect) {
     elements.adminRoundSelect.innerHTML = getAvailableRoundOptions()
       .map((roundNumber) => `<option value="${roundNumber}">${roundLabelForNumber(roundNumber)}</option>`)
@@ -4922,6 +5019,258 @@ function renderAdminDashboard() {
   elements.adminDashboard.innerHTML = cards.join("");
 }
 
+function renderAdminAnalyticsControls() {
+  if (!elements.adminAnalyticsControls) return;
+  if (!uiState.adminOpen) {
+    elements.adminAnalyticsControls.innerHTML = "";
+    return;
+  }
+  const options = [
+    ["today", "Today"],
+    ["7d", "Last 7 Days"],
+    ["30d", "Last 30 Days"],
+    ["all", "All Time"]
+  ];
+  elements.adminAnalyticsControls.innerHTML = options
+    .map(([value, label]) => `<button class="portfolio-chip ${uiState.adminAnalyticsRange === value ? "active" : ""}" type="button" data-analytics-range="${value}">${label}</button>`)
+    .join("");
+}
+
+function renderAdminAnalytics() {
+  if (!elements.adminAnalyticsOverview || !elements.adminAnalyticsFunnel) return;
+  if (!uiState.adminOpen) {
+    elements.adminAnalyticsOverview.innerHTML = "";
+    elements.adminAnalyticsFunnel.innerHTML = "";
+    adminSignupsChart?.destroy();
+    adminActiveUsersChart?.destroy();
+    adminSourcesChart?.destroy();
+    adminSignupsChart = null;
+    adminActiveUsersChart = null;
+    adminSourcesChart = null;
+    return;
+  }
+  const overview = uiState.adminAnalyticsOverview;
+  const returning = uiState.adminAnalyticsReturning;
+  const funnel = uiState.adminAnalyticsFunnel;
+  const loadingMarkup = `<div class="section-meta">Loading analytics…</div>`;
+  elements.adminAnalyticsOverview.innerHTML = overview?.cards
+    ? [
+        adminAnalyticsCard(overview.cards.active_users),
+        adminAnalyticsCard(overview.cards.signups),
+        adminAnalyticsCard(overview.cards.visitors),
+        adminAnalyticsCard(overview.cards.total_users),
+        adminAnalyticsCard(overview.cards.trades),
+        adminAnalyticsCard({
+          ...overview.cards.return_rate,
+          sparkline: Array.isArray(returning?.daily_return_rate) ? returning.daily_return_rate.map((entry) => Number(entry.rate) || 0) : (overview.cards.return_rate?.sparkline || [])
+        })
+      ].join("")
+    : uiState.adminAnalyticsLoading ? loadingMarkup : `<div class="section-meta">Analytics data is not available yet.</div>`;
+  elements.adminAnalyticsFunnel.innerHTML = funnel
+    ? [
+        adminDashboardCard("Total visitors", formatWholeNumber(funnel.total_unique_visitors), `Unique visitor sessions in ${formatAnalyticsRangeLabel(funnel.range?.label)}`),
+        adminDashboardCard("Total signups", formatWholeNumber(funnel.total_signups), `Users who completed signup in ${formatAnalyticsRangeLabel(funnel.range?.label)}`),
+        adminDashboardCard("Conversion rate", `${Number(funnel.conversion_rate || 0).toFixed(1)}%`, "Signups divided by unique visitors")
+      ].join("")
+    : uiState.adminAnalyticsLoading ? loadingMarkup : `<div class="section-meta">Open admin analytics to start loading data.</div>`;
+  renderAdminAnalyticsCharts();
+}
+
+function renderAdminAnalyticsCharts() {
+  const trends = uiState.adminAnalyticsTrends;
+  const sources = uiState.adminAnalyticsSources;
+  if (typeof window.Chart !== "function") return;
+  const signupsSeries = Array.isArray(trends?.daily_signups) ? trends.daily_signups : [];
+  const activeSeries = Array.isArray(trends?.daily_active_users) ? trends.daily_active_users : [];
+  const labels = signupsSeries.map((entry) => formatChartDate(entry.date));
+  adminSignupsChart = renderAdminLineChart(adminSignupsChart, elements.adminSignupsChart, {
+    labels,
+    label: "Daily Signups",
+    data: signupsSeries.map((entry) => Number(entry.count) || 0)
+  });
+  adminActiveUsersChart = renderAdminLineChart(adminActiveUsersChart, elements.adminActiveUsersChart, {
+    labels: activeSeries.map((entry) => formatChartDate(entry.date)),
+    label: "Daily Active Users",
+    data: activeSeries.map((entry) => Number(entry.count) || 0)
+  });
+  adminSourcesChart = renderAdminBarChart(adminSourcesChart, elements.adminSourcesChart, {
+    labels: Array.isArray(sources?.sources) ? sources.sources.map((entry) => entry.source) : [],
+    label: "Sessions",
+    data: Array.isArray(sources?.sources) ? sources.sources.map((entry) => Number(entry.sessions) || 0) : []
+  });
+}
+
+function renderAdminLineChart(existingChart, canvas, { labels, label, data }) {
+  if (!canvas || typeof window.Chart !== "function") return existingChart;
+  existingChart?.destroy();
+  const styles = getComputedStyle(document.documentElement);
+  const lineColor = styles.getPropertyValue("--color-accent").trim() || "#68d9ff";
+  const gridColor = styles.getPropertyValue("--border-subtle").trim() || "rgba(255,255,255,0.12)";
+  const textColor = styles.getPropertyValue("--text-secondary").trim() || "rgba(255,255,255,0.72)";
+  return new window.Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        borderColor: lineColor,
+        backgroundColor: "transparent",
+        borderWidth: 2,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor,
+            maxRotation: 0,
+            autoSkip: true
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor,
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderAdminBarChart(existingChart, canvas, { labels, label, data }) {
+  if (!canvas || typeof window.Chart !== "function") return existingChart;
+  existingChart?.destroy();
+  const styles = getComputedStyle(document.documentElement);
+  const fillColor = styles.getPropertyValue("--color-accent").trim() || "#68d9ff";
+  const gridColor = styles.getPropertyValue("--border-subtle").trim() || "rgba(255,255,255,0.12)";
+  const textColor = styles.getPropertyValue("--text-secondary").trim() || "rgba(255,255,255,0.72)";
+  return new window.Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        backgroundColor: fillColor,
+        borderRadius: 8,
+        maxBarThickness: 48
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: textColor
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: gridColor
+          },
+          ticks: {
+            color: textColor,
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
+function adminAnalyticsCard(card) {
+  if (!card) return "";
+  return `<article class="admin-dashboard-card admin-analytics-card"><p class="panel-label">${escapeHtml(card.label || "")}</p><strong>${escapeHtml(String(card.display_value ?? ""))}</strong><div class="admin-analytics-card-row"><span class="admin-analytics-comparison ${comparisonClassName(card.comparison)}">${escapeHtml(formatComparisonLabel(card.comparison))}</span>${sparklineMarkup(card.sparkline)}</div><p class="section-meta">${escapeHtml(card.meta || "")}</p></article>`;
+}
+
+function sparklineMarkup(points) {
+  if (!Array.isArray(points) || !points.length) {
+    return `<span class="admin-sparkline admin-sparkline-empty" aria-hidden="true"></span>`;
+  }
+  const width = 88;
+  const height = 24;
+  const normalized = points.map((value) => Number(value) || 0);
+  const min = Math.min(...normalized);
+  const max = Math.max(...normalized);
+  const range = max - min || 1;
+  const path = normalized.map((value, index) => {
+    const x = normalized.length === 1 ? width / 2 : (index / (normalized.length - 1)) * width;
+    const y = height - (((value - min) / range) * (height - 4)) - 2;
+    return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(" ");
+  return `<svg class="admin-sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"></path></svg>`;
+}
+
+function comparisonClassName(comparison) {
+  if (!comparison || !comparison.direction) return "is-flat";
+  return comparison.direction === "up" ? "is-up" : comparison.direction === "down" ? "is-down" : "is-flat";
+}
+
+function formatComparisonLabel(comparison) {
+  if (!comparison || comparison.percentage == null || comparison.direction === "flat") {
+    return "—";
+  }
+  return comparison.label || "—";
+}
+
+function formatAnalyticsRangeLabel(label) {
+  return String(label || "the selected range").toLowerCase();
+}
+
+function formatWholeNumber(value) {
+  return WHOLE_NUMBER_FORMATTER.format(Number(value) || 0);
+}
+
+function formatChartDate(dateValue) {
+  const date = new Date(`${dateValue}T00:00:00Z`);
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function trackMarketViewed(marketId, source = "markets") {
+  const market = findMarket(marketId);
+  if (!market) return;
+  const nextKey = String(market.id);
+  const now = Date.now();
+  if (marketViewTrackKey === nextKey && now - marketViewTrackedAt < 15000) return;
+  marketViewTrackKey = nextKey;
+  marketViewTrackedAt = now;
+  void api("/api/analytics/market-view", {
+    marketId: market.id,
+    source
+  }, {
+    includeUserName: isAuthenticated()
+  }).catch(() => {});
+}
+
 function skipQuickTake(marketId, card) {
   const activeCardId = getActiveQuickTakeMarketId();
   if (!marketId || marketId !== activeCardId || uiState.quickPickPendingRequestId) return;
@@ -5585,8 +5934,10 @@ function getVisibleMarkets() {
 }
 
 function syncQuickTakeQueue() {
-  const sortedOpenIds = state.markets
-    .filter(isMarketOpen)
+  const openMarkets = state.markets.filter(isMarketOpen);
+  const postOnlyMarkets = openMarkets.filter((market) => !hasRestingQuickTakeLiquidity(market));
+  const quickTakeSourceMarkets = postOnlyMarkets.length ? postOnlyMarkets : openMarkets;
+  const sortedOpenIds = quickTakeSourceMarkets
     .sort(compareQuickTakeMarkets)
     .map((market) => market.id);
   const openIdSet = new Set(sortedOpenIds);
@@ -5619,6 +5970,14 @@ function syncQuickTakeQueue() {
   if (uiState.quickPickActiveIndex !== nextActiveIndex) {
     uiState.quickPickActiveIndex = nextActiveIndex;
   }
+}
+
+function hasRestingQuickTakeLiquidity(market) {
+  return Array.isArray(market?.trades) && market.trades.some((trade) =>
+    trade &&
+    ["PENDING", "PARTIALLY_MATCHED"].includes(String(trade.status || "")) &&
+    Number(trade.unmatchedStake) > 0
+  );
 }
 
 function getQuickTakeQueueMarkets() {
@@ -6478,6 +6837,7 @@ function openMarketFromHome(marketId) {
   uiState.currentTeam = market.team;
   uiState.selectedMarketId = market.id;
   uiState.expandedMarketId = market.id;
+  trackMarketViewed(market.id, "home");
   renderAll();
   scrollExpandedMarketIntoView(market.id);
 }
@@ -7511,16 +7871,19 @@ function selectTextContent(node) {
   return true;
 }
 
-async function api(url, payload) {
+async function api(url, payload, options = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (options.includeUserName !== false) {
+      headers["X-User-Name"] = currentUserName();
+    }
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Name": currentUserName()
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal
     });
