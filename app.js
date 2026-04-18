@@ -604,13 +604,16 @@ function bindEvents() {
   elements.createRandomProbBot?.addEventListener("click", async () => {
     await createSimulationBot();
   });
-  elements.purgeLegacyBots?.addEventListener("click", async () => {
-    await purgeLegacyBots();
-  });
-  elements.botPerformanceList?.addEventListener("click", async (event) => {
+  document.addEventListener("click", async (event) => {
+    const purgeButton = event.target.closest("#purge-legacy-bots");
+    if (purgeButton) {
+      await purgeLegacyBots();
+      return;
+    }
     const deleteButton = event.target.closest("[data-delete-bot-user]");
-    if (!deleteButton) return;
-    await deleteBotUser(deleteButton.dataset.deleteBotUser || "");
+    if (deleteButton) {
+      await deleteBotUser(deleteButton.dataset.deleteBotUser || "");
+    }
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -5902,9 +5905,11 @@ async function purgeLegacyBots() {
     elements.botRunFeedback.textContent = response.deletedCount
       ? `Retired ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
       : "No legacy bot users found.";
+    showToast("Bot cleanup complete", elements.botRunFeedback.textContent);
     refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
+    showToast("Bot cleanup failed", error.message);
   }
 }
 
@@ -5918,9 +5923,11 @@ async function deleteBotUser(userName) {
     applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
     renderAll();
     elements.botRunFeedback.textContent = response.message || `Retired bot user ${normalized}.`;
+    showToast("Bot retired", elements.botRunFeedback.textContent);
     refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
+    showToast("Retire failed", error.message);
   }
 }
 
