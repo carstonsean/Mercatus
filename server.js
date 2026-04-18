@@ -3580,7 +3580,7 @@ async function syncStateFromSupabase({force=false,validateHostedState=false}={})
         throw new Error("Hosted state validation failed: neither active round settings nor runtime overlay could be loaded from Supabase.");
       }
       const botCleanupResult=reconcileSelfCrossingBotLiquidity(state);
-      const botResetResult=await resetBotBankrollsForRound(getActiveRoundNumber(state),{useSupabase,targetState:state});
+      const botResetResult=await resetBotBankrollsForRound(getActiveRoundNumber(state),{useSupabase:SUPABASE_ENABLED,targetState:state});
       if(botResetResult.resetCount>0){
         console.warn(`Reset ${botResetResult.resetCount} bot bankrolls for ${buildRoundLabel(botResetResult.roundNumber)}.`);
         enqueueSupabaseRuntimeSnapshot().catch((error)=>{
