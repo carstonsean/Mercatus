@@ -2,6 +2,14 @@
 const LINE_STEP = 1;
 const PRESSURE_STEP = 2;
 const BOT_PRESSURE_MULTIPLIER = 1;
+const BOT_NAME_PREFIXES = new Set([
+  "ari","beau","cruz","dax","eli","finn","hudson","jett",
+  "kai","luca","milo","nash","remy","rory","taj","zeke"
+]);
+const BOT_NAME_SUFFIXES = new Set([
+  "aces","atlas","comets","crew","dash","flux","forge","nova",
+  "orbit","raiders","shift","signal","slate","volt","wave","yard"
+]);
 const STARTING_BANKROLL = 200;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
@@ -249,13 +257,19 @@ const uiState = {
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
   adminTradeLimit: 60,
+  adminActiveTab: "operations",
   adminAnalyticsRange: "30d",
   adminAnalyticsOverview: null,
   adminAnalyticsTrends: null,
   adminAnalyticsSources: null,
   adminAnalyticsReturning: null,
   adminAnalyticsFunnel: null,
-  adminAnalyticsLoading: false
+  adminAnalyticsLoading: false,
+  adminAffiliatesLoading: false,
+  adminAffiliatesLoaded: false,
+  adminAffiliatesError: "",
+  adminAffiliates: [],
+  adminAffiliateReferrals: []
 };
 
 const elements = {
@@ -339,6 +353,8 @@ const elements = {
   adminShell: document.getElementById("admin-shell"),
   openShareableContentButton: document.getElementById("open-shareable-content-button"),
   adminShareableWorkspace: document.getElementById("admin-shareable-workspace"),
+  adminTabControls: document.getElementById("admin-tab-controls"),
+  adminTabPanels: [...document.querySelectorAll(".admin-tab-panel")],
   closeAdminButton: document.getElementById("close-admin-button"),
   adminRoundForm: document.getElementById("admin-round-form"),
   adminRoundSelect: document.getElementById("admin-round-select"),
@@ -358,6 +374,7 @@ const elements = {
   botSummary: document.getElementById("bot-summary"),
   botPerformanceList: document.getElementById("bot-performance-list"),
   createRandomProbBot: document.getElementById("create-random-prob-bot"),
+  purgeLegacyBots: document.getElementById("purge-legacy-bots"),
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
@@ -371,6 +388,9 @@ const elements = {
   adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
   adminTradeControls: document.getElementById("admin-trade-controls"),
+  adminAffiliateSummary: document.getElementById("admin-affiliate-summary"),
+  adminAffiliateReferralsBody: document.getElementById("admin-affiliate-referrals-body"),
+  adminAffiliateFeedback: document.getElementById("admin-affiliate-feedback"),
   positionsBody: document.getElementById("positions-body"),
   resetDemo: document.getElementById("reset-demo"),
   toast: document.getElementById("toast")
@@ -595,6 +615,9 @@ function bindEvents() {
   elements.createRandomProbBot?.addEventListener("click", async () => {
     await createSimulationBot();
   });
+  elements.purgeLegacyBots?.addEventListener("click", async () => {
+    await purgeLegacyBots();
+  });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
     await syncSession();
@@ -639,6 +662,12 @@ function bindEvents() {
     uiState.adminAnalyticsRange = nextRange;
     renderAdminAnalyticsControls();
     void refreshAdminAnalytics(true);
+  });
+
+  elements.adminTabControls?.addEventListener("click", (event) => {
+    const tabButton = event.target.closest("[data-admin-tab]");
+    if (!tabButton) return;
+    void setActiveAdminTab(tabButton.dataset.adminTab || "operations");
   });
 
   bindSwipeNavigation();
@@ -931,7 +960,22 @@ async function handleLogout() {
 async function handleOpenAdminTools() {
   if (!await requestAdminAccess()) return;
   uiState.adminOpen = true;
+  uiState.adminActiveTab = "operations";
   renderAdminShell();
+  await refreshAdminAnalytics(true);
+}
+
+async function setActiveAdminTab(nextTab) {
+  const normalizedTab = nextTab === "affiliates" ? "affiliates" : "operations";
+  if (uiState.adminActiveTab === normalizedTab) {
+    return;
+  }
+  uiState.adminActiveTab = normalizedTab;
+  renderAdminShell();
+  if (normalizedTab === "affiliates") {
+    await refreshAdminAffiliates();
+    return;
+  }
   await refreshAdminAnalytics(true);
 }
 
@@ -1269,6 +1313,7 @@ function renderAll() {
   safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
   safelyRender("admin analytics", renderAdminAnalytics);
+  safelyRender("admin affiliates", renderAdminAffiliates);
   safelyRender("admin contact inbox", renderAdminContactInbox);
   safelyRender("admin markets", renderAdminMarkets);
   safelyRender("bot simulation", renderBotSimulation);
@@ -4238,7 +4283,8 @@ function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
   elements.adminShell.classList.toggle("shareable-active", uiState.adminShareableView !== "main");
-  if (uiState.adminOpen) {
+  renderAdminTabs();
+  if (uiState.adminOpen && uiState.adminActiveTab === "operations") {
     startAdminAnalyticsPolling();
   } else {
     stopAdminAnalyticsPolling();
@@ -4259,6 +4305,21 @@ function renderAdminShell() {
   if (elements.undoSettlementButton) {
     elements.undoSettlementButton.disabled = !state.lastSettlementBatch;
   }
+}
+
+function renderAdminTabs() {
+  const activeTab = uiState.adminActiveTab === "affiliates" ? "affiliates" : "operations";
+  if (elements.adminTabControls) {
+    [...elements.adminTabControls.querySelectorAll("[data-admin-tab]")].forEach((button) => {
+      const isActive = button.dataset.adminTab === activeTab;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", String(isActive));
+    });
+  }
+  elements.adminTabPanels.forEach((panel) => {
+    const isActive = panel.dataset.adminTabPanel === activeTab;
+    panel.classList.toggle("is-active", isActive);
+  });
 }
 
 function openShareableContentLibrary() {
@@ -5255,6 +5316,76 @@ function formatChartDate(dateValue) {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+async function refreshAdminAffiliates() {
+  if (!uiState.adminOpen || !hasAdminAccess()) return;
+  uiState.adminAffiliatesLoading = true;
+  uiState.adminAffiliatesError = "";
+  renderAdminAffiliates();
+  try {
+    const payload = await apiGet("/api/admin/affiliates");
+    uiState.adminAffiliates = Array.isArray(payload?.affiliates) ? payload.affiliates : [];
+    uiState.adminAffiliateReferrals = Array.isArray(payload?.referrals) ? payload.referrals : [];
+    uiState.adminAffiliatesLoaded = true;
+  } catch (error) {
+    if (String(error.message || "").toLowerCase().includes("admin access")) {
+      window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+      uiState.adminOpen = false;
+      stopAdminAnalyticsPolling();
+    }
+    uiState.adminAffiliatesError = error.message || "Unable to load affiliate data.";
+  } finally {
+    uiState.adminAffiliatesLoading = false;
+    renderAdminAffiliates();
+    renderAdminShell();
+  }
+}
+
+function renderAdminAffiliates() {
+  if (!elements.adminAffiliateSummary || !elements.adminAffiliateReferralsBody || !elements.adminAffiliateFeedback) return;
+  if (!uiState.adminOpen) {
+    elements.adminAffiliateSummary.innerHTML = "";
+    elements.adminAffiliateReferralsBody.innerHTML = "";
+    elements.adminAffiliateFeedback.textContent = "";
+    return;
+  }
+  if (uiState.adminActiveTab !== "affiliates") {
+    return;
+  }
+  if (uiState.adminAffiliatesLoading) {
+    elements.adminAffiliateFeedback.textContent = "Loading affiliate signups…";
+    elements.adminAffiliateSummary.innerHTML = "";
+    elements.adminAffiliateReferralsBody.innerHTML = "";
+    return;
+  }
+  if (uiState.adminAffiliatesError) {
+    elements.adminAffiliateFeedback.textContent = uiState.adminAffiliatesError;
+    elements.adminAffiliateSummary.innerHTML = "";
+    elements.adminAffiliateReferralsBody.innerHTML = "";
+    return;
+  }
+  elements.adminAffiliateFeedback.textContent = "";
+  const affiliates = Array.isArray(uiState.adminAffiliates) ? uiState.adminAffiliates : [];
+  const referrals = Array.isArray(uiState.adminAffiliateReferrals) ? uiState.adminAffiliateReferrals : [];
+  const totalReferredSignups = referrals.length;
+  elements.adminAffiliateSummary.innerHTML = [
+    adminDashboardCard("Tracked affiliates", String(affiliates.length), "Affiliate codes currently registered"),
+    adminDashboardCard("Total referred signups", String(totalReferredSignups), "Users permanently linked at signup"),
+    ...affiliates.map((affiliate) => adminDashboardCard(affiliate.name || affiliate.code, String(Number(affiliate.total_signups) || 0), `${affiliate.code || "unknown"} signups`))
+  ].join("");
+  elements.adminAffiliateReferralsBody.innerHTML = referrals.length
+    ? referrals
+      .map((referral) => `<tr><td>${escapeHtml(referral.affiliate_name || referral.affiliate_code || "")}</td><td>${escapeHtml(referral.username || "(unknown user)")}</td><td>${escapeHtml(formatAffiliateSignupDate(referral.referred_at))}</td></tr>`)
+      .join("")
+    : `<tr><td colspan="3" class="section-meta">No referred signups have been captured yet.</td></tr>`;
+}
+
+function formatAffiliateSignupDate(value) {
+  if (!value) return "—";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "—";
+  return formatTimestamp(value);
+}
+
 function trackMarketViewed(marketId, source = "markets") {
   const market = findMarket(marketId);
   if (!market) return;
@@ -5547,7 +5678,10 @@ function getAdminTrades() {
 function isBotTrade(trade) {
   if (!trade) return false;
   if (trade.botId || trade.botSource || trade.archetype) return true;
-  return getBotRosterMap().has(trade.userName) || trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
+  return getBotRosterMap().has(trade.userName)
+    || isGeneratedBotName(trade.userName)
+    || trade.userName?.startsWith("Bot ")
+    || trade.userName?.includes(" Bot ");
 }
 
 function getAdminDashboardSummary() {
@@ -5606,6 +5740,21 @@ function getBotPerformanceSummary() {
       userName,
       archetype: bot.archetype || "random-prob",
       archetypeLabel: labelForBotArchetype(bot.archetype, bot),
+      bankroll: getDisplayedCash(userName),
+      settledTrades: 0,
+      wins: 0,
+      realizedProfit: 0,
+      settledStake: 0,
+      openExposure: 0,
+      loggedEdges: []
+    });
+  });
+  getLikelyBotUserNames().forEach((userName) => {
+    if (botRows.has(userName)) return;
+    botRows.set(userName, {
+      userName,
+      archetype: "random-prob",
+      archetypeLabel: "Random Prob",
       bankroll: getDisplayedCash(userName),
       settledTrades: 0,
       wins: 0,
@@ -5721,6 +5870,24 @@ function getBotRosterMap() {
   return new Map((state.botSimulation?.bots || []).map((bot) => [bot.userName, bot]));
 }
 
+function isGeneratedBotName(userName) {
+  const trimmed = String(userName || "").trim();
+  if (!trimmed) return false;
+  const [first, second, ...rest] = trimmed.split(/\s+/);
+  if (rest.length) return false;
+  return BOT_NAME_PREFIXES.has(String(first || "").toLowerCase()) && BOT_NAME_SUFFIXES.has(String(second || "").toLowerCase());
+}
+
+function getLikelyBotUserNames() {
+  const names = new Set();
+  Object.keys(state.bankrolls || {}).forEach((userName) => {
+    if (isGeneratedBotName(userName)) {
+      names.add(userName);
+    }
+  });
+  return [...names];
+}
+
 function getTradeExposureStake(trade) {
   const matchedStake = Number(trade.matchedStake) || 0;
   const refundedStake = Number(trade.refundedStake) || 0;
@@ -5832,6 +5999,24 @@ async function createSimulationBot() {
     const botName = response.bot?.userName || "Random Prob bot";
     elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a 50/50 random-probability bot.`;
     showToast("Bot created", `${botName} joined the Quick Pick market.`);
+  } catch (error) {
+    elements.botRunFeedback.textContent = error.message;
+  }
+}
+
+async function purgeLegacyBots() {
+  const confirmed = window.confirm("Delete legacy bot users (excluding currently active bots) from data and leaderboard?");
+  if (!confirmed) return;
+  try {
+    const response = await api("/api/admin/bots/purge", { includeActiveBots: false });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
+    renderAll();
+    const preview = (response.deletedUsers || []).slice(0, 4).join(", ");
+    const suffix = response.deletedUsers?.length > 4 ? " ..." : "";
+    elements.botRunFeedback.textContent = response.deletedCount
+      ? `Deleted ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
+      : "No legacy bot users found.";
+    refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
   }

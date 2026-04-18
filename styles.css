@@ -7824,6 +7824,18 @@ label {
   line-height: 1.45;
 }
 
+.admin-tab-controls {
+  padding: 0 2px;
+}
+
+.admin-tab-panel {
+  display: none;
+}
+
+.admin-tab-panel.is-active {
+  display: block;
+}
+
 .admin-panel {
   padding: 18px;
   border-radius: 24px;

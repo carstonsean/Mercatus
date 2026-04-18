@@ -82,15 +82,29 @@ const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const SESSION_COOKIE_NAME="crowdiq_session_id";
 const SESSION_COOKIE_MAX_AGE_MS=30*24*60*60*1000;
+const AFFILIATE_COOKIE_NAME="crowdiq_affiliate_ref";
+const AFFILIATE_COOKIE_MAX_AGE_MS=30*24*60*60*1000;
 const ADMIN_COOKIE_NAME="crowdiq_admin_session";
 const ADMIN_SESSION_MAX_AGE_MS=12*60*60*1000;
 const ADMIN_PASSWORD=String(process.env.ADMIN_PASSWORD||"binthechin");
+const AFFILIATE_REGISTRY=[
+  {code:"fantasyfanatics",name:"NRL Fantasy Fanatics"}
+];
+const AFFILIATE_REGISTRY_BY_CODE=new Map(AFFILIATE_REGISTRY.map((affiliate)=>[affiliate.code,affiliate]));
 const HOSTED_ENVIRONMENT=isHostedEnvironment();
 const SUPABASE_ENABLED=isSupabaseEnabled();
 const HOSTED_BOT_AUTOPLAY_ENABLED=String(process.env.ENABLE_HOSTED_BOTS||"").toLowerCase()==="true";
 const SUPABASE_LOCAL_SAFETY_ERROR=getLocalSupabaseSafetyError();
 const BUILD_INFO={id:BUILD_ID,environment:HOSTED_ENVIRONMENT?"hosted":"local",persistence:SUPABASE_ENABLED?"supabase":"file"};
 const ASSET_VERSION=BUILD_ID;
+const BOT_NAME_PREFIXES=new Set([
+  "ari","beau","cruz","dax","eli","finn","hudson","jett",
+  "kai","luca","milo","nash","remy","rory","taj","zeke"
+]);
+const BOT_NAME_SUFFIXES=new Set([
+  "aces","atlas","comets","crew","dash","flux","forge","nova",
+  "orbit","raiders","shift","signal","slate","volt","wave","yard"
+]);
 
 if(SUPABASE_LOCAL_SAFETY_ERROR){
   console.warn(SUPABASE_LOCAL_SAFETY_ERROR);
@@ -129,6 +143,9 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url,`http://${req.headers.host}`);
     const sessionContext=ensureSessionContext(req,res);
+    if(handleAffiliateLanding(req,res,url,sessionContext)){
+      return;
+    }
     if(url.pathname==="/api"||url.pathname.startsWith("/api/")){
       await handleApi(req,res,url,sessionContext);
       return;
@@ -168,6 +185,31 @@ startServer().catch((error)=>{
   console.error("Mercatus startup failed",error.message||error);
   process.exit(1);
 });
+
+function handleAffiliateLanding(req,res,url,sessionContext){
+  if(req.method!=="GET"){
+    return false;
+  }
+  const affiliate=resolveAffiliateFromPath(url.pathname);
+  if(!affiliate){
+    return false;
+  }
+  setCookie(sessionContext,AFFILIATE_COOKIE_NAME,affiliate.code,{
+    maxAgeMs:AFFILIATE_COOKIE_MAX_AGE_MS,
+    httpOnly:true
+  });
+  const headers={
+    Location:"/",
+    "Cache-Control":"no-store, no-cache, must-revalidate, proxy-revalidate",
+    "Pragma":"no-cache",
+    "Expires":"0",
+    "Surrogate-Control":"no-store"
+  };
+  appendPendingCookies(headers,sessionContext);
+  res.writeHead(302,headers);
+  res.end();
+  return true;
+}
 
 function refreshSupabaseStateInBackground(label="Supabase"){
   if(!SUPABASE_ENABLED){
@@ -426,6 +468,9 @@ async function handleApi(req,res,url,sessionContext){
     }
     syncPrizePoolState(state);
     const backendUser=await syncBackendUser(username,useSupabase);
+    if(useSupabase&&backendUser?.created&&backendUser?.id){
+      await applyPendingAffiliateReferral(backendUser.id,sessionContext);
+    }
     if(useSupabase&&shouldLogAuthEvent&&backendUser?.id){
       await logAnalyticsEvent({
         eventType:backendUser.created?"user_signup":"user_login",
@@ -751,6 +796,34 @@ async function handleApi(req,res,url,sessionContext){
     await persistStateSnapshot(useSupabase);
     return json(res,200,{state,bot,botStatus:lastBotAutoplayStatus});
   }
+  if(req.method==="POST"&&url.pathname==="/api/admin/bots/purge"){
+    const body=await parseJson(req);
+    const includeActiveBots=Boolean(body?.includeActiveBots);
+    const targetUsers=getLegacyBotUserNames(state,{includeActiveBots});
+    if(!targetUsers.length){
+      return json(res,200,{
+        state,
+        deletedUsers:[],
+        deletedCount:0,
+        message:"No legacy bot users found."
+      });
+    }
+    if(useSupabase){
+      await purgeSupabaseUsersByUserNames(targetUsers);
+      await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
+    }else{
+      purgeUsersFromLocalState(targetUsers,state);
+      syncDerivedBalances(state);
+      syncPrizePoolState(state);
+    }
+    await persistStateSnapshot(useSupabase);
+    return json(res,200,{
+      state,
+      deletedUsers:targetUsers,
+      deletedCount:targetUsers.length,
+      message:`Deleted ${targetUsers.length} legacy bot user${targetUsers.length===1?"":"s"}.`
+    });
+  }
   if(req.method==="GET"&&url.pathname==="/api/admin/bots/status"){
     return json(res,200,{botStatus:buildBotAutoplayStatus("status-requested")});
   }
@@ -791,7 +864,148 @@ async function handleApi(req,res,url,sessionContext){
     const returning=await buildReturningAnalytics(useSupabase,url.searchParams.get("range"));
     return json(res,200,returning,sessionContext);
   }
+  if(req.method==="GET"&&url.pathname==="/api/admin/affiliates"){
+    const affiliates=await buildAffiliateAdminPayload(useSupabase);
+    return json(res,200,affiliates,sessionContext);
+  }
   json(res,404,{error:"Not found"});
+}
+
+async function applyPendingAffiliateReferral(userId,sessionContext){
+  const affiliate=resolveAffiliateCode(sessionContext?.cookies?.[AFFILIATE_COOKIE_NAME]);
+  if(!affiliate||!userId){
+    return;
+  }
+  try{
+    await supabaseRequest("affiliates",{
+      method:"POST",
+      query:{
+        on_conflict:"code",
+        select:"code,name"
+      },
+      headers:{Prefer:"return=representation,resolution=merge-duplicates"},
+      body:{
+        code:affiliate.code,
+        name:affiliate.name
+      }
+    });
+    await supabaseRequest("user_affiliate_referrals",{
+      method:"POST",
+      query:{
+        on_conflict:"user_id",
+        select:"user_id,affiliate_code,referred_at"
+      },
+      headers:{Prefer:"return=representation,resolution=ignore-duplicates"},
+      body:{
+        user_id:userId,
+        affiliate_code:affiliate.code
+      }
+    });
+  }catch(error){
+    console.warn("Affiliate referral capture failed",error.message||error);
+  }finally{
+    setCookie(sessionContext,AFFILIATE_COOKIE_NAME,"",{
+      maxAgeMs:0,
+      httpOnly:true
+    });
+  }
+}
+
+async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
+    return {
+      affiliates:[],
+      referrals:[]
+    };
+  }
+  const affiliatesRows=await supabaseRequestAll("affiliates",{
+    query:{
+      select:"code,name,created_at",
+      order:"name.asc"
+    }
+  });
+  const referralRows=await supabaseRequestAll("user_affiliate_referrals",{
+    query:{
+      select:"user_id,affiliate_code,referred_at",
+      order:"referred_at.desc"
+    }
+  });
+  const referredUserIds=[...new Set((referralRows||[]).map((row)=>row?.user_id).filter(Boolean))];
+  const usersById=new Map();
+  if(referredUserIds.length){
+    const chunkSize=50;
+    for(let index=0;index<referredUserIds.length;index+=chunkSize){
+      const chunk=referredUserIds.slice(index,index+chunkSize);
+      const usersChunk=await supabaseRequestAll("users",{
+        query:{
+          select:"id,username,created_at",
+          id:`in.(${chunk.join(",")})`
+        }
+      });
+      (usersChunk||[]).forEach((row)=>{
+        if(row?.id){
+          usersById.set(row.id,row);
+        }
+      });
+    }
+  }
+  const affiliatesByCode=new Map((affiliatesRows||[]).map((row)=>[row.code,row]));
+  const totalByCode=(referralRows||[]).reduce((totals,row)=>{
+    const code=String(row?.affiliate_code||"").trim();
+    if(!code){
+      return totals;
+    }
+    totals.set(code,(totals.get(code)||0)+1);
+    return totals;
+  },new Map());
+  const allCodes=[...new Set([
+    ...AFFILIATE_REGISTRY.map((affiliate)=>affiliate.code),
+    ...(affiliatesRows||[]).map((affiliate)=>affiliate.code),
+    ...(referralRows||[]).map((referral)=>referral?.affiliate_code)
+  ].filter(Boolean))];
+  const affiliates=allCodes
+    .map((code)=>{
+      const seeded=AFFILIATE_REGISTRY_BY_CODE.get(code);
+      const persisted=affiliatesByCode.get(code);
+      return {
+        code,
+        name:persisted?.name||seeded?.name||code,
+        total_signups:totalByCode.get(code)||0
+      };
+    })
+    .sort((left,right)=>right.total_signups-left.total_signups||left.name.localeCompare(right.name));
+  const referrals=(referralRows||[]).map((row)=>{
+    const code=String(row?.affiliate_code||"").trim();
+    const user=usersById.get(row?.user_id)||null;
+    const affiliate=affiliatesByCode.get(code)||AFFILIATE_REGISTRY_BY_CODE.get(code)||null;
+    return {
+      affiliate_code:code,
+      affiliate_name:affiliate?.name||code,
+      user_id:row?.user_id||"",
+      username:user?.username||"",
+      referred_at:row?.referred_at||user?.created_at||null
+    };
+  });
+  return {
+    affiliates,
+    referrals
+  };
+}
+
+function resolveAffiliateFromPath(pathname){
+  const match=/^\/([a-z0-9-]+)\/?$/i.exec(String(pathname||"").trim());
+  if(!match){
+    return null;
+  }
+  return resolveAffiliateCode(match[1]);
+}
+
+function resolveAffiliateCode(rawCode){
+  const code=String(rawCode||"").trim().toLowerCase();
+  if(!code){
+    return null;
+  }
+  return AFFILIATE_REGISTRY_BY_CODE.get(code)||null;
 }
 
 function ensureSessionContext(req,res){
@@ -1173,6 +1387,105 @@ async function buildAnalyticsPayload(useSupabase=SUPABASE_ENABLED,rangeKey="30d"
       daily:buildDailyReturningRateSeries(currentEvents,users,finalizedRange.currentStart,finalizedRange.currentEnd)
     }
   };
+}
+
+function isGeneratedBotName(userName){
+  const trimmed=String(userName||"").trim();
+  if(!trimmed){
+    return false;
+  }
+  const [first,second,...rest]=trimmed.split(/\s+/);
+  if(rest.length){
+    return false;
+  }
+  return BOT_NAME_PREFIXES.has(String(first||"").toLowerCase())&&BOT_NAME_SUFFIXES.has(String(second||"").toLowerCase());
+}
+
+function getActiveBotUserNameSet(targetState=state){
+  return new Set((targetState?.botSimulation?.bots||[]).map((bot)=>String(bot?.userName||"").trim().toLowerCase()).filter(Boolean));
+}
+
+function getLegacyBotUserNames(targetState=state,{includeActiveBots=false}={}){
+  const activeBotUsers=getActiveBotUserNameSet(targetState);
+  const candidates=new Set();
+  Object.keys(targetState?.bankrolls||{}).forEach((userName)=>{
+    if(isGeneratedBotName(userName)){
+      candidates.add(String(userName).trim());
+    }
+  });
+  (targetState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(!trade?.userName){
+        return;
+      }
+      if(isBotTrade(trade)||isGeneratedBotName(trade.userName)){
+        candidates.add(String(trade.userName).trim());
+      }
+    });
+  });
+  return [...candidates]
+    .filter((userName)=>includeActiveBots||!activeBotUsers.has(userName.toLowerCase()))
+    .sort((left,right)=>left.localeCompare(right));
+}
+
+function purgeUsersFromLocalState(userNames,targetState=state){
+  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
+  if(!usersToDelete.size){
+    return;
+  }
+  Object.keys(targetState.bankrolls||{}).forEach((userName)=>{
+    if(usersToDelete.has(String(userName).toLowerCase())){
+      delete targetState.bankrolls[userName];
+    }
+  });
+  targetState.walletTransactions=(targetState.walletTransactions||[]).filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
+  targetState.shareSessions=(targetState.shareSessions||[]).filter((session)=>!usersToDelete.has(String(session?.createdBy||session?.createdByUserName||"").toLowerCase()));
+  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+  targetState.botSimulation.bots=(targetState.botSimulation.bots||[]).filter((bot)=>!usersToDelete.has(String(bot?.userName||"").toLowerCase()));
+  targetState.markets.forEach((market)=>{
+    market.trades=(market.trades||[]).filter((trade)=>!usersToDelete.has(String(trade?.userName||"").toLowerCase()));
+    if(Array.isArray(market.matchedPairs)){
+      market.matchedPairs=market.matchedPairs.filter((pair)=>!(
+        usersToDelete.has(String(pair?.overUserName||"").toLowerCase())||
+        usersToDelete.has(String(pair?.underUserName||"").toLowerCase())
+      ));
+    }
+    updateMarketTotals(market);
+  });
+  const rounds=targetState?.prizePool?.rounds||{};
+  Object.values(rounds).forEach((round)=>{
+    if(!Array.isArray(round?.entries)){
+      return;
+    }
+    round.entries=round.entries.filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
+  });
+}
+
+async function purgeSupabaseUsersByUserNames(userNames){
+  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
+  if(!usersToDelete.size){
+    return 0;
+  }
+  const users=await supabaseRequestAll("users",{
+    query:{select:"id,username"}
+  });
+  const ids=(users||[])
+    .filter((row)=>usersToDelete.has(String(row?.username||"").toLowerCase()))
+    .map((row)=>row.id)
+    .filter(Boolean);
+  if(!ids.length){
+    return 0;
+  }
+  const chunkSize=50;
+  for(let index=0;index<ids.length;index+=chunkSize){
+    const chunk=ids.slice(index,index+chunkSize);
+    await supabaseRequest("users",{
+      method:"DELETE",
+      query:{id:`in.(${chunk.join(",")})`},
+      headers:{Prefer:"return=minimal"}
+    });
+  }
+  return ids.length;
 }
 
 async function fetchUsers(){

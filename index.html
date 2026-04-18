@@ -420,7 +420,12 @@
         <button id="close-admin-button" class="ghost-button" type="button">Close</button>
       </div>
 
-      <section class="admin-panel">
+      <div id="admin-tab-controls" class="portfolio-chip-row admin-tab-controls" role="tablist" aria-label="Admin views">
+        <button class="portfolio-chip admin-tab-button active" type="button" role="tab" aria-selected="true" data-admin-tab="operations">Operations</button>
+        <button class="portfolio-chip admin-tab-button" type="button" role="tab" aria-selected="false" data-admin-tab="affiliates">Affiliates</button>
+      </div>
+
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="admin-grid">
           <form id="admin-round-form" class="stack-form">
             <div>
@@ -479,7 +484,7 @@
         </div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Dashboard</p>
@@ -490,7 +495,7 @@
         <div id="admin-dashboard" class="admin-dashboard-grid"></div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Analytics</p>
@@ -528,7 +533,7 @@
         <div id="admin-analytics-funnel" class="admin-dashboard-grid"></div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Live markets</p>
@@ -540,7 +545,7 @@
         <div id="admin-market-list" class="admin-market-list"></div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Inbox</p>
@@ -551,7 +556,7 @@
         <div id="admin-contact-list" class="admin-market-list"></div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Bot simulation</p>
@@ -568,6 +573,7 @@
               <div id="bot-summary" class="position-grid bot-summary-grid"></div>
               <div class="bot-run-actions">
                 <button id="create-random-prob-bot" class="primary-button" type="button">Create random prob bot</button>
+                <button id="purge-legacy-bots" class="ghost-button" type="button">Delete legacy bots</button>
               </div>
             </div>
             <p id="bot-run-feedback" class="feedback" aria-live="polite"></p>
@@ -591,7 +597,7 @@
         </div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-tab-panel is-active" data-admin-tab-panel="operations">
         <div class="section-heading compact-heading">
           <div>
             <p class="eyebrow">Ledger</p>
@@ -615,6 +621,30 @@
               </tr>
             </thead>
             <tbody id="positions-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="admin-panel admin-tab-panel" data-admin-tab-panel="affiliates">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">Affiliates</p>
+            <h3>Referral tracking</h3>
+            <p class="section-meta">Signup totals by affiliate and all referred users captured at registration.</p>
+          </div>
+        </div>
+        <p id="admin-affiliate-feedback" class="feedback" aria-live="polite"></p>
+        <div id="admin-affiliate-summary" class="admin-dashboard-grid"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Affiliate</th>
+                <th>User</th>
+                <th>Signup date</th>
+              </tr>
+            </thead>
+            <tbody id="admin-affiliate-referrals-body"></tbody>
           </table>
         </div>
       </section>
