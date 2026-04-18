@@ -2,6 +2,14 @@
 const LINE_STEP = 1;
 const PRESSURE_STEP = 2;
 const BOT_PRESSURE_MULTIPLIER = 1;
+const BOT_NAME_PREFIXES = new Set([
+  "ari","beau","cruz","dax","eli","finn","hudson","jett",
+  "kai","luca","milo","nash","remy","rory","taj","zeke"
+]);
+const BOT_NAME_SUFFIXES = new Set([
+  "aces","atlas","comets","crew","dash","flux","forge","nova",
+  "orbit","raiders","shift","signal","slate","volt","wave","yard"
+]);
 const STARTING_BANKROLL = 200;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
@@ -358,6 +366,7 @@ const elements = {
   botSummary: document.getElementById("bot-summary"),
   botPerformanceList: document.getElementById("bot-performance-list"),
   createRandomProbBot: document.getElementById("create-random-prob-bot"),
+  purgeLegacyBots: document.getElementById("purge-legacy-bots"),
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
@@ -594,6 +603,9 @@ function bindEvents() {
   });
   elements.createRandomProbBot?.addEventListener("click", async () => {
     await createSimulationBot();
+  });
+  elements.purgeLegacyBots?.addEventListener("click", async () => {
+    await purgeLegacyBots();
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -5547,7 +5559,10 @@ function getAdminTrades() {
 function isBotTrade(trade) {
   if (!trade) return false;
   if (trade.botId || trade.botSource || trade.archetype) return true;
-  return getBotRosterMap().has(trade.userName) || trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
+  return getBotRosterMap().has(trade.userName)
+    || isGeneratedBotName(trade.userName)
+    || trade.userName?.startsWith("Bot ")
+    || trade.userName?.includes(" Bot ");
 }
 
 function getAdminDashboardSummary() {
@@ -5606,6 +5621,21 @@ function getBotPerformanceSummary() {
       userName,
       archetype: bot.archetype || "random-prob",
       archetypeLabel: labelForBotArchetype(bot.archetype, bot),
+      bankroll: getDisplayedCash(userName),
+      settledTrades: 0,
+      wins: 0,
+      realizedProfit: 0,
+      settledStake: 0,
+      openExposure: 0,
+      loggedEdges: []
+    });
+  });
+  getLikelyBotUserNames().forEach((userName) => {
+    if (botRows.has(userName)) return;
+    botRows.set(userName, {
+      userName,
+      archetype: "random-prob",
+      archetypeLabel: "Random Prob",
       bankroll: getDisplayedCash(userName),
       settledTrades: 0,
       wins: 0,
@@ -5721,6 +5751,24 @@ function getBotRosterMap() {
   return new Map((state.botSimulation?.bots || []).map((bot) => [bot.userName, bot]));
 }
 
+function isGeneratedBotName(userName) {
+  const trimmed = String(userName || "").trim();
+  if (!trimmed) return false;
+  const [first, second, ...rest] = trimmed.split(/\s+/);
+  if (rest.length) return false;
+  return BOT_NAME_PREFIXES.has(String(first || "").toLowerCase()) && BOT_NAME_SUFFIXES.has(String(second || "").toLowerCase());
+}
+
+function getLikelyBotUserNames() {
+  const names = new Set();
+  Object.keys(state.bankrolls || {}).forEach((userName) => {
+    if (isGeneratedBotName(userName)) {
+      names.add(userName);
+    }
+  });
+  return [...names];
+}
+
 function getTradeExposureStake(trade) {
   const matchedStake = Number(trade.matchedStake) || 0;
   const refundedStake = Number(trade.refundedStake) || 0;
@@ -5832,6 +5880,24 @@ async function createSimulationBot() {
     const botName = response.bot?.userName || "Random Prob bot";
     elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a 50/50 random-probability bot.`;
     showToast("Bot created", `${botName} joined the Quick Pick market.`);
+  } catch (error) {
+    elements.botRunFeedback.textContent = error.message;
+  }
+}
+
+async function purgeLegacyBots() {
+  const confirmed = window.confirm("Delete legacy bot users (excluding currently active bots) from data and leaderboard?");
+  if (!confirmed) return;
+  try {
+    const response = await api("/api/admin/bots/purge", { includeActiveBots: false });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
+    renderAll();
+    const preview = (response.deletedUsers || []).slice(0, 4).join(", ");
+    const suffix = response.deletedUsers?.length > 4 ? " ..." : "";
+    elements.botRunFeedback.textContent = response.deletedCount
+      ? `Deleted ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
+      : "No legacy bot users found.";
+    refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
   }

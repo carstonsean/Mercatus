@@ -91,6 +91,14 @@ const HOSTED_BOT_AUTOPLAY_ENABLED=String(process.env.ENABLE_HOSTED_BOTS||"").toL
 const SUPABASE_LOCAL_SAFETY_ERROR=getLocalSupabaseSafetyError();
 const BUILD_INFO={id:BUILD_ID,environment:HOSTED_ENVIRONMENT?"hosted":"local",persistence:SUPABASE_ENABLED?"supabase":"file"};
 const ASSET_VERSION=BUILD_ID;
+const BOT_NAME_PREFIXES=new Set([
+  "ari","beau","cruz","dax","eli","finn","hudson","jett",
+  "kai","luca","milo","nash","remy","rory","taj","zeke"
+]);
+const BOT_NAME_SUFFIXES=new Set([
+  "aces","atlas","comets","crew","dash","flux","forge","nova",
+  "orbit","raiders","shift","signal","slate","volt","wave","yard"
+]);
 
 if(SUPABASE_LOCAL_SAFETY_ERROR){
   console.warn(SUPABASE_LOCAL_SAFETY_ERROR);
@@ -751,6 +759,34 @@ async function handleApi(req,res,url,sessionContext){
     await persistStateSnapshot(useSupabase);
     return json(res,200,{state,bot,botStatus:lastBotAutoplayStatus});
   }
+  if(req.method==="POST"&&url.pathname==="/api/admin/bots/purge"){
+    const body=await parseJson(req);
+    const includeActiveBots=Boolean(body?.includeActiveBots);
+    const targetUsers=getLegacyBotUserNames(state,{includeActiveBots});
+    if(!targetUsers.length){
+      return json(res,200,{
+        state,
+        deletedUsers:[],
+        deletedCount:0,
+        message:"No legacy bot users found."
+      });
+    }
+    if(useSupabase){
+      await purgeSupabaseUsersByUserNames(targetUsers);
+      await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
+    }else{
+      purgeUsersFromLocalState(targetUsers,state);
+      syncDerivedBalances(state);
+      syncPrizePoolState(state);
+    }
+    await persistStateSnapshot(useSupabase);
+    return json(res,200,{
+      state,
+      deletedUsers:targetUsers,
+      deletedCount:targetUsers.length,
+      message:`Deleted ${targetUsers.length} legacy bot user${targetUsers.length===1?"":"s"}.`
+    });
+  }
   if(req.method==="GET"&&url.pathname==="/api/admin/bots/status"){
     return json(res,200,{botStatus:buildBotAutoplayStatus("status-requested")});
   }
@@ -792,6 +828,105 @@ async function handleApi(req,res,url,sessionContext){
     return json(res,200,returning,sessionContext);
   }
   json(res,404,{error:"Not found"});
+}
+
+function isGeneratedBotName(userName){
+  const trimmed=String(userName||"").trim();
+  if(!trimmed){
+    return false;
+  }
+  const [first,second,...rest]=trimmed.split(/\s+/);
+  if(rest.length){
+    return false;
+  }
+  return BOT_NAME_PREFIXES.has(String(first||"").toLowerCase())&&BOT_NAME_SUFFIXES.has(String(second||"").toLowerCase());
+}
+
+function getActiveBotUserNameSet(targetState=state){
+  return new Set((targetState?.botSimulation?.bots||[]).map((bot)=>String(bot?.userName||"").trim().toLowerCase()).filter(Boolean));
+}
+
+function getLegacyBotUserNames(targetState=state,{includeActiveBots=false}={}){
+  const activeBotUsers=getActiveBotUserNameSet(targetState);
+  const candidates=new Set();
+  Object.keys(targetState?.bankrolls||{}).forEach((userName)=>{
+    if(isGeneratedBotName(userName)){
+      candidates.add(String(userName).trim());
+    }
+  });
+  (targetState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(!trade?.userName){
+        return;
+      }
+      if(isBotTrade(trade)||isGeneratedBotName(trade.userName)){
+        candidates.add(String(trade.userName).trim());
+      }
+    });
+  });
+  return [...candidates]
+    .filter((userName)=>includeActiveBots||!activeBotUsers.has(userName.toLowerCase()))
+    .sort((left,right)=>left.localeCompare(right));
+}
+
+function purgeUsersFromLocalState(userNames,targetState=state){
+  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
+  if(!usersToDelete.size){
+    return;
+  }
+  Object.keys(targetState.bankrolls||{}).forEach((userName)=>{
+    if(usersToDelete.has(String(userName).toLowerCase())){
+      delete targetState.bankrolls[userName];
+    }
+  });
+  targetState.walletTransactions=(targetState.walletTransactions||[]).filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
+  targetState.shareSessions=(targetState.shareSessions||[]).filter((session)=>!usersToDelete.has(String(session?.createdBy||session?.createdByUserName||"").toLowerCase()));
+  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+  targetState.botSimulation.bots=(targetState.botSimulation.bots||[]).filter((bot)=>!usersToDelete.has(String(bot?.userName||"").toLowerCase()));
+  targetState.markets.forEach((market)=>{
+    market.trades=(market.trades||[]).filter((trade)=>!usersToDelete.has(String(trade?.userName||"").toLowerCase()));
+    if(Array.isArray(market.matchedPairs)){
+      market.matchedPairs=market.matchedPairs.filter((pair)=>!(
+        usersToDelete.has(String(pair?.overUserName||"").toLowerCase())||
+        usersToDelete.has(String(pair?.underUserName||"").toLowerCase())
+      ));
+    }
+    updateMarketTotals(market);
+  });
+  const rounds=targetState?.prizePool?.rounds||{};
+  Object.values(rounds).forEach((round)=>{
+    if(!Array.isArray(round?.entries)){
+      return;
+    }
+    round.entries=round.entries.filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
+  });
+}
+
+async function purgeSupabaseUsersByUserNames(userNames){
+  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
+  if(!usersToDelete.size){
+    return 0;
+  }
+  const users=await supabaseRequestAll("users",{
+    query:{select:"id,username"}
+  });
+  const ids=(users||[])
+    .filter((row)=>usersToDelete.has(String(row?.username||"").toLowerCase()))
+    .map((row)=>row.id)
+    .filter(Boolean);
+  if(!ids.length){
+    return 0;
+  }
+  const chunkSize=50;
+  for(let index=0;index<ids.length;index+=chunkSize){
+    const chunk=ids.slice(index,index+chunkSize);
+    await supabaseRequest("users",{
+      method:"DELETE",
+      query:{id:`in.(${chunk.join(",")})`},
+      headers:{Prefer:"return=minimal"}
+    });
+  }
+  return ids.length;
 }
 
 function ensureSessionContext(req,res){
