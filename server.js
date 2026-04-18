@@ -82,9 +82,15 @@ const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const SESSION_COOKIE_NAME="crowdiq_session_id";
 const SESSION_COOKIE_MAX_AGE_MS=30*24*60*60*1000;
+const AFFILIATE_COOKIE_NAME="crowdiq_affiliate_ref";
+const AFFILIATE_COOKIE_MAX_AGE_MS=30*24*60*60*1000;
 const ADMIN_COOKIE_NAME="crowdiq_admin_session";
 const ADMIN_SESSION_MAX_AGE_MS=12*60*60*1000;
 const ADMIN_PASSWORD=String(process.env.ADMIN_PASSWORD||"binthechin");
+const AFFILIATE_REGISTRY=[
+  {code:"fantasyfanatics",name:"NRL Fantasy Fanatics"}
+];
+const AFFILIATE_REGISTRY_BY_CODE=new Map(AFFILIATE_REGISTRY.map((affiliate)=>[affiliate.code,affiliate]));
 const HOSTED_ENVIRONMENT=isHostedEnvironment();
 const SUPABASE_ENABLED=isSupabaseEnabled();
 const HOSTED_BOT_AUTOPLAY_ENABLED=String(process.env.ENABLE_HOSTED_BOTS||"").toLowerCase()==="true";
@@ -137,6 +143,9 @@ const server=http.createServer(async (req,res)=>{
   try{
     const url=new URL(req.url,`http://${req.headers.host}`);
     const sessionContext=ensureSessionContext(req,res);
+    if(handleAffiliateLanding(req,res,url,sessionContext)){
+      return;
+    }
     if(url.pathname==="/api"||url.pathname.startsWith("/api/")){
       await handleApi(req,res,url,sessionContext);
       return;
@@ -176,6 +185,31 @@ startServer().catch((error)=>{
   console.error("Mercatus startup failed",error.message||error);
   process.exit(1);
 });
+
+function handleAffiliateLanding(req,res,url,sessionContext){
+  if(req.method!=="GET"){
+    return false;
+  }
+  const affiliate=resolveAffiliateFromPath(url.pathname);
+  if(!affiliate){
+    return false;
+  }
+  setCookie(sessionContext,AFFILIATE_COOKIE_NAME,affiliate.code,{
+    maxAgeMs:AFFILIATE_COOKIE_MAX_AGE_MS,
+    httpOnly:true
+  });
+  const headers={
+    Location:"/",
+    "Cache-Control":"no-store, no-cache, must-revalidate, proxy-revalidate",
+    "Pragma":"no-cache",
+    "Expires":"0",
+    "Surrogate-Control":"no-store"
+  };
+  appendPendingCookies(headers,sessionContext);
+  res.writeHead(302,headers);
+  res.end();
+  return true;
+}
 
 function refreshSupabaseStateInBackground(label="Supabase"){
   if(!SUPABASE_ENABLED){
@@ -434,6 +468,9 @@ async function handleApi(req,res,url,sessionContext){
     }
     syncPrizePoolState(state);
     const backendUser=await syncBackendUser(username,useSupabase);
+    if(useSupabase&&backendUser?.created&&backendUser?.id){
+      await applyPendingAffiliateReferral(backendUser.id,sessionContext);
+    }
     if(useSupabase&&shouldLogAuthEvent&&backendUser?.id){
       await logAnalyticsEvent({
         eventType:backendUser.created?"user_signup":"user_login",
@@ -771,49 +808,20 @@ async function handleApi(req,res,url,sessionContext){
         message:"No legacy bot users found."
       });
     }
-    const retireResult=retireBotUsersFromState(targetUsers,state);
     if(useSupabase){
-      try{
-        await syncSupabaseUserBalancesFromState(retireResult.retiredUsers,state);
-      }catch(error){
-        console.warn("Supabase bot retire balance sync failed",error.message);
-      }
+      await purgeSupabaseUsersByUserNames(targetUsers);
+      await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
+    }else{
+      purgeUsersFromLocalState(targetUsers,state);
+      syncDerivedBalances(state);
+      syncPrizePoolState(state);
     }
     await persistStateSnapshot(useSupabase);
     return json(res,200,{
       state,
-      deletedUsers:retireResult.retiredUsers,
-      deletedCount:retireResult.retiredUsers.length,
-      cancelledTradeCount:retireResult.cancelledTradeCount,
-      refundedStakeTotal:retireResult.refundedStakeTotal,
-      message:`Retired ${retireResult.retiredUsers.length} legacy bot user${retireResult.retiredUsers.length===1?"":"s"} and preserved matched history.`
-    });
-  }
-  if(req.method==="POST"&&url.pathname==="/api/admin/bots/delete"){
-    const body=await parseJson(req);
-    const userName=String(body?.userName||"").trim();
-    if(!userName){
-      return json(res,400,{error:"Bot username is required."});
-    }
-    if(!isLikelyBotUser(userName,state)){
-      return json(res,400,{error:"That user is not recognized as a bot account."});
-    }
-    const retireResult=retireBotUsersFromState([userName],state);
-    if(useSupabase){
-      try{
-        await syncSupabaseUserBalancesFromState(retireResult.retiredUsers,state);
-      }catch(error){
-        console.warn("Supabase bot retire balance sync failed",error.message);
-      }
-    }
-    await persistStateSnapshot(useSupabase);
-    return json(res,200,{
-      state,
-      deletedUsers:retireResult.retiredUsers,
-      deletedCount:retireResult.retiredUsers.length,
-      cancelledTradeCount:retireResult.cancelledTradeCount,
-      refundedStakeTotal:retireResult.refundedStakeTotal,
-      message:`Retired bot ${userName}. Unmatched orders were cancelled; matched trades were kept.`
+      deletedUsers:targetUsers,
+      deletedCount:targetUsers.length,
+      message:`Deleted ${targetUsers.length} legacy bot user${targetUsers.length===1?"":"s"}.`
     });
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/bots/status"){
@@ -856,250 +864,148 @@ async function handleApi(req,res,url,sessionContext){
     const returning=await buildReturningAnalytics(useSupabase,url.searchParams.get("range"));
     return json(res,200,returning,sessionContext);
   }
+  if(req.method==="GET"&&url.pathname==="/api/admin/affiliates"){
+    const affiliates=await buildAffiliateAdminPayload(useSupabase);
+    return json(res,200,affiliates,sessionContext);
+  }
   json(res,404,{error:"Not found"});
 }
 
-function isGeneratedBotName(userName){
-  const trimmed=String(userName||"").trim();
-  if(!trimmed){
-    return false;
-  }
-  const [first,second,...rest]=trimmed.split(/\s+/);
-  if(rest.length){
-    return false;
-  }
-  return BOT_NAME_PREFIXES.has(String(first||"").toLowerCase())&&BOT_NAME_SUFFIXES.has(String(second||"").toLowerCase());
-}
-
-function getActiveBotUserNameSet(targetState=state){
-  return new Set((targetState?.botSimulation?.bots||[]).map((bot)=>String(bot?.userName||"").trim().toLowerCase()).filter(Boolean));
-}
-
-function getLegacyBotUserNames(targetState=state,{includeActiveBots=false}={}){
-  const activeBotUsers=getActiveBotUserNameSet(targetState);
-  const candidates=new Set();
-  Object.keys(targetState?.bankrolls||{}).forEach((userName)=>{
-    if(isGeneratedBotName(userName)){
-      candidates.add(String(userName).trim());
-    }
-  });
-  (targetState?.markets||[]).forEach((market)=>{
-    (market?.trades||[]).forEach((trade)=>{
-      if(!trade?.userName){
-        return;
-      }
-      if(isBotTrade(trade)||isGeneratedBotName(trade.userName)){
-        candidates.add(String(trade.userName).trim());
-      }
-    });
-  });
-  return [...candidates]
-    .filter((userName)=>includeActiveBots||!activeBotUsers.has(userName.toLowerCase()))
-    .sort((left,right)=>left.localeCompare(right));
-}
-
-function isLikelyBotUser(userName,targetState=state){
-  const normalized=String(userName||"").trim();
-  if(!normalized){
-    return false;
-  }
-  const activeBotUsers=getActiveBotUserNameSet(targetState);
-  if(activeBotUsers.has(normalized.toLowerCase())){
-    return true;
-  }
-  if(isGeneratedBotName(normalized)){
-    return true;
-  }
-  return (targetState?.markets||[]).some((market)=>
-    (market?.trades||[]).some((trade)=>
-      String(trade?.userName||"").trim().toLowerCase()===normalized.toLowerCase()&&isBotTrade(trade)
-    )
-  );
-}
-
-function retireBotUsersFromState(userNames,targetState=state){
-  const requestedUsers=[...new Set((userNames||[]).map((userName)=>String(userName||"").trim()).filter(Boolean))];
-  const usersToRetire=requestedUsers.filter((userName)=>isLikelyBotUser(userName,targetState));
-  if(!usersToRetire.length){
-    return {retiredUsers:[],cancelledTradeCount:0,refundedStakeTotal:0};
-  }
-  const retiredLookup=new Set(usersToRetire.map((userName)=>userName.toLowerCase()));
-  const nowIso=new Date().toISOString();
-  let cancelledTradeCount=0;
-  let refundedStakeTotal=0;
-
-  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
-  targetState.botSimulation.bots=(targetState.botSimulation.bots||[]).filter((bot)=>!retiredLookup.has(String(bot?.userName||"").trim().toLowerCase()));
-  targetState.shareSessions=(targetState.shareSessions||[]).filter((session)=>!retiredLookup.has(String(session?.createdBy||session?.createdByUserName||"").trim().toLowerCase()));
-
-  targetState.markets.forEach((market)=>{
-    const previousNetPressure=Number(market.netPressure)||0;
-    let marketChanged=false;
-    (market.trades||[]).forEach((trade)=>{
-      if(!retiredLookup.has(String(trade?.userName||"").trim().toLowerCase())||!(Number(trade?.unmatchedStake)>0)){
-        return;
-      }
-      const refunded=refundReservedStake(trade,trade.unmatchedStake,market,{
-        type:"TRADE_REFUND",
-        title:"Bot retired",
-        subtitle:`${market.playerName} ${trade.side.toLowerCase()} order cancelled`,
-        marketId:market.id,
-        tradeId:trade.id,
-        createdAt:nowIso
-      });
-      trade.unmatchedStake=0;
-      trade.status=trade.matchedStake>0?"MATCHED":"CANCELLED";
-      cancelledTradeCount+=1;
-      refundedStakeTotal+=refunded;
-      marketChanged=true;
-    });
-    if(marketChanged){
-      updateMarketTotals(market);
-      applyTradePressure(market,(Number(market.netPressure)||0)-previousNetPressure);
-    }
-  });
-
-  usersToRetire.forEach((userName)=>{
-    const currentBalance=getUserBankroll(userName,targetState);
-    const delta=STARTING_BANKROLL-currentBalance;
-    if(delta!==0){
-      applyWalletDelta(userName,delta,{
-        type:"BOT_BANKROLL_RESET",
-        title:"Bot retired",
-        subtitle:`Bankroll reset to ${formatCurrency(STARTING_BANKROLL)}`,
-        createdAt:nowIso
-      },targetState);
-    }else{
-      ensureWalletAccount(userName,targetState);
-    }
-  });
-
-  const rounds=targetState?.prizePool?.rounds||{};
-  Object.values(rounds).forEach((round)=>{
-    if(!Array.isArray(round?.entries)){
-      return;
-    }
-    round.entries=round.entries.filter((entry)=>!retiredLookup.has(String(entry?.userName||"").trim().toLowerCase()));
-  });
-  if(targetState?.prizePool?.drafts&&typeof targetState.prizePool.drafts==="object"){
-    Object.keys(targetState.prizePool.drafts).forEach((draftUserName)=>{
-      if(retiredLookup.has(String(draftUserName||"").trim().toLowerCase())){
-        delete targetState.prizePool.drafts[draftUserName];
-      }
-    });
-  }
-
-  syncDerivedBalances(targetState);
-  syncPrizePoolState(targetState);
-  return {
-    retiredUsers:usersToRetire,
-    cancelledTradeCount,
-    refundedStakeTotal:Math.round((refundedStakeTotal+Number.EPSILON)*100)/100
-  };
-}
-
-function purgeUsersFromLocalState(userNames,targetState=state){
-  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
-  if(!usersToDelete.size){
+async function applyPendingAffiliateReferral(userId,sessionContext){
+  const affiliate=resolveAffiliateCode(sessionContext?.cookies?.[AFFILIATE_COOKIE_NAME]);
+  if(!affiliate||!userId){
     return;
   }
-  Object.keys(targetState.bankrolls||{}).forEach((userName)=>{
-    if(usersToDelete.has(String(userName).toLowerCase())){
-      delete targetState.bankrolls[userName];
-    }
-  });
-  targetState.walletTransactions=(targetState.walletTransactions||[]).filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
-  targetState.shareSessions=(targetState.shareSessions||[]).filter((session)=>!usersToDelete.has(String(session?.createdBy||session?.createdByUserName||"").toLowerCase()));
-  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
-  targetState.botSimulation.bots=(targetState.botSimulation.bots||[]).filter((bot)=>!usersToDelete.has(String(bot?.userName||"").toLowerCase()));
-  targetState.markets.forEach((market)=>{
-    market.trades=(market.trades||[]).filter((trade)=>!usersToDelete.has(String(trade?.userName||"").toLowerCase()));
-    if(Array.isArray(market.matchedPairs)){
-      market.matchedPairs=market.matchedPairs.filter((pair)=>!(
-        usersToDelete.has(String(pair?.overUserName||"").toLowerCase())||
-        usersToDelete.has(String(pair?.underUserName||"").toLowerCase())
-      ));
-    }
-    updateMarketTotals(market);
-  });
-  const rounds=targetState?.prizePool?.rounds||{};
-  Object.values(rounds).forEach((round)=>{
-    if(!Array.isArray(round?.entries)){
-      return;
-    }
-    round.entries=round.entries.filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
-  });
-}
-
-async function purgeSupabaseUsersByUserNames(userNames){
-  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
-  if(!usersToDelete.size){
-    return 0;
-  }
-  const users=await supabaseRequestAll("users",{
-    query:{select:"id,username"}
-  });
-  const ids=(users||[])
-    .filter((row)=>usersToDelete.has(String(row?.username||"").toLowerCase()))
-    .map((row)=>row.id)
-    .filter(Boolean);
-  if(!ids.length){
-    return 0;
-  }
-  const chunkSize=50;
-  for(let index=0;index<ids.length;index+=chunkSize){
-    const chunk=ids.slice(index,index+chunkSize);
-    await supabaseRequest("users",{
-      method:"DELETE",
-      query:{id:`in.(${chunk.join(",")})`},
-      headers:{Prefer:"return=minimal"}
-    });
-  }
-  return ids.length;
-}
-
-async function syncSupabaseUserBalancesFromState(userNames,targetState=state){
-  const uniqueUsers=[...new Set((userNames||[]).map((userName)=>String(userName||"").trim()).filter(Boolean))];
-  if(!uniqueUsers.length){
-    return;
-  }
-  for(const userName of uniqueUsers){
-    const balance=Math.max(0,Math.round(((Number(getUserBankroll(userName,targetState))||0)+Number.EPSILON)*100)/100);
-    const users=await supabaseRequest("users",{
-      query:{
-        select:"id,username",
-        username:`eq.${userName}`,
-        limit:1
-      }
-    });
-    const userRow=users?.[0];
-    if(!userRow?.id){
-      continue;
-    }
-    await supabaseRequest("wallet_snapshots",{
+  try{
+    await supabaseRequest("affiliates",{
       method:"POST",
       query:{
-        on_conflict:"user_id",
-        select:"user_id"
+        on_conflict:"code",
+        select:"code,name"
       },
       headers:{Prefer:"return=representation,resolution=merge-duplicates"},
       body:{
-        user_id:userRow.id,
-        username:userRow.username||userName,
-        current_balance:balance
+        code:affiliate.code,
+        name:affiliate.name
       }
     });
-    try{
-      await supabaseRequest("wallet_balances",{
-        method:"PATCH",
-        query:{user_id:`eq.${userRow.id}`},
-        body:{current_balance:balance},
-        headers:{Prefer:"return=minimal"}
+    await supabaseRequest("user_affiliate_referrals",{
+      method:"POST",
+      query:{
+        on_conflict:"user_id",
+        select:"user_id,affiliate_code,referred_at"
+      },
+      headers:{Prefer:"return=representation,resolution=ignore-duplicates"},
+      body:{
+        user_id:userId,
+        affiliate_code:affiliate.code
+      }
+    });
+  }catch(error){
+    console.warn("Affiliate referral capture failed",error.message||error);
+  }finally{
+    setCookie(sessionContext,AFFILIATE_COOKIE_NAME,"",{
+      maxAgeMs:0,
+      httpOnly:true
+    });
+  }
+}
+
+async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
+  if(!useSupabase){
+    return {
+      affiliates:[],
+      referrals:[]
+    };
+  }
+  const affiliatesRows=await supabaseRequestAll("affiliates",{
+    query:{
+      select:"code,name,created_at",
+      order:"name.asc"
+    }
+  });
+  const referralRows=await supabaseRequestAll("user_affiliate_referrals",{
+    query:{
+      select:"user_id,affiliate_code,referred_at",
+      order:"referred_at.desc"
+    }
+  });
+  const referredUserIds=[...new Set((referralRows||[]).map((row)=>row?.user_id).filter(Boolean))];
+  const usersById=new Map();
+  if(referredUserIds.length){
+    const chunkSize=50;
+    for(let index=0;index<referredUserIds.length;index+=chunkSize){
+      const chunk=referredUserIds.slice(index,index+chunkSize);
+      const usersChunk=await supabaseRequestAll("users",{
+        query:{
+          select:"id,username,created_at",
+          id:`in.(${chunk.join(",")})`
+        }
       });
-    }catch(error){
-      void error;
+      (usersChunk||[]).forEach((row)=>{
+        if(row?.id){
+          usersById.set(row.id,row);
+        }
+      });
     }
   }
+  const affiliatesByCode=new Map((affiliatesRows||[]).map((row)=>[row.code,row]));
+  const totalByCode=(referralRows||[]).reduce((totals,row)=>{
+    const code=String(row?.affiliate_code||"").trim();
+    if(!code){
+      return totals;
+    }
+    totals.set(code,(totals.get(code)||0)+1);
+    return totals;
+  },new Map());
+  const allCodes=[...new Set([
+    ...AFFILIATE_REGISTRY.map((affiliate)=>affiliate.code),
+    ...(affiliatesRows||[]).map((affiliate)=>affiliate.code),
+    ...(referralRows||[]).map((referral)=>referral?.affiliate_code)
+  ].filter(Boolean))];
+  const affiliates=allCodes
+    .map((code)=>{
+      const seeded=AFFILIATE_REGISTRY_BY_CODE.get(code);
+      const persisted=affiliatesByCode.get(code);
+      return {
+        code,
+        name:persisted?.name||seeded?.name||code,
+        total_signups:totalByCode.get(code)||0
+      };
+    })
+    .sort((left,right)=>right.total_signups-left.total_signups||left.name.localeCompare(right.name));
+  const referrals=(referralRows||[]).map((row)=>{
+    const code=String(row?.affiliate_code||"").trim();
+    const user=usersById.get(row?.user_id)||null;
+    const affiliate=affiliatesByCode.get(code)||AFFILIATE_REGISTRY_BY_CODE.get(code)||null;
+    return {
+      affiliate_code:code,
+      affiliate_name:affiliate?.name||code,
+      user_id:row?.user_id||"",
+      username:user?.username||"",
+      referred_at:row?.referred_at||user?.created_at||null
+    };
+  });
+  return {
+    affiliates,
+    referrals
+  };
+}
+
+function resolveAffiliateFromPath(pathname){
+  const match=/^\/([a-z0-9-]+)\/?$/i.exec(String(pathname||"").trim());
+  if(!match){
+    return null;
+  }
+  return resolveAffiliateCode(match[1]);
+}
+
+function resolveAffiliateCode(rawCode){
+  const code=String(rawCode||"").trim().toLowerCase();
+  if(!code){
+    return null;
+  }
+  return AFFILIATE_REGISTRY_BY_CODE.get(code)||null;
 }
 
 function ensureSessionContext(req,res){
@@ -1481,6 +1387,105 @@ async function buildAnalyticsPayload(useSupabase=SUPABASE_ENABLED,rangeKey="30d"
       daily:buildDailyReturningRateSeries(currentEvents,users,finalizedRange.currentStart,finalizedRange.currentEnd)
     }
   };
+}
+
+function isGeneratedBotName(userName){
+  const trimmed=String(userName||"").trim();
+  if(!trimmed){
+    return false;
+  }
+  const [first,second,...rest]=trimmed.split(/\s+/);
+  if(rest.length){
+    return false;
+  }
+  return BOT_NAME_PREFIXES.has(String(first||"").toLowerCase())&&BOT_NAME_SUFFIXES.has(String(second||"").toLowerCase());
+}
+
+function getActiveBotUserNameSet(targetState=state){
+  return new Set((targetState?.botSimulation?.bots||[]).map((bot)=>String(bot?.userName||"").trim().toLowerCase()).filter(Boolean));
+}
+
+function getLegacyBotUserNames(targetState=state,{includeActiveBots=false}={}){
+  const activeBotUsers=getActiveBotUserNameSet(targetState);
+  const candidates=new Set();
+  Object.keys(targetState?.bankrolls||{}).forEach((userName)=>{
+    if(isGeneratedBotName(userName)){
+      candidates.add(String(userName).trim());
+    }
+  });
+  (targetState?.markets||[]).forEach((market)=>{
+    (market?.trades||[]).forEach((trade)=>{
+      if(!trade?.userName){
+        return;
+      }
+      if(isBotTrade(trade)||isGeneratedBotName(trade.userName)){
+        candidates.add(String(trade.userName).trim());
+      }
+    });
+  });
+  return [...candidates]
+    .filter((userName)=>includeActiveBots||!activeBotUsers.has(userName.toLowerCase()))
+    .sort((left,right)=>left.localeCompare(right));
+}
+
+function purgeUsersFromLocalState(userNames,targetState=state){
+  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
+  if(!usersToDelete.size){
+    return;
+  }
+  Object.keys(targetState.bankrolls||{}).forEach((userName)=>{
+    if(usersToDelete.has(String(userName).toLowerCase())){
+      delete targetState.bankrolls[userName];
+    }
+  });
+  targetState.walletTransactions=(targetState.walletTransactions||[]).filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
+  targetState.shareSessions=(targetState.shareSessions||[]).filter((session)=>!usersToDelete.has(String(session?.createdBy||session?.createdByUserName||"").toLowerCase()));
+  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+  targetState.botSimulation.bots=(targetState.botSimulation.bots||[]).filter((bot)=>!usersToDelete.has(String(bot?.userName||"").toLowerCase()));
+  targetState.markets.forEach((market)=>{
+    market.trades=(market.trades||[]).filter((trade)=>!usersToDelete.has(String(trade?.userName||"").toLowerCase()));
+    if(Array.isArray(market.matchedPairs)){
+      market.matchedPairs=market.matchedPairs.filter((pair)=>!(
+        usersToDelete.has(String(pair?.overUserName||"").toLowerCase())||
+        usersToDelete.has(String(pair?.underUserName||"").toLowerCase())
+      ));
+    }
+    updateMarketTotals(market);
+  });
+  const rounds=targetState?.prizePool?.rounds||{};
+  Object.values(rounds).forEach((round)=>{
+    if(!Array.isArray(round?.entries)){
+      return;
+    }
+    round.entries=round.entries.filter((entry)=>!usersToDelete.has(String(entry?.userName||"").toLowerCase()));
+  });
+}
+
+async function purgeSupabaseUsersByUserNames(userNames){
+  const usersToDelete=new Set((userNames||[]).map((userName)=>String(userName||"").toLowerCase()).filter(Boolean));
+  if(!usersToDelete.size){
+    return 0;
+  }
+  const users=await supabaseRequestAll("users",{
+    query:{select:"id,username"}
+  });
+  const ids=(users||[])
+    .filter((row)=>usersToDelete.has(String(row?.username||"").toLowerCase()))
+    .map((row)=>row.id)
+    .filter(Boolean);
+  if(!ids.length){
+    return 0;
+  }
+  const chunkSize=50;
+  for(let index=0;index<ids.length;index+=chunkSize){
+    const chunk=ids.slice(index,index+chunkSize);
+    await supabaseRequest("users",{
+      method:"DELETE",
+      query:{id:`in.(${chunk.join(",")})`},
+      headers:{Prefer:"return=minimal"}
+    });
+  }
+  return ids.length;
 }
 
 async function fetchUsers(){
