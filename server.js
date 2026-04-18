@@ -787,6 +787,31 @@ async function handleApi(req,res,url,sessionContext){
       message:`Deleted ${targetUsers.length} legacy bot user${targetUsers.length===1?"":"s"}.`
     });
   }
+  if(req.method==="POST"&&url.pathname==="/api/admin/bots/delete"){
+    const body=await parseJson(req);
+    const userName=String(body?.userName||"").trim();
+    if(!userName){
+      return json(res,400,{error:"Bot username is required."});
+    }
+    if(!isLikelyBotUser(userName,state)){
+      return json(res,400,{error:"That user is not recognized as a bot account."});
+    }
+    if(useSupabase){
+      await purgeSupabaseUsersByUserNames([userName]);
+      await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
+    }else{
+      purgeUsersFromLocalState([userName],state);
+      syncDerivedBalances(state);
+      syncPrizePoolState(state);
+    }
+    await persistStateSnapshot(useSupabase);
+    return json(res,200,{
+      state,
+      deletedUsers:[userName],
+      deletedCount:1,
+      message:`Deleted bot user ${userName}.`
+    });
+  }
   if(req.method==="GET"&&url.pathname==="/api/admin/bots/status"){
     return json(res,200,{botStatus:buildBotAutoplayStatus("status-requested")});
   }
@@ -867,6 +892,25 @@ function getLegacyBotUserNames(targetState=state,{includeActiveBots=false}={}){
   return [...candidates]
     .filter((userName)=>includeActiveBots||!activeBotUsers.has(userName.toLowerCase()))
     .sort((left,right)=>left.localeCompare(right));
+}
+
+function isLikelyBotUser(userName,targetState=state){
+  const normalized=String(userName||"").trim();
+  if(!normalized){
+    return false;
+  }
+  const activeBotUsers=getActiveBotUserNameSet(targetState);
+  if(activeBotUsers.has(normalized.toLowerCase())){
+    return true;
+  }
+  if(isGeneratedBotName(normalized)){
+    return true;
+  }
+  return (targetState?.markets||[]).some((market)=>
+    (market?.trades||[]).some((trade)=>
+      String(trade?.userName||"").trim().toLowerCase()===normalized.toLowerCase()&&isBotTrade(trade)
+    )
+  );
 }
 
 function purgeUsersFromLocalState(userNames,targetState=state){
