@@ -958,7 +958,7 @@ function retireBotUsersFromState(userNames,targetState=state){
       applyWalletDelta(userName,delta,{
         type:"BOT_BANKROLL_RESET",
         title:"Bot retired",
-        subtitle:`Bankroll reset to ${formatStake(STARTING_BANKROLL)}`,
+        subtitle:`Bankroll reset to ${formatCurrency(STARTING_BANKROLL)}`,
         createdAt:nowIso
       },targetState);
     }else{
