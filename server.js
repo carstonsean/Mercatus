@@ -773,7 +773,11 @@ async function handleApi(req,res,url,sessionContext){
     }
     const retireResult=retireBotUsersFromState(targetUsers,state);
     if(useSupabase){
-      await syncSupabaseUserBalancesFromState(retireResult.retiredUsers,state);
+      try{
+        await syncSupabaseUserBalancesFromState(retireResult.retiredUsers,state);
+      }catch(error){
+        console.warn("Supabase bot retire balance sync failed",error.message);
+      }
     }
     await persistStateSnapshot(useSupabase);
     return json(res,200,{
@@ -796,7 +800,11 @@ async function handleApi(req,res,url,sessionContext){
     }
     const retireResult=retireBotUsersFromState([userName],state);
     if(useSupabase){
-      await syncSupabaseUserBalancesFromState(retireResult.retiredUsers,state);
+      try{
+        await syncSupabaseUserBalancesFromState(retireResult.retiredUsers,state);
+      }catch(error){
+        console.warn("Supabase bot retire balance sync failed",error.message);
+      }
     }
     await persistStateSnapshot(useSupabase);
     return json(res,200,{
@@ -1057,12 +1065,40 @@ async function syncSupabaseUserBalancesFromState(userNames,targetState=state){
   }
   for(const userName of uniqueUsers){
     const balance=Math.max(0,Math.round(((Number(getUserBankroll(userName,targetState))||0)+Number.EPSILON)*100)/100);
-    await supabaseRequest("users",{
-      method:"PATCH",
-      query:{username:`eq.${userName}`},
-      body:{balance},
-      headers:{Prefer:"return=minimal"}
+    const users=await supabaseRequest("users",{
+      query:{
+        select:"id,username",
+        username:`eq.${userName}`,
+        limit:1
+      }
     });
+    const userRow=users?.[0];
+    if(!userRow?.id){
+      continue;
+    }
+    await supabaseRequest("wallet_snapshots",{
+      method:"POST",
+      query:{
+        on_conflict:"user_id",
+        select:"user_id"
+      },
+      headers:{Prefer:"return=representation,resolution=merge-duplicates"},
+      body:{
+        user_id:userRow.id,
+        username:userRow.username||userName,
+        current_balance:balance
+      }
+    });
+    try{
+      await supabaseRequest("wallet_balances",{
+        method:"PATCH",
+        query:{user_id:`eq.${userRow.id}`},
+        body:{current_balance:balance},
+        headers:{Prefer:"return=minimal"}
+      });
+    }catch(error){
+      void error;
+    }
   }
 }
 
