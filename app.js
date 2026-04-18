@@ -5471,7 +5471,7 @@ function renderBotSimulation() {
       ? performance.bots
           .map(
             (row, index) =>
-              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} Random Prob</p><h4>${row.userName}</h4></div><button class="ghost-button bot-delete-button" type="button" data-delete-bot-user="${escapeHtml(row.userName)}">Delete</button></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
+              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} Random Prob</p><h4>${row.userName}</h4></div><button class="ghost-button bot-delete-button" type="button" data-delete-bot-user="${escapeHtml(row.userName)}">Retire</button></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
           )
           .join("")
       : `<div class="section-meta">Bot results will appear here once trades have been placed.</div>`;
@@ -5891,7 +5891,7 @@ async function createSimulationBot() {
 }
 
 async function purgeLegacyBots() {
-  const confirmed = window.confirm("Delete legacy bot users (excluding currently active bots) from data and leaderboard?");
+  const confirmed = window.confirm("Retire legacy bot users (excluding currently active bots)? This cancels unmatched orders, resets bankroll to $200, and keeps matched history.");
   if (!confirmed) return;
   try {
     const response = await api("/api/admin/bots/purge", { includeActiveBots: false });
@@ -5900,7 +5900,7 @@ async function purgeLegacyBots() {
     const preview = (response.deletedUsers || []).slice(0, 4).join(", ");
     const suffix = response.deletedUsers?.length > 4 ? " ..." : "";
     elements.botRunFeedback.textContent = response.deletedCount
-      ? `Deleted ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
+      ? `Retired ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
       : "No legacy bot users found.";
     refreshSharedState();
   } catch (error) {
@@ -5911,13 +5911,13 @@ async function purgeLegacyBots() {
 async function deleteBotUser(userName) {
   const normalized = String(userName || "").trim();
   if (!normalized) return;
-  const confirmed = window.confirm(`Delete bot "${normalized}" and all of its trades/data?`);
+  const confirmed = window.confirm(`Retire bot "${normalized}"? Unmatched orders will be cancelled and bankroll reset to $200. Matched/settled trades are kept.`);
   if (!confirmed) return;
   try {
     const response = await api("/api/admin/bots/delete", { userName: normalized });
     applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
     renderAll();
-    elements.botRunFeedback.textContent = response.message || `Deleted bot user ${normalized}.`;
+    elements.botRunFeedback.textContent = response.message || `Retired bot user ${normalized}.`;
     refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
