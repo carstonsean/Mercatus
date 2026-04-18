@@ -782,13 +782,15 @@ async function handleApi(req,res,url,sessionContext){
     return json(res,200,{state,contactMessage,message:"Message received."});
   }
   if(req.method==="POST"&&url.pathname==="/api/admin/bots/create"){
-    state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+    state.botSimulation=state.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[],retiredUserNames:[]};
+    state.botSimulation.retiredUserNames=Array.isArray(state.botSimulation.retiredUserNames)?state.botSimulation.retiredUserNames:[];
     state.botSimulation.config=normalizeSimulationConfig({
       ...state.botSimulation.config,
       enabled:true
     });
     const bot=createRandomProbBot(state.botSimulation.bots);
     state.botSimulation.bots=[...state.botSimulation.bots,bot];
+    state.botSimulation.retiredUserNames=state.botSimulation.retiredUserNames.filter((userName)=>String(userName||"").trim().toLowerCase()!==String(bot.userName||"").trim().toLowerCase());
     state.bankrolls[bot.userName]=bot.startingBankroll;
     syncDerivedBalances();
     syncPrizePoolState(state);
@@ -1434,6 +1436,10 @@ function getActiveBotUserNameSet(targetState=state){
   return new Set((targetState?.botSimulation?.bots||[]).map((bot)=>String(bot?.userName||"").trim().toLowerCase()).filter(Boolean));
 }
 
+function getRetiredBotUserNameSet(targetState=state){
+  return new Set((targetState?.botSimulation?.retiredUserNames||[]).map((userName)=>String(userName||"").trim().toLowerCase()).filter(Boolean));
+}
+
 function getLegacyBotUserNames(targetState=state,{includeActiveBots=false}={}){
   const activeBotUsers=getActiveBotUserNameSet(targetState);
   const candidates=new Set();
@@ -1487,7 +1493,11 @@ function retireBotUsersFromState(userNames,targetState=state){
   let cancelledTradeCount=0;
   let refundedStakeTotal=0;
 
-  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[]};
+  targetState.botSimulation=targetState.botSimulation||{config:normalizeSimulationConfig(DEFAULT_SIMULATION_CONFIG),bots:[],retiredUserNames:[]};
+  targetState.botSimulation.retiredUserNames=Array.isArray(targetState.botSimulation.retiredUserNames)?targetState.botSimulation.retiredUserNames:[];
+  const retiredNameSet=getRetiredBotUserNameSet(targetState);
+  usersToRetire.forEach((userName)=>retiredNameSet.add(String(userName||"").trim().toLowerCase()));
+  targetState.botSimulation.retiredUserNames=[...retiredNameSet];
   targetState.botSimulation.bots=(targetState.botSimulation.bots||[]).filter((bot)=>!retiredLookup.has(String(bot?.userName||"").trim().toLowerCase()));
   targetState.shareSessions=(targetState.shareSessions||[]).filter((session)=>!retiredLookup.has(String(session?.createdBy||session?.createdByUserName||"").trim().toLowerCase()));
 
@@ -2622,7 +2632,8 @@ function buildFreshState(){
     prizePool:buildFreshPrizePoolState(),
     botSimulation:{
       config:botSimulation,
-      bots:createBotRoster(botSimulation)
+      bots:createBotRoster(botSimulation),
+      retiredUserNames:[]
     }
   };
   return nextState;
@@ -2874,6 +2885,9 @@ function buildHostedBotSimulationSnapshot(botSimulation){
   const config=botSimulation?.config&&typeof botSimulation.config==="object"
     ? botSimulation.config
     : {};
+  const retiredUserNames=Array.isArray(botSimulation?.retiredUserNames)
+    ? [...new Set(botSimulation.retiredUserNames.map((userName)=>String(userName||"").trim()).filter(Boolean))]
+    : [];
   return {
     config:{
       enabled:Boolean(config.enabled),
@@ -2882,7 +2896,8 @@ function buildHostedBotSimulationSnapshot(botSimulation){
       maxLogs:0,
       logs:Array.isArray(config.logs)?cloneValue(config.logs.slice(0,40)):[]
     },
-    bots:Array.isArray(botSimulation?.bots)?cloneValue(botSimulation.bots):[]
+    bots:Array.isArray(botSimulation?.bots)?cloneValue(botSimulation.bots):[],
+    retiredUserNames
   };
 }
 
@@ -3070,6 +3085,9 @@ function normalizeState(rawState,options={}){
     : [];
   const botConfig=normalizeSimulationConfig(rawState.botSimulation?.config||DEFAULT_SIMULATION_CONFIG);
   const rawBots=Array.isArray(rawState.botSimulation?.bots)?rawState.botSimulation.bots:[];
+  const retiredUserNames=Array.isArray(rawState.botSimulation?.retiredUserNames)
+    ? [...new Set(rawState.botSimulation.retiredUserNames.map((userName)=>String(userName||"").trim()).filter(Boolean))]
+    : [];
   const bots=(rawBots.length?rawBots:createBotRoster(botConfig))
     .map((bot)=>normalizeRandomProbBot(bot))
     .filter(Boolean);
@@ -3163,7 +3181,7 @@ function normalizeState(rawState,options={}){
     lastSettlementBatch:rawState.lastSettlementBatch||null,
     roundMetricsHistory:Array.isArray(rawState.roundMetricsHistory)?cloneValue(rawState.roundMetricsHistory):[],
     prizePool:normalizePrizePoolState(rawState.prizePool),
-    botSimulation:{config:botConfig,bots}
+    botSimulation:{config:botConfig,bots,retiredUserNames}
   });
   if(!skipWalletBootstrap){
     Object.keys(normalizedState.bankrolls||{}).forEach((userName)=>{

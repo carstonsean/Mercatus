@@ -5738,9 +5738,11 @@ function getLatestRoundMetrics() {
 
 function getBotPerformanceSummary() {
   const botMap = getBotRosterMap();
+  const retiredBotUsers = getRetiredBotUserNameSet();
   const botRows = new Map();
   const allBotLogs = state.botSimulation?.config?.logs || [];
   botMap.forEach((bot, userName) => {
+    if (retiredBotUsers.has(String(userName || "").toLowerCase())) return;
     botRows.set(userName, {
       userName,
       archetype: bot.archetype || "random-prob",
@@ -5756,6 +5758,7 @@ function getBotPerformanceSummary() {
   });
   getLikelyBotUserNames().forEach((userName) => {
     if (botRows.has(userName)) return;
+    if (retiredBotUsers.has(String(userName || "").toLowerCase())) return;
     botRows.set(userName, {
       userName,
       archetype: "random-prob",
@@ -5771,7 +5774,7 @@ function getBotPerformanceSummary() {
   });
   const allBotTrades = state.markets.flatMap((market) =>
     (market.trades || [])
-      .filter((trade) => isBotTrade(trade))
+      .filter((trade) => isBotTrade(trade) && !retiredBotUsers.has(String(trade?.userName || "").toLowerCase()))
       .map((trade) => ({ trade }))
   );
   allBotTrades.forEach(({ trade }) => {
@@ -5875,6 +5878,10 @@ function getBotRosterMap() {
   return new Map((state.botSimulation?.bots || []).map((bot) => [bot.userName, bot]));
 }
 
+function getRetiredBotUserNameSet() {
+  return new Set((state.botSimulation?.retiredUserNames || []).map((userName) => String(userName || "").toLowerCase()).filter(Boolean));
+}
+
 function isGeneratedBotName(userName) {
   const trimmed = String(userName || "").trim();
   if (!trimmed) return false;
@@ -5884,9 +5891,10 @@ function isGeneratedBotName(userName) {
 }
 
 function getLikelyBotUserNames() {
+  const retiredBotUsers = getRetiredBotUserNameSet();
   const names = new Set();
   Object.keys(state.bankrolls || {}).forEach((userName) => {
-    if (isGeneratedBotName(userName)) {
+    if (isGeneratedBotName(userName) && !retiredBotUsers.has(String(userName || "").toLowerCase())) {
       names.add(userName);
     }
   });
@@ -6304,8 +6312,12 @@ function getPortfolioData() {
 function getLeaderboardRows(options = {}) {
   const timeFilter = options.timeFilter || uiState.leaderboardTimeFilter;
   const sort = options.sort || uiState.leaderboardSort;
+  const retiredBotUsers = getRetiredBotUserNameSet();
   if (timeFilter === "ALL_TIME" && backendState.mode === "supabase" && backendState.dashboard?.leaderboard?.length) {
-    return sortLeaderboardRows(backendState.dashboard.leaderboard, sort);
+    return sortLeaderboardRows(
+      backendState.dashboard.leaderboard.filter((row) => !retiredBotUsers.has(String(row?.userName || "").toLowerCase())),
+      sort
+    );
   }
   return sortLeaderboardRows(buildLeaderboardRows(timeFilter), sort);
 }
@@ -6866,7 +6878,9 @@ function leaderboardMetricCard(label, value) {
 
 function buildLeaderboardRows(timeFilter = "ALL_TIME") {
   const scopedMarkets = timeFilter === "THIS_ROUND" ? getActiveRoundMarkets() : state.markets;
+  const retiredBotUsers = getRetiredBotUserNameSet();
   return [...new Set([...Object.keys(state.bankrolls), ...scopedMarkets.flatMap((market) => market.trades.map((trade) => trade.userName))])]
+    .filter((userName) => !retiredBotUsers.has(String(userName || "").toLowerCase()))
     .map((userName) => {
       const trades = scopedMarkets.flatMap((market) => (market.trades || []).filter((trade) => trade.userName === userName));
       const settled = trades.filter((trade) => trade.result);
