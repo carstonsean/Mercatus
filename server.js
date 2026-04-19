@@ -2001,6 +2001,13 @@ function shouldFallbackShareSessionStorage(error){
     || /relation .*share_sessions/i.test(message)
     || /function .*accept_share_trade/i.test(message)
     || /Could not find the table/i.test(message)
+    || /Supabase fetch failed/i.test(message)
+    || /fetch failed/i.test(message)
+    || /EAI_AGAIN/i.test(message)
+    || /ENOTFOUND/i.test(message)
+    || /ECONNRESET/i.test(message)
+    || /ETIMEDOUT/i.test(message)
+    || /UND_ERR_CONNECT_TIMEOUT/i.test(message)
     || /aborted/i.test(message)
     || /timed out/i.test(message);
 }
