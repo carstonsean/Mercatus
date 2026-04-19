@@ -498,21 +498,22 @@ async function handleApi(req,res,url,sessionContext){
   }
   if(req.method==="POST"&&url.pathname==="/api/trades"){
     const body=await parseJson(req);
+    let tradeUseSupabase=useSupabase;
     let username="";
     try{
       username=ensureAuthenticatedUserName(req);
     }catch(error){
       return json(res,401,{error:error.message||"Authentication required"});
     }
-    if(useSupabase){
+    if(tradeUseSupabase){
       try{
         await ensureSupabaseReady();
       }catch(error){
-        console.warn("Supabase unavailable for trade request; rejecting hosted trade",error.message);
-        return json(res,503,{error:"Trading is temporarily unavailable. Please try again."});
+        console.warn("Supabase unavailable for trade request; falling back to in-memory trade handling",error.message);
+        tradeUseSupabase=false;
       }
     }
-    if(!useSupabase){
+    if(!tradeUseSupabase){
       syncDerivedBalances();
     }
     const market=findMarket(body.marketId);
@@ -531,37 +532,41 @@ async function handleApi(req,res,url,sessionContext){
     if(stake>bankroll){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
-    const stateSnapshot=useSupabase?cloneValue(state):null;
+    const stateSnapshot=tradeUseSupabase?cloneValue(state):null;
     let trade=null;
     try{
       trade=executeProjectionTrade(market,{userName:username,side,stake});
       lastStateMutationAt=Date.now();
       syncPrizePoolState(state);
-      if(useSupabase){
-        await enqueueSupabaseMarketPersistence(market,state);
-        enqueueSupabaseRuntimeSnapshot().catch((error)=>{
-          console.warn("Supabase runtime snapshot failed after durable trade persist",error.message);
-        });
-        getSupabaseDemoUser(username)
-          .then((backendUser)=>logAnalyticsEvent({
-            eventType:"trade_placed",
-            sessionId:sessionContext.sessionId,
-            userId:backendUser?.id||null,
-            metadata:{
-              username,
-              market_id:String(market.id),
-              side,
-              stake
-            }
-          }))
-          .catch((error)=>{
-            console.warn("Trade analytics logging failed",error.message);
+      if(tradeUseSupabase){
+        try{
+          await enqueueSupabaseMarketPersistence(market,state);
+          enqueueSupabaseRuntimeSnapshot().catch((error)=>{
+            console.warn("Supabase runtime snapshot failed after durable trade persist",error.message);
           });
+          getSupabaseDemoUser(username)
+            .then((backendUser)=>logAnalyticsEvent({
+              eventType:"trade_placed",
+              sessionId:sessionContext.sessionId,
+              userId:backendUser?.id||null,
+              metadata:{
+                username,
+                market_id:String(market.id),
+                side,
+                stake
+              }
+            }))
+            .catch((error)=>{
+              console.warn("Trade analytics logging failed",error.message);
+            });
+        }catch(error){
+          console.warn("Supabase persistence failed after trade; keeping in-memory state",error.message);
+        }
       }else{
         await persistStateSnapshot(false);
       }
     }catch(error){
-      if(useSupabase&&stateSnapshot){
+      if(tradeUseSupabase&&stateSnapshot){
         state=normalizeState(stateSnapshot,{skipWalletBootstrap:true});
         syncPrizePoolState(state);
       }
