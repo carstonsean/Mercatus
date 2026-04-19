@@ -559,6 +559,7 @@ async function handleApi(req,res,url,sessionContext){
     let sessions=[];
     let inviteRows=[];
     let userNamesById=new Map();
+    let fallbackToLocalChallengeData=false;
     if(useSupabase){
       try{
         const user=await ensureSupabaseDemoUser(authenticatedUserName);
@@ -573,9 +574,15 @@ async function handleApi(req,res,url,sessionContext){
         inviteRows=await fetchHostedInviteResponsesBySessionIds(sessionIds);
         userNamesById=await fetchUsersByIds(inviteRows.map((row)=>row.responder_user_id));
       }catch(error){
-        return json(res,500,{error:error.message||"Unable to load outbound challenges"});
+        if(!shouldFallbackShareSessionStorage(error)){
+          return json(res,500,{error:error.message||"Unable to load outbound challenges"});
+        }
+        fallbackToLocalChallengeData=true;
+        console.warn("Challenges outbound falling back to local challenge data",error.message);
       }
-    }else{
+    }
+    const usingHostedChallengeData=useSupabase&&!fallbackToLocalChallengeData;
+    if(!usingHostedChallengeData){
       sessions=(state.shareSessions||[])
         .filter((session)=>String(session.createdByUserName||"").toLowerCase()===String(authenticatedUserName||"").toLowerCase())
         .map((session)=>({
@@ -603,7 +610,7 @@ async function handleApi(req,res,url,sessionContext){
         return map;
       }
       const current=map.get(key)||[];
-      const serialized=useSupabase
+      const serialized=usingHostedChallengeData
         ? serializeChallengeResponseRow(row,userNamesById)
         : {
             invite_id:String(row.id||""),
