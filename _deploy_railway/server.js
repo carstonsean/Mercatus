@@ -75,6 +75,8 @@ const AVAILABLE_ROUND_NUMBERS=[...new Set([
 ])].sort((left,right)=>left-right);
 const SUPABASE_STATE_SYNC_TTL_MS=30000;
 const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
+const SUPABASE_SEED_READY_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_SEED_READY_TIMEOUT_MS)||30000);
+const SUPABASE_BACKEND_USER_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_BACKEND_USER_TIMEOUT_MS)||15000);
 const SHARE_SESSION_CREATE_TIMEOUT_MS=4000;
 const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
@@ -3458,7 +3460,12 @@ async function syncBackendUser(userName,useSupabase=SUPABASE_ENABLED){
   }
   const tableBackedBalance=typeof state.bankrolls?.[userName]==="number"?state.bankrolls[userName]:null;
   try{
-    const backendUser=await ensureSupabaseDemoUser(userName);
+    const backendUser=await Promise.race([
+      ensureSupabaseDemoUser(userName),
+      new Promise((_,reject)=>{
+        setTimeout(()=>reject(new Error("Supabase session sync timed out")),SUPABASE_BACKEND_USER_TIMEOUT_MS);
+      })
+    ]);
     if(backendUser&&Number.isFinite(tableBackedBalance)){
       backendUser.balance=tableBackedBalance;
       state.bankrolls[userName]=tableBackedBalance;
@@ -3481,7 +3488,7 @@ async function ensureSupabaseReady(){
       supabaseSeedReady=true;
     }),
     new Promise((_,reject)=>{
-      setTimeout(()=>reject(new Error("Supabase seed readiness timed out")),1200);
+      setTimeout(()=>reject(new Error("Supabase seed readiness timed out")),SUPABASE_SEED_READY_TIMEOUT_MS);
     })
   ]);
 }
