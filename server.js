@@ -304,75 +304,22 @@ async function handleApi(req,res,url,sessionContext){
     }catch(error){
       return json(res,401,{error:error.message||"Authentication required"});
     }
-    const submittedTradeId=String(body.trade_id || (Array.isArray(body.trade_ids)?body.trade_ids[0]:"")).trim();
+    const submittedTradeId=String(body.trade_id||(Array.isArray(body.trade_ids)?body.trade_ids[0]:"")).trim();
     if(!submittedTradeId){
       return json(res,400,{error:"Select one unmatched trade to share"});
     }
-    let eligibleTrades=listEligibleShareTradesForUser(authenticatedUserName);
-    let eligibleTrade=findEligibleShareTradeFromCollection(eligibleTrades,submittedTradeId);
-    if(!eligibleTrade){
-      if(useSupabase){
-        try{
-          await syncStateFromSupabase({force:true});
-        }catch(error){
-          console.warn("Share create Supabase sync failed",error.message);
-        }
-      }
-      eligibleTrades=listEligibleShareTradesForUser(authenticatedUserName);
-      eligibleTrade=findEligibleShareTradeFromCollection(eligibleTrades,submittedTradeId);
-    }
-    if(!eligibleTrade){
-      return json(res,400,{error:"This trade is no longer available to share"});
-    }
-    const localActiveSession=findLocalActiveShareSessionByTrade(authenticatedUserName,eligibleTrade.trade.id);
-    if(localActiveSession?.id){
-      return json(res,200,{
-        share_session_id:String(localActiveSession.id),
-        share_url:buildShareUrlForSession(req,localActiveSession.id),
-        reused:true
+    try{
+      const created=await createChallengeShareLink({
+        req,
+        userName:authenticatedUserName,
+        tradeId:submittedTradeId,
+        useSupabase
       });
+      return json(res,200,created);
+    }catch(error){
+      const statusCode=Number(error?.statusCode)||500;
+      return json(res,statusCode,{error:error.message||"Unable to create challenge link right now"});
     }
-    if(useSupabase){
-      try{
-        const hostedUser=await ensureSupabaseDemoUser(authenticatedUserName);
-        const existingHostedSession=await findHostedActiveShareSessionByTrade(hostedUser?.id,eligibleTrade.trade.id);
-        if(existingHostedSession?.id){
-          return json(res,200,{
-            share_session_id:String(existingHostedSession.id),
-            share_url:buildShareUrlForSession(req,existingHostedSession.id),
-            reused:true
-          });
-        }
-      }catch(error){
-        if(!shouldFallbackShareSessionStorage(error)){
-          return json(res,500,{error:error.message||"Unable to create challenge link right now"});
-        }
-        console.warn("Hosted share session lookup failed; falling back to runtime overlay",error.message);
-      }
-    }
-    let shareSession=null;
-    if(useSupabase){
-      try{
-        await enqueueSupabaseMarketPersistence(eligibleTrade.market,state);
-        shareSession=await createHostedShareSessionWithTimeout(authenticatedUserName,eligibleTrade.trade.id);
-      }catch(error){
-        if(!shouldFallbackShareSessionStorage(error)){
-          return json(res,500,{error:error.message||"Unable to create challenge link right now"});
-        }
-        console.warn("Hosted share session creation failed; falling back to runtime overlay",error.message);
-      }
-    }
-    if(!shareSession){
-      shareSession=createLocalShareSession(authenticatedUserName,eligibleTrade.trade.id,useSupabase);
-    }
-    if(!shareSession?.id){
-      return json(res,500,{error:"Unable to create challenge link right now"});
-    }
-    return json(res,200,{
-      share_session_id:String(shareSession.id),
-      share_url:buildShareUrlForSession(req,shareSession.id),
-      reused:false
-    });
   }
   if(req.method==="POST"&&url.pathname==="/api/share/respond"){
     const body=await parseJson(req);
@@ -395,30 +342,17 @@ async function handleApi(req,res,url,sessionContext){
       return json(res,400,{error:`Decline note must be ${SHARE_DECLINE_NOTE_MAX_LENGTH} characters or fewer`});
     }
     try{
-      const sessionRecord=useSupabase
-        ? await fetchHostedShareSessionRecord(shareSessionId)
-        : fetchLocalShareSessionRecord(shareSessionId);
-      if(!sessionRecord){
-        return json(res,400,{error:"This challenge link is no longer valid"});
-      }
-      if(challengeSessionStatusLabel(sessionRecord.status,sessionRecord.expiresAt)!=="ACTIVE"){
-        return json(res,400,{error:"This challenge is no longer active"});
-      }
-    }catch(error){
-      return json(res,400,{error:error.message||"Unable to respond to this challenge"});
-    }
-    try{
-      await persistChallengeInviteResponse({
+      await recordChallengeDeclineResponse({
         shareSessionId,
         responderUserName:authenticatedUserName,
-        action:"DECLINED",
         declineNote,
         useSupabase
       });
+      return json(res,200,{success:true,status:"DECLINED"});
     }catch(error){
-      console.warn("Challenge decline response logging failed",error.message);
+      const statusCode=Number(error?.statusCode)||400;
+      return json(res,statusCode,{error:error.message||"Unable to respond to this challenge"});
     }
-    return json(res,200,{success:true,status:"DECLINED"});
   }
   if(req.method==="GET"&&url.pathname.startsWith("/api/share/")){
     const shareId=decodeURIComponent(url.pathname.replace("/api/share/","").trim());
@@ -426,18 +360,11 @@ async function handleApi(req,res,url,sessionContext){
       return json(res,404,{error:"Not found"});
     }
     try{
-      const sessionPayload=await fetchShareSessionPayload(shareId,useSupabase);
+      const sessionPayload=await fetchChallengeSharePayload(shareId,useSupabase);
       return json(res,200,sessionPayload);
     }catch(error){
-      if(useSupabase&&shouldFallbackShareSessionStorage(error)){
-        try{
-          const sessionPayload=await fetchShareSessionPayload(shareId,false);
-          return json(res,200,sessionPayload);
-        }catch(localError){
-          return json(res,400,{error:localError.message||"This challenge link is no longer valid"});
-        }
-      }
-      return json(res,400,{error:error.message||"This challenge link is no longer valid"});
+      const statusCode=Number(error?.statusCode)||400;
+      return json(res,statusCode,{error:error.message||"This challenge link is no longer valid"});
     }
   }
   if(req.method==="POST"&&url.pathname==="/api/share/accept"){
@@ -454,21 +381,12 @@ async function handleApi(req,res,url,sessionContext){
       return json(res,400,{error:"Invalid share acceptance payload"});
     }
     try{
-      const hasLocalShareSession=Boolean(fetchLocalShareSessionRecord(shareSessionId));
-      const matchedTrade=useSupabase&&!hasLocalShareSession
-        ? await acceptHostedShareTrade(authenticatedUserName,shareSessionId,tradeId)
-        : acceptLocalShareTrade(authenticatedUserName,shareSessionId,tradeId,useSupabase);
-      try{
-        await persistChallengeInviteResponse({
-          shareSessionId,
-          responderUserName:authenticatedUserName,
-          action:"ACCEPTED",
-          acceptedTradeId:matchedTrade?.id||null,
-          useSupabase
-        });
-      }catch(error){
-        console.warn("Challenge accept response logging failed",error.message);
-      }
+      const matchedTrade=await acceptChallengeShareTrade({
+        userName:authenticatedUserName,
+        shareSessionId,
+        tradeId,
+        useSupabase
+      });
       const backendUser=await syncBackendUser(authenticatedUserName,useSupabase);
       return json(res,200,{
         success:true,
@@ -482,7 +400,8 @@ async function handleApi(req,res,url,sessionContext){
         prizePool:buildPrizePoolClientPayload(authenticatedUserName)
       });
     }catch(error){
-      return json(res,400,{error:error.message||"Unable to accept this trade"});
+      const statusCode=Number(error?.statusCode)||400;
+      return json(res,statusCode,{error:error.message||"Unable to accept this trade"});
     }
   }
   if(req.method==="GET"&&url.pathname==="/api/challenges/eligible"){
@@ -492,55 +411,14 @@ async function handleApi(req,res,url,sessionContext){
     }catch(error){
       return json(res,401,{error:error.message||"Authentication required"});
     }
-    if(useSupabase){
-      try{
-        await syncStateFromSupabase({force:true});
-      }catch(error){
-        console.warn("Challenges eligible Supabase sync failed",error.message);
-      }
-    }
-    const eligibleTrades=listEligibleShareTradesForUser(authenticatedUserName);
-    let hostedSessionsByTradeId=new Map();
-    if(useSupabase){
-      try{
-        const user=await ensureSupabaseDemoUser(authenticatedUserName);
-        const sessions=await fetchHostedActiveShareSessionsByUserId(user?.id);
-        hostedSessionsByTradeId=new Map();
-        (sessions||[])
-          .filter((session)=>challengeSessionStatusLabel(session.status,session.expires_at)==="ACTIVE")
-          .forEach((session)=>{
-            const tradeIds=Array.isArray(session.trade_ids)?session.trade_ids:[];
-            const tradeId=tradeIds[0]?String(tradeIds[0]):"";
-            if(!tradeId||hostedSessionsByTradeId.has(tradeId)){
-              return;
-            }
-            hostedSessionsByTradeId.set(tradeId,session);
-          });
-      }catch(error){
-        console.warn("Challenges eligible hosted session lookup failed",error.message);
-      }
-    }
-    const payload=eligibleTrades.map((entry)=>{
-      const base=serializeChallengeEligibleTrade(entry);
-      if(!base){
-        return null;
-      }
-      const localSession=findLocalActiveShareSessionByTrade(authenticatedUserName,entry.trade.id);
-      const hostedSession=hostedSessionsByTradeId.get(String(entry.trade.id));
-      const existingSession=localSession||hostedSession||null;
-      return {
-        ...base,
-        existing_session:existingSession?.id
-          ? {
-              session_id:String(existingSession.id),
-              share_url:buildShareUrlForSession(req,existingSession.id)
-            }
-          : null
-      };
-    }).filter(Boolean);
+    const payload=await buildChallengeEligiblePayload({
+      req,
+      userName:authenticatedUserName,
+      useSupabase
+    });
     return json(res,200,payload);
   }
-  if(req.method==="GET"&&url.pathname==="/api/challenges/outbound"){
+  if(req.method==="GET"&&(url.pathname==="/api/challenges/outbound"||url.pathname==="/api/challenges/status")){
     let authenticatedUserName="";
     try{
       authenticatedUserName=ensureAuthenticatedUserName(req);
@@ -549,102 +427,16 @@ async function handleApi(req,res,url,sessionContext){
     }
     const statusFilter=String(url.searchParams.get("status")||"all").toLowerCase();
     const normalizedFilter=["all","open","matched","expired"].includes(statusFilter)?statusFilter:"all";
-    if(useSupabase){
-      try{
-        await syncStateFromSupabase({force:true});
-      }catch(error){
-        console.warn("Challenges outbound Supabase sync failed",error.message);
-      }
+    const feed=await buildChallengeStatusFeed({
+      req,
+      userName:authenticatedUserName,
+      useSupabase,
+      statusFilter:normalizedFilter
+    });
+    if(url.pathname==="/api/challenges/outbound"){
+      return json(res,200,feed.outbound);
     }
-    let sessions=[];
-    let inviteRows=[];
-    let userNamesById=new Map();
-    let fallbackToLocalChallengeData=false;
-    if(useSupabase){
-      try{
-        const user=await ensureSupabaseDemoUser(authenticatedUserName);
-        sessions=await supabaseRequestAll("share_sessions",{
-          query:{
-            select:"id,trade_ids,status,expires_at,created_at",
-            created_by_user_id:`eq.${user.id}`,
-            order:"created_at.desc"
-          }
-        });
-        const sessionIds=(sessions||[]).map((session)=>String(session.id)).filter(Boolean);
-        inviteRows=await fetchHostedInviteResponsesBySessionIds(sessionIds);
-        userNamesById=await fetchUsersByIds(inviteRows.map((row)=>row.responder_user_id));
-      }catch(error){
-        if(!shouldFallbackShareSessionStorage(error)){
-          return json(res,500,{error:error.message||"Unable to load outbound challenges"});
-        }
-        fallbackToLocalChallengeData=true;
-        console.warn("Challenges outbound falling back to local challenge data",error.message);
-      }
-    }
-    const usingHostedChallengeData=useSupabase&&!fallbackToLocalChallengeData;
-    if(!usingHostedChallengeData){
-      sessions=(state.shareSessions||[])
-        .filter((session)=>String(session.createdByUserName||"").toLowerCase()===String(authenticatedUserName||"").toLowerCase())
-        .map((session)=>({
-          id:session.id,
-          trade_ids:Array.isArray(session.tradeIds)?session.tradeIds.slice():[],
-          status:session.status||"active",
-          expires_at:session.expiresAt||null,
-          created_at:session.createdAt||null
-        }))
-        .sort((left,right)=>new Date(right.created_at||0)-new Date(left.created_at||0));
-      inviteRows=(state.shareInvites||[]).map((invite)=>({
-        id:invite.id,
-        share_session_id:invite.shareSessionId,
-        responder_user_id:null,
-        responder_username:invite.responderUserName||null,
-        action:invite.action,
-        decline_note:invite.declineNote,
-        responded_at:invite.respondedAt,
-        accepted_trade_id:invite.acceptedTradeId||null
-      }));
-    }
-    const responsesBySessionId=(inviteRows||[]).reduce((map,row)=>{
-      const key=String(row.share_session_id||"");
-      if(!key){
-        return map;
-      }
-      const current=map.get(key)||[];
-      const serialized=usingHostedChallengeData
-        ? serializeChallengeResponseRow(row,userNamesById)
-        : {
-            invite_id:String(row.id||""),
-            action:String(row.action||"DECLINED").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED",
-            responder_username:row.responder_username||null,
-            decline_note:row.decline_note==null?null:String(row.decline_note),
-            responded_at:row.responded_at||new Date().toISOString()
-          };
-      current.push(serialized);
-      map.set(key,current);
-      return map;
-    },new Map());
-    const payload=(sessions||[])
-      .map((session)=>{
-        const tradeId=Array.isArray(session.trade_ids)&&session.trade_ids[0]?String(session.trade_ids[0]):"";
-        const match=tradeId?findTradeAndMarketById(tradeId):null;
-        const status=toChallengeSessionStatusForFilter(session);
-        return {
-          session_id:String(session.id),
-          trade_id:tradeId||null,
-          player_name:match?.market?.playerName||"Unknown player",
-          position:match?.market?.position||"",
-          side:match?.trade?.side||"",
-          line:Number(match?.trade?.side==="OVER"?(match?.trade?.entryOverLine??match?.trade?.entryLine):(match?.trade?.entryUnderLine??match?.trade?.entryLine))||0,
-          stake:Number(match?.trade?.stake)||0,
-          share_url:buildShareUrlForSession(req,session.id),
-          session_status:status,
-          expires_at:session.expires_at||null,
-          created_at:session.created_at||null,
-          responses:responsesBySessionId.get(String(session.id))||[]
-        };
-      })
-      .filter((session)=>doesChallengeStatusMatchFilter(session.session_status,normalizedFilter));
-    return json(res,200,payload);
+    return json(res,200,feed);
   }
   if(req.method==="GET"&&url.pathname==="/api/popular-players"){
     const now=Date.now();
@@ -2019,7 +1811,492 @@ function shouldFallbackShareSessionStorage(error){
     || /timed out/i.test(message);
 }
 
-function createLocalShareSession(userName,tradeId,useSupabase=SUPABASE_ENABLED){
+function challengeLifecycleLog(event,detail={}){
+  const fields=Object.entries(detail)
+    .filter(([,value])=>value!==undefined&&value!==null&&value!=="")
+    .map(([key,value])=>`${key}=${String(value)}`);
+  console.info(`[challenge] ${event}${fields.length?` ${fields.join(" ")}`:""}`);
+}
+
+function challengeError(message,statusCode=400){
+  const error=new Error(message);
+  error.statusCode=statusCode;
+  return error;
+}
+
+async function tryChallengeSupabaseSync(label){
+  if(!SUPABASE_ENABLED){
+    return false;
+  }
+  try{
+    await syncStateFromSupabase({force:true});
+    return true;
+  }catch(error){
+    console.warn(`${label} Supabase sync failed`,error.message);
+    return false;
+  }
+}
+
+function normalizeChallengeSessionRecord(record,source="local"){
+  if(!record?.id){
+    return null;
+  }
+  const tradeIds=Array.isArray(record.tradeIds)
+    ? record.tradeIds.map((id)=>String(id)).filter(Boolean)
+    : Array.isArray(record.trade_ids)
+      ? record.trade_ids.map((id)=>String(id)).filter(Boolean)
+      : [];
+  return {
+    id:String(record.id),
+    source,
+    tradeIds,
+    status:String(record.status||"active"),
+    createdByUserName:String(record.createdByUserName||record.created_by_username||"").trim(),
+    createdAt:record.createdAt||record.created_at||null,
+    expiresAt:record.expiresAt||record.expires_at||null,
+    tradeSnapshot:record.tradeSnapshot||record.trade_snapshot||null
+  };
+}
+
+function normalizeChallengeInviteRow(row,source="local"){
+  if(!row){
+    return null;
+  }
+  if(source==="hosted"){
+    return {
+      id:String(row.id||""),
+      shareSessionId:String(row.share_session_id||""),
+      responderUserName:row.responder_username||null,
+      action:String(row.action||"DECLINED").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED",
+      declineNote:row.decline_note==null?null:String(row.decline_note),
+      respondedAt:row.responded_at||new Date().toISOString(),
+      acceptedTradeId:row.accepted_trade_id?String(row.accepted_trade_id):null
+    };
+  }
+  return {
+    id:String(row.id||""),
+    shareSessionId:String(row.shareSessionId||row.share_session_id||""),
+    responderUserName:row.responderUserName||row.responder_username||null,
+    action:String(row.action||"DECLINED").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED",
+    declineNote:row.declineNote==null?(row.decline_note==null?null:String(row.decline_note)):String(row.declineNote),
+    respondedAt:row.respondedAt||row.responded_at||new Date().toISOString(),
+    acceptedTradeId:row.acceptedTradeId?String(row.acceptedTradeId):(row.accepted_trade_id?String(row.accepted_trade_id):null)
+  };
+}
+
+async function findReusableChallengeSession({userName,tradeId,useSupabase=SUPABASE_ENABLED}){
+  const localActiveSession=findLocalActiveShareSessionByTrade(userName,tradeId);
+  if(localActiveSession?.id){
+    return {session:normalizeChallengeSessionRecord(localActiveSession,"local"),source:"local"};
+  }
+  if(!useSupabase){
+    return {session:null,source:"local"};
+  }
+  try{
+    const hostedUser=await ensureSupabaseDemoUser(userName);
+    const existingHostedSession=await findHostedActiveShareSessionByTrade(hostedUser?.id,tradeId);
+    if(existingHostedSession?.id){
+      return {session:normalizeChallengeSessionRecord(existingHostedSession,"supabase"),source:"supabase"};
+    }
+  }catch(error){
+    if(!shouldFallbackShareSessionStorage(error)){
+      throw challengeError(error.message||"Unable to create challenge link right now",500);
+    }
+    challengeLifecycleLog("create-link-hosted-lookup-fallback",{reason:error.message});
+  }
+  return {session:null,source:"local"};
+}
+
+async function createChallengeShareLink({req,userName,tradeId,useSupabase=SUPABASE_ENABLED}){
+  let eligibleTrade=findEligibleShareTrade(userName,tradeId);
+  if(!eligibleTrade&&useSupabase){
+    await tryChallengeSupabaseSync("Challenge create");
+    eligibleTrade=findEligibleShareTrade(userName,tradeId);
+  }
+  if(!eligibleTrade){
+    throw challengeError("This trade is no longer available to share",400);
+  }
+  const reusable=await findReusableChallengeSession({userName,tradeId:eligibleTrade.trade.id,useSupabase});
+  if(reusable.session?.id){
+    challengeLifecycleLog("create-link",{user:userName,tradeId:eligibleTrade.trade.id,sessionId:reusable.session.id,reused:true,source:reusable.source});
+    return {
+      share_session_id:String(reusable.session.id),
+      share_url:buildShareUrlForSession(req,reusable.session.id),
+      reused:true,
+      source:reusable.source
+    };
+  }
+  let shareSession=null;
+  let source=useSupabase?"supabase":"local";
+  if(useSupabase){
+    try{
+      await enqueueSupabaseMarketPersistence(eligibleTrade.market,state);
+      shareSession=await createHostedShareSessionWithTimeout(userName,eligibleTrade.trade.id);
+    }catch(error){
+      if(!shouldFallbackShareSessionStorage(error)){
+        throw challengeError(error.message||"Unable to create challenge link right now",500);
+      }
+      source="local";
+      challengeLifecycleLog("create-link-hosted-create-fallback",{reason:error.message,tradeId:eligibleTrade.trade.id,user:userName});
+    }
+  }
+  if(!shareSession){
+    shareSession=createLocalShareSession(userName,eligibleTrade.trade.id,useSupabase,eligibleTrade.trade,eligibleTrade.market);
+    source="local";
+  }
+  if(!shareSession?.id){
+    throw challengeError("Unable to create challenge link right now",500);
+  }
+  challengeLifecycleLog("create-link",{user:userName,tradeId:eligibleTrade.trade.id,sessionId:shareSession.id,reused:false,source});
+  return {
+    share_session_id:String(shareSession.id),
+    share_url:buildShareUrlForSession(req,shareSession.id),
+    reused:false,
+    source
+  };
+}
+
+async function fetchChallengeSessionRecordWithFallback(shareSessionId,useSupabase=SUPABASE_ENABLED){
+  const localSessionRecord=fetchLocalShareSessionRecord(shareSessionId);
+  if(localSessionRecord){
+    return {record:normalizeChallengeSessionRecord(localSessionRecord,"local"),source:"local"};
+  }
+  if(useSupabase){
+    try{
+      const hostedRecord=await fetchHostedShareSessionRecord(shareSessionId);
+      if(hostedRecord){
+        return {record:normalizeChallengeSessionRecord(hostedRecord,"supabase"),source:"supabase"};
+      }
+    }catch(error){
+      if(!shouldFallbackShareSessionStorage(error)){
+        throw challengeError(error.message||"Unable to load this challenge",500);
+      }
+      challengeLifecycleLog("session-read-fallback",{sessionId:shareSessionId,reason:error.message});
+    }
+  }
+  return {record:null,source:"local"};
+}
+
+async function persistChallengeInviteResponseWithFallback(payload,useSupabase=SUPABASE_ENABLED){
+  if(useSupabase){
+    try{
+      await persistChallengeInviteResponse({...payload,useSupabase:true});
+      return "supabase";
+    }catch(error){
+      if(!shouldFallbackShareSessionStorage(error)){
+        throw error;
+      }
+      challengeLifecycleLog("invite-response-fallback",{sessionId:payload.shareSessionId,action:payload.action,reason:error.message});
+    }
+  }
+  await persistChallengeInviteResponse({...payload,useSupabase:false});
+  return "local";
+}
+
+async function recordChallengeDeclineResponse({
+  shareSessionId,
+  responderUserName,
+  declineNote=null,
+  useSupabase=SUPABASE_ENABLED
+}){
+  const sessionLookup=await fetchChallengeSessionRecordWithFallback(shareSessionId,useSupabase);
+  if(!sessionLookup.record){
+    throw challengeError("This challenge link is no longer valid",400);
+  }
+  if(challengeSessionStatusLabel(sessionLookup.record.status,sessionLookup.record.expiresAt)!=="ACTIVE"){
+    throw challengeError("This challenge is no longer active",400);
+  }
+  const responseSource=await persistChallengeInviteResponseWithFallback({
+    shareSessionId,
+    responderUserName,
+    action:"DECLINED",
+    declineNote
+  },useSupabase);
+  challengeLifecycleLog("decline",{sessionId:shareSessionId,responder:responderUserName,sessionSource:sessionLookup.source,responseSource});
+}
+
+async function fetchChallengeSharePayload(shareId,useSupabase=SUPABASE_ENABLED){
+  try{
+    const payload=await fetchShareSessionPayload(shareId,useSupabase);
+    challengeLifecycleLog("open-link",{sessionId:shareId,source:useSupabase?"supabase":"local"});
+    return payload;
+  }catch(error){
+    if(useSupabase&&shouldFallbackShareSessionStorage(error)){
+      const localPayload=await fetchShareSessionPayload(shareId,false);
+      challengeLifecycleLog("open-link",{sessionId:shareId,source:"local-fallback"});
+      return localPayload;
+    }
+    throw challengeError(error.message||"This challenge link is no longer valid",400);
+  }
+}
+
+async function acceptChallengeShareTrade({
+  userName,
+  shareSessionId,
+  tradeId,
+  useSupabase=SUPABASE_ENABLED
+}){
+  const hasLocalShareSession=Boolean(fetchLocalShareSessionRecord(shareSessionId));
+  const matchedTrade=useSupabase&&!hasLocalShareSession
+    ? await acceptHostedShareTrade(userName,shareSessionId,tradeId)
+    : acceptLocalShareTrade(userName,shareSessionId,tradeId,useSupabase);
+  const responseSource=await persistChallengeInviteResponseWithFallback({
+    shareSessionId,
+    responderUserName:userName,
+    action:"ACCEPTED",
+    acceptedTradeId:matchedTrade?.id||null
+  },useSupabase);
+  challengeLifecycleLog("accept",{sessionId:shareSessionId,responder:userName,tradeId,source:useSupabase&&!hasLocalShareSession?"supabase":"local",responseSource});
+  return matchedTrade;
+}
+
+async function buildChallengeEligiblePayload({req,userName,useSupabase=SUPABASE_ENABLED}){
+  if(useSupabase){
+    await tryChallengeSupabaseSync("Challenges eligible");
+  }
+  const eligibleTrades=listEligibleShareTradesForUser(userName);
+  let hostedSessionsByTradeId=new Map();
+  if(useSupabase){
+    try{
+      const user=await ensureSupabaseDemoUser(userName);
+      const sessions=await fetchHostedActiveShareSessionsByUserId(user?.id);
+      hostedSessionsByTradeId=new Map();
+      (sessions||[])
+        .filter((session)=>challengeSessionStatusLabel(session.status,session.expires_at)==="ACTIVE")
+        .forEach((session)=>{
+          const tradeIds=Array.isArray(session.trade_ids)?session.trade_ids:[];
+          const sessionTradeId=tradeIds[0]?String(tradeIds[0]):"";
+          if(!sessionTradeId||hostedSessionsByTradeId.has(sessionTradeId)){
+            return;
+          }
+          hostedSessionsByTradeId.set(sessionTradeId,session);
+        });
+    }catch(error){
+      if(!shouldFallbackShareSessionStorage(error)){
+        throw challengeError(error.message||"Unable to load challenge trades",500);
+      }
+      challengeLifecycleLog("eligible-fallback",{reason:error.message});
+    }
+  }
+  return eligibleTrades
+    .map((entry)=>{
+      const base=serializeChallengeEligibleTrade(entry);
+      if(!base){
+        return null;
+      }
+      const localSession=findLocalActiveShareSessionByTrade(userName,entry.trade.id);
+      const hostedSession=hostedSessionsByTradeId.get(String(entry.trade.id));
+      const existingSession=localSession||hostedSession||null;
+      return {
+        ...base,
+        existing_session:existingSession?.id
+          ? {
+              session_id:String(existingSession.id),
+              share_url:buildShareUrlForSession(req,existingSession.id)
+            }
+          : null
+      };
+    })
+    .filter(Boolean);
+}
+
+function collectLocalChallengeSessionsForUser(userName){
+  const normalizedUserName=String(userName||"").toLowerCase();
+  return (state.shareSessions||[])
+    .filter((session)=>String(session.createdByUserName||"").toLowerCase()===normalizedUserName)
+    .map((session)=>normalizeChallengeSessionRecord(session,"local"))
+    .filter(Boolean);
+}
+
+function collectLocalChallengeSessionsByIds(sessionIds=[]){
+  const validIds=new Set((sessionIds||[]).map((id)=>String(id)).filter(Boolean));
+  if(!validIds.size){
+    return [];
+  }
+  return (state.shareSessions||[])
+    .filter((session)=>validIds.has(String(session?.id||"")))
+    .map((session)=>normalizeChallengeSessionRecord(session,"local"))
+    .filter(Boolean);
+}
+
+function collectLocalChallengeInvites(){
+  return (state.shareInvites||[])
+    .map((invite)=>normalizeChallengeInviteRow(invite,"local"))
+    .filter((invite)=>invite?.shareSessionId);
+}
+
+function serializeChallengeSessionSummary(session,responses,req){
+  const primaryTradeId=session.tradeIds[0]?String(session.tradeIds[0]):"";
+  const acceptedTradeIds=(responses||[])
+    .map((entry)=>entry.acceptedTradeId?String(entry.acceptedTradeId):"")
+    .filter(Boolean);
+  const candidateTradeIds=[primaryTradeId,...acceptedTradeIds].filter(Boolean);
+  let match=null;
+  for(const tradeId of candidateTradeIds){
+    match=findTradeAndMarketById(tradeId);
+    if(match){
+      break;
+    }
+  }
+  const resolvedTradeId=match?.trade?.id?String(match.trade.id):(primaryTradeId||acceptedTradeIds[0]||null);
+  const line=Number(match?.trade?.side==="OVER"
+    ? (match?.trade?.entryOverLine??match?.trade?.entryLine)
+    : (match?.trade?.entryUnderLine??match?.trade?.entryLine))||0;
+  const tradeSnapshot=session.tradeSnapshot||null;
+  return {
+    session_id:String(session.id),
+    trade_id:resolvedTradeId,
+    player_name:match?.market?.playerName||tradeSnapshot?.player_name||"Unknown player",
+    position:match?.market?.position||tradeSnapshot?.position||"",
+    side:match?.trade?.side||tradeSnapshot?.side||"",
+    line:line||Number(tradeSnapshot?.line)||0,
+    stake:Number(match?.trade?.stake)||Number(tradeSnapshot?.stake)||0,
+    share_url:buildShareUrlForSession(req,session.id),
+    session_status:toChallengeSessionStatusForFilter(session),
+    expires_at:session.expiresAt||null,
+    created_at:session.createdAt||null,
+    responses:Array.isArray(responses)?responses:[]
+  };
+}
+
+async function buildChallengeStatusFeed({
+  req,
+  userName,
+  useSupabase=SUPABASE_ENABLED,
+  statusFilter="all"
+}){
+  if(useSupabase){
+    await tryChallengeSupabaseSync("Challenges status");
+  }
+  const normalizedUserName=String(userName||"").toLowerCase();
+  const localInvites=collectLocalChallengeInvites();
+  const localOutboundSessions=collectLocalChallengeSessionsForUser(userName);
+  const localInboundSessionIds=localInvites
+    .filter((invite)=>String(invite?.responderUserName||"").toLowerCase()===normalizedUserName)
+    .map((invite)=>String(invite.shareSessionId||""))
+    .filter(Boolean);
+  const localInboundSessions=collectLocalChallengeSessionsByIds(localInboundSessionIds);
+  const localSessions=[...localOutboundSessions,...localInboundSessions];
+  let hostedSessions=[];
+  let hostedInvites=[];
+  let source=useSupabase?"supabase":"local";
+  if(useSupabase){
+    try{
+      const user=await ensureSupabaseDemoUser(userName);
+      const outboundRows=await supabaseRequestAll("share_sessions",{
+        query:{
+          select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+          created_by_user_id:`eq.${user.id}`,
+          order:"created_at.desc"
+        }
+      });
+      const inboundInviteRows=await supabaseRequestAll("share_invites",{
+        query:{
+          select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
+          responder_user_id:`eq.${user.id}`,
+          order:"responded_at.desc"
+        }
+      });
+      const inboundSessionIds=[...new Set((inboundInviteRows||[]).map((row)=>String(row.share_session_id||"")).filter(Boolean))];
+      let inboundRows=[];
+      if(inboundSessionIds.length){
+        inboundRows=await supabaseRequestAll("share_sessions",{
+          query:{
+            select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+            id:`in.(${inboundSessionIds.join(",")})`,
+            order:"created_at.desc"
+          }
+        });
+      }
+      const hostedRawSessions=[...(outboundRows||[]),...(inboundRows||[])];
+      const sessionIdSet=[...new Set(hostedRawSessions.map((entry)=>String(entry.id)).filter(Boolean))];
+      const inviteRowsForSessions=sessionIdSet.length
+        ? await fetchHostedInviteResponsesBySessionIds(sessionIdSet)
+        : [];
+      const responderUserNames=await fetchUsersByIds((inviteRowsForSessions||[]).map((row)=>row.responder_user_id));
+      hostedSessions=hostedRawSessions
+        .map((row)=>normalizeChallengeSessionRecord({
+          id:row.id,
+          trade_ids:row.trade_ids,
+          status:row.status,
+          created_at:row.created_at,
+          expires_at:row.expires_at
+        },"supabase"))
+        .filter(Boolean);
+      hostedInvites=(inviteRowsForSessions||[])
+        .map((row)=>normalizeChallengeInviteRow({
+          ...row,
+          responder_username:row?.responder_user_id?responderUserNames.get(String(row.responder_user_id))||null:null
+        },"hosted"))
+        .filter(Boolean);
+      const creatorUserIds=[...new Set((hostedRawSessions||[]).map((row)=>String(row?.created_by_user_id||"")).filter(Boolean))];
+      const creatorsById=await fetchUsersByIds(creatorUserIds);
+      hostedSessions=hostedSessions.map((session,index)=>({
+        ...session,
+        createdByUserName:creatorsById.get(String(hostedRawSessions[index]?.created_by_user_id||""))||session.createdByUserName
+      }));
+    }catch(error){
+      if(!shouldFallbackShareSessionStorage(error)){
+        throw challengeError(error.message||"Unable to load challenge status",500);
+      }
+      source="local-fallback";
+      hostedSessions=[];
+      hostedInvites=[];
+      challengeLifecycleLog("status-fallback",{reason:error.message});
+    }
+  }
+  const sessionsById=new Map();
+  [...localSessions,...hostedSessions].forEach((session)=>{
+    if(!session?.id){
+      return;
+    }
+    const existing=sessionsById.get(session.id);
+    if(!existing||session.source==="supabase"){
+      sessionsById.set(session.id,session);
+    }
+  });
+  const invitesBySessionId=new Map();
+  [...localInvites,...hostedInvites].forEach((invite)=>{
+    const key=String(invite?.shareSessionId||"");
+    if(!key){
+      return;
+    }
+    const existing=invitesBySessionId.get(key)||[];
+    existing.push({
+      invite_id:invite.id,
+      action:invite.action,
+      responder_username:invite.responderUserName||null,
+      decline_note:invite.declineNote,
+      responded_at:invite.respondedAt
+    });
+    invitesBySessionId.set(key,existing);
+  });
+  const allRows=[...sessionsById.values()]
+    .map((session)=>{
+      const responses=(invitesBySessionId.get(String(session.id))||[])
+        .slice()
+        .sort((left,right)=>new Date(left.responded_at||0)-new Date(right.responded_at||0));
+      return serializeChallengeSessionSummary(session,responses,req);
+    })
+    .filter((entry)=>doesChallengeStatusMatchFilter(entry.session_status,statusFilter))
+    .sort((left,right)=>new Date(right.created_at||0)-new Date(left.created_at||0));
+  const outbound=allRows.filter((entry)=>{
+    const session=sessionsById.get(String(entry.session_id));
+    return String(session?.createdByUserName||"").toLowerCase()===normalizedUserName;
+  });
+  const inbound=allRows.filter((entry)=>{
+    const session=sessionsById.get(String(entry.session_id));
+    if(String(session?.createdByUserName||"").toLowerCase()===normalizedUserName){
+      return false;
+    }
+    const responses=entry.responses||[];
+    return responses.some((response)=>String(response.responder_username||"").toLowerCase()===normalizedUserName);
+  });
+  challengeLifecycleLog("status-fetch",{user:userName,filter:statusFilter,source,outbound:outbound.length,inbound:inbound.length});
+  return {status_filter:statusFilter,source,outbound,inbound};
+}
+
+function createLocalShareSession(userName,tradeId,useSupabase=SUPABASE_ENABLED,trade=null,market=null){
   state.shareSessions=Array.isArray(state.shareSessions)?state.shareSessions:[];
   const expiresAt=deriveChallengeShareSessionExpiry(tradeId);
   const session={
@@ -2028,7 +2305,17 @@ function createLocalShareSession(userName,tradeId,useSupabase=SUPABASE_ENABLED){
     tradeIds:[String(tradeId)],
     createdAt:new Date().toISOString(),
     status:"active",
-    expiresAt
+    expiresAt,
+    tradeSnapshot:trade&&market
+      ? {
+          trade_id:String(trade.id),
+          player_name:market.playerName||"Unknown player",
+          position:market.position||"",
+          side:trade.side||"",
+          line:Number(trade.side==="OVER"?(trade.entryOverLine??trade.entryLine):(trade.entryUnderLine??trade.entryLine))||0,
+          stake:Number(trade.unmatchedStake||trade.stake)||0
+        }
+      : null
   };
   state.shareSessions.push(session);
   persistStateSnapshotDeferred(useSupabase);
@@ -2100,13 +2387,21 @@ async function fetchHostedShareSessionRecord(shareId){
   if(!row){
     return null;
   }
-  const userRows=await supabaseRequest("users",{
-    query:{
-      select:"username",
-      id:`eq.${row.created_by_user_id}`,
-      limit:1
+  let userRows=[];
+  try{
+    userRows=await supabaseRequest("users",{
+      query:{
+        select:"username",
+        id:`eq.${row.created_by_user_id}`,
+        limit:1
+      }
+    });
+  }catch(error){
+    if(!shouldFallbackShareSessionStorage(error)){
+      throw error;
     }
-  });
+    challengeLifecycleLog("session-user-lookup-fallback",{sessionId:shareId,reason:error.message});
+  }
   return {
     id:row.id,
     tradeIds:Array.isArray(row.trade_ids)?row.trade_ids.map((tradeId)=>String(tradeId)) : [],
@@ -2128,7 +2423,8 @@ function fetchLocalShareSessionRecord(shareId){
     status:String(row.status||"active"),
     createdByUserName:row.createdByUserName||"CrowdIQ user",
     createdAt:row.createdAt||null,
-    expiresAt:row.expiresAt||null
+    expiresAt:row.expiresAt||null,
+    tradeSnapshot:row.tradeSnapshot&&typeof row.tradeSnapshot==="object"?{...row.tradeSnapshot}:null
   };
 }
 
@@ -2755,8 +3051,7 @@ async function buildChallengeMetadata(shareId,useSupabase=SUPABASE_ENABLED){
     image:`${publicOrigin}/social-preview.svg`
   };
   try{
-    void useSupabase;
-    const session=await fetchShareSessionPayload(shareId,false);
+    const session=await fetchChallengeSharePayload(shareId,useSupabase);
     const firstTrade=session.trades[0];
     if(!firstTrade){
       return fallback;
@@ -3366,7 +3661,17 @@ function normalizeState(rawState,options={}){
             tradeIds:Array.isArray(entry.tradeIds)?entry.tradeIds.map((tradeId)=>String(tradeId)).filter(Boolean):[],
             createdAt:entry.createdAt||new Date().toISOString(),
             expiresAt:entry.expiresAt||null,
-            status:["active","completed","expired"].includes(String(entry.status||""))?String(entry.status):"active"
+            status:["active","completed","expired"].includes(String(entry.status||""))?String(entry.status):"active",
+            tradeSnapshot:entry.tradeSnapshot&&typeof entry.tradeSnapshot==="object"
+              ? {
+                  trade_id:entry.tradeSnapshot.trade_id?String(entry.tradeSnapshot.trade_id):null,
+                  player_name:entry.tradeSnapshot.player_name?String(entry.tradeSnapshot.player_name):"Unknown player",
+                  position:entry.tradeSnapshot.position?String(entry.tradeSnapshot.position):"",
+                  side:entry.tradeSnapshot.side?String(entry.tradeSnapshot.side):"",
+                  line:Number(entry.tradeSnapshot.line)||0,
+                  stake:Number(entry.tradeSnapshot.stake)||0
+                }
+              : null
           }))
       : [],
     shareInvites:Array.isArray(rawState.shareInvites)

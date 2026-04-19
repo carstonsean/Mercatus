@@ -85,26 +85,10 @@
     return Array.isArray(payload) ? payload : [];
   }
 
-  async function createShareSession(tradeId) {
-    const response = await fetch("/api/share/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Name": currentUserName()
-      },
-      body: JSON.stringify({ trade_id: tradeId })
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload?.error || "Unable to create share link");
-    }
-    return payload;
-  }
-
-  function openAppChallengeLinkModal(shareUrl) {
-    if (!shareUrl) return;
-    document.dispatchEvent(new CustomEvent("crowdiq:open-challenge-link-modal", {
-      detail: { shareUrl }
+  function requestChallengeLink(tradeId) {
+    if (!tradeId) return;
+    document.dispatchEvent(new CustomEvent("crowdiq:create-challenge-link", {
+      detail: { tradeIds: [String(tradeId)] }
     }));
   }
 
@@ -222,19 +206,10 @@
           state.cardState.set(tradeId, next);
           renderFromState(state);
         try {
-          let session = item.existing_session;
-          if (!session?.share_url) {
-            const created = await createShareSession(item.trade_id);
-            session = {
-              session_id: created.share_session_id,
-              share_url: created.share_url
-              };
-              item.existing_session = session;
-            }
-            openAppChallengeLinkModal(session.share_url);
+            requestChallengeLink(item.trade_id);
             state.cardState.set(tradeId, { pending: false, error: "", message: "" });
           } catch (error) {
-            state.cardState.set(tradeId, { pending: false, error: error.message || "Unable to generate link", message: "" });
+            state.cardState.set(tradeId, { pending: false, error: error.message || "Unable to open challenge flow", message: "" });
         }
         renderFromState(state);
       });

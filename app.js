@@ -534,19 +534,15 @@ function bindEvents() {
     uiState.activeAccountView = button.dataset.accountView;
     renderScreens();
   });
-  document.addEventListener("crowdiq:open-challenge-link-modal", (event) => {
-    const shareUrl = String(event?.detail?.shareUrl || "").trim();
-    if (!shareUrl) return;
-    resetChallengeModalState();
-    uiState.activeAppModal = "challenge-friends";
-    uiState.challengeModalStep = "link";
-    uiState.challengeCreatePending = false;
-    uiState.challengeCreateError = "";
-    uiState.challengeCreatedUrl = shareUrl;
-    uiState.challengeCreatedTradeCount = 1;
-    uiState.challengeExcludedTradeCount = 0;
-    uiState.challengeSelectedTradeIds = [];
-    renderAppChrome();
+  document.addEventListener("crowdiq:create-challenge-link", async (event) => {
+    const detail = event?.detail || {};
+    const tradeIds = Array.isArray(detail.tradeIds)
+      ? detail.tradeIds
+      : detail.tradeId
+        ? [detail.tradeId]
+        : [];
+    const positionKey = String(detail.positionKey || "");
+    await openPortfolioChallengeModal(tradeIds, positionKey);
   });
   elements.headerBalance?.addEventListener("click", () => {
     if (!isAuthenticated()) {
@@ -3160,6 +3156,26 @@ function challengeTradeRowMarkup(trade) {
   `;
 }
 
+function openChallengeLinkModalState({
+  shareUrl,
+  selectedTradeIds = [],
+  createdTradeCount = 1,
+  excludedTradeCount = 0
+}) {
+  resetChallengeModalState();
+  uiState.activeAppModal = "challenge-friends";
+  uiState.challengeModalStep = "link";
+  uiState.challengeCreatePending = false;
+  uiState.challengeCreateError = "";
+  uiState.challengeCreatedUrl = String(shareUrl || "").trim();
+  uiState.challengeCreatedTradeCount = Math.max(1, Number(createdTradeCount) || 1);
+  uiState.challengeExcludedTradeCount = Math.max(0, Number(excludedTradeCount) || 0);
+  uiState.challengeSelectedTradeIds = Array.isArray(selectedTradeIds)
+    ? selectedTradeIds.map((tradeId) => String(tradeId)).filter(Boolean)
+    : [];
+  renderAppChrome();
+}
+
 async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
   const candidateTradeIds = Array.isArray(tradeIds) ? tradeIds.map((tradeId) => String(tradeId)).filter(Boolean) : [String(tradeIds || "")].filter(Boolean);
   if (!candidateTradeIds.length) return;
@@ -3176,13 +3192,12 @@ async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
       const response = await api("/api/share/create", {
         trade_id: tradeId
       });
-      uiState.challengeModalStep = "link";
-      uiState.challengeCreatePending = false;
-      uiState.challengeCreatedUrl = response.share_url;
-      uiState.challengeCreatedTradeCount = 1;
-      uiState.challengeExcludedTradeCount = Math.max(0, candidateTradeIds.length - 1);
-      uiState.challengeSelectedTradeIds = [tradeId];
-      renderAppChrome();
+      openChallengeLinkModalState({
+        shareUrl: response.share_url,
+        selectedTradeIds: [tradeId],
+        createdTradeCount: 1,
+        excludedTradeCount: Math.max(0, candidateTradeIds.length - 1)
+      });
       return;
     } catch (error) {
       lastError = error;
