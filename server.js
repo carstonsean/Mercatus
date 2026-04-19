@@ -79,6 +79,7 @@ const SUPABASE_SEED_READY_TIMEOUT_MS=4000;
 const SUPABASE_BACKEND_USER_TIMEOUT_MS=4000;
 const SHARE_SESSION_CREATE_TIMEOUT_MS=4000;
 const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
+const SHARE_DECLINE_NOTE_MAX_LENGTH=100;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const SESSION_COOKIE_NAME="crowdiq_session_id";
 const SESSION_COOKIE_MAX_AGE_MS=30*24*60*60*1000;
@@ -307,7 +308,8 @@ async function handleApi(req,res,url,sessionContext){
     if(!submittedTradeId){
       return json(res,400,{error:"Select one unmatched trade to share"});
     }
-    const eligibleTrade=findEligibleShareTrade(authenticatedUserName,submittedTradeId);
+    let eligibleTrades=listEligibleShareTradesForUser(authenticatedUserName);
+    let eligibleTrade=findEligibleShareTradeFromCollection(eligibleTrades,submittedTradeId);
     if(!eligibleTrade){
       if(useSupabase){
         try{
@@ -316,31 +318,37 @@ async function handleApi(req,res,url,sessionContext){
           console.warn("Share create Supabase sync failed",error.message);
         }
       }
-      const refreshedTrade=findEligibleShareTrade(authenticatedUserName,submittedTradeId);
-      if(refreshedTrade){
-        let shareSession=null;
-        if(useSupabase){
-          try{
-            shareSession=await createHostedShareSessionWithTimeout(authenticatedUserName,refreshedTrade.trade.id);
-          }catch(error){
-            if(!shouldFallbackShareSessionStorage(error)){
-              return json(res,500,{error:error.message||"Unable to create challenge link right now"});
-            }
-            console.warn("Hosted share session creation failed; falling back to runtime overlay",error.message);
-          }
-        }
-        if(!shareSession){
-          shareSession=createLocalShareSession(authenticatedUserName,refreshedTrade.trade.id,useSupabase);
-        }
-        if(!shareSession?.id){
-          return json(res,500,{error:"Unable to create challenge link right now"});
-        }
-        const shareOrigin=getPublicAppOrigin(req);
-        return json(res,200,{
-          share_url:`${shareOrigin}/challenge/${shareSession.id}`
-        });
-      }
+      eligibleTrades=listEligibleShareTradesForUser(authenticatedUserName);
+      eligibleTrade=findEligibleShareTradeFromCollection(eligibleTrades,submittedTradeId);
+    }
+    if(!eligibleTrade){
       return json(res,400,{error:"This trade is no longer available to share"});
+    }
+    const localActiveSession=findLocalActiveShareSessionByTrade(authenticatedUserName,eligibleTrade.trade.id);
+    if(localActiveSession?.id){
+      return json(res,200,{
+        share_session_id:String(localActiveSession.id),
+        share_url:buildShareUrlForSession(req,localActiveSession.id),
+        reused:true
+      });
+    }
+    if(useSupabase){
+      try{
+        const hostedUser=await ensureSupabaseDemoUser(authenticatedUserName);
+        const existingHostedSession=await findHostedActiveShareSessionByTrade(hostedUser?.id,eligibleTrade.trade.id);
+        if(existingHostedSession?.id){
+          return json(res,200,{
+            share_session_id:String(existingHostedSession.id),
+            share_url:buildShareUrlForSession(req,existingHostedSession.id),
+            reused:true
+          });
+        }
+      }catch(error){
+        if(!shouldFallbackShareSessionStorage(error)){
+          return json(res,500,{error:error.message||"Unable to create challenge link right now"});
+        }
+        console.warn("Hosted share session lookup failed; falling back to runtime overlay",error.message);
+      }
     }
     let shareSession=null;
     if(useSupabase){
@@ -360,14 +368,61 @@ async function handleApi(req,res,url,sessionContext){
     if(!shareSession?.id){
       return json(res,500,{error:"Unable to create challenge link right now"});
     }
-    const shareOrigin=getPublicAppOrigin(req);
     return json(res,200,{
-      share_url:`${shareOrigin}/challenge/${shareSession.id}`
+      share_session_id:String(shareSession.id),
+      share_url:buildShareUrlForSession(req,shareSession.id),
+      reused:false
     });
+  }
+  if(req.method==="POST"&&url.pathname==="/api/share/respond"){
+    const body=await parseJson(req);
+    let authenticatedUserName="";
+    try{
+      authenticatedUserName=ensureAuthenticatedUserName(req);
+    }catch(error){
+      return json(res,401,{error:error.message||"Authentication required"});
+    }
+    const shareSessionId=String(body.share_session_id||"").trim();
+    const action=String(body.action||"").trim().toLowerCase();
+    const declineNote=body.decline_note==null?null:String(body.decline_note);
+    if(!shareSessionId){
+      return json(res,400,{error:"Invalid share response payload"});
+    }
+    if(action!=="decline"){
+      return json(res,400,{error:"Only decline is supported on this endpoint"});
+    }
+    if(declineNote!=null&&declineNote.length>SHARE_DECLINE_NOTE_MAX_LENGTH){
+      return json(res,400,{error:`Decline note must be ${SHARE_DECLINE_NOTE_MAX_LENGTH} characters or fewer`});
+    }
+    try{
+      const sessionRecord=useSupabase
+        ? await fetchHostedShareSessionRecord(shareSessionId)
+        : fetchLocalShareSessionRecord(shareSessionId);
+      if(!sessionRecord){
+        return json(res,400,{error:"This challenge link is no longer valid"});
+      }
+      if(challengeSessionStatusLabel(sessionRecord.status,sessionRecord.expiresAt)!=="ACTIVE"){
+        return json(res,400,{error:"This challenge is no longer active"});
+      }
+    }catch(error){
+      return json(res,400,{error:error.message||"Unable to respond to this challenge"});
+    }
+    try{
+      await persistChallengeInviteResponse({
+        shareSessionId,
+        responderUserName:authenticatedUserName,
+        action:"DECLINED",
+        declineNote,
+        useSupabase
+      });
+    }catch(error){
+      console.warn("Challenge decline response logging failed",error.message);
+    }
+    return json(res,200,{success:true,status:"DECLINED"});
   }
   if(req.method==="GET"&&url.pathname.startsWith("/api/share/")){
     const shareId=decodeURIComponent(url.pathname.replace("/api/share/","").trim());
-    if(!shareId||shareId==="accept"||shareId==="create"){
+    if(!shareId||shareId==="accept"||shareId==="create"||shareId==="respond"){
       return json(res,404,{error:"Not found"});
     }
     try{
@@ -403,6 +458,17 @@ async function handleApi(req,res,url,sessionContext){
       const matchedTrade=useSupabase&&!hasLocalShareSession
         ? await acceptHostedShareTrade(authenticatedUserName,shareSessionId,tradeId)
         : acceptLocalShareTrade(authenticatedUserName,shareSessionId,tradeId,useSupabase);
+      try{
+        await persistChallengeInviteResponse({
+          shareSessionId,
+          responderUserName:authenticatedUserName,
+          action:"ACCEPTED",
+          acceptedTradeId:matchedTrade?.id||null,
+          useSupabase
+        });
+      }catch(error){
+        console.warn("Challenge accept response logging failed",error.message);
+      }
       const backendUser=await syncBackendUser(authenticatedUserName,useSupabase);
       return json(res,200,{
         success:true,
@@ -418,6 +484,160 @@ async function handleApi(req,res,url,sessionContext){
     }catch(error){
       return json(res,400,{error:error.message||"Unable to accept this trade"});
     }
+  }
+  if(req.method==="GET"&&url.pathname==="/api/challenges/eligible"){
+    let authenticatedUserName="";
+    try{
+      authenticatedUserName=ensureAuthenticatedUserName(req);
+    }catch(error){
+      return json(res,401,{error:error.message||"Authentication required"});
+    }
+    if(useSupabase){
+      try{
+        await syncStateFromSupabase({force:true});
+      }catch(error){
+        console.warn("Challenges eligible Supabase sync failed",error.message);
+      }
+    }
+    const eligibleTrades=listEligibleShareTradesForUser(authenticatedUserName);
+    let hostedSessionsByTradeId=new Map();
+    if(useSupabase){
+      try{
+        const user=await ensureSupabaseDemoUser(authenticatedUserName);
+        const sessions=await fetchHostedActiveShareSessionsByUserId(user?.id);
+        hostedSessionsByTradeId=new Map();
+        (sessions||[])
+          .filter((session)=>challengeSessionStatusLabel(session.status,session.expires_at)==="ACTIVE")
+          .forEach((session)=>{
+            const tradeIds=Array.isArray(session.trade_ids)?session.trade_ids:[];
+            const tradeId=tradeIds[0]?String(tradeIds[0]):"";
+            if(!tradeId||hostedSessionsByTradeId.has(tradeId)){
+              return;
+            }
+            hostedSessionsByTradeId.set(tradeId,session);
+          });
+      }catch(error){
+        console.warn("Challenges eligible hosted session lookup failed",error.message);
+      }
+    }
+    const payload=eligibleTrades.map((entry)=>{
+      const base=serializeChallengeEligibleTrade(entry);
+      if(!base){
+        return null;
+      }
+      const localSession=findLocalActiveShareSessionByTrade(authenticatedUserName,entry.trade.id);
+      const hostedSession=hostedSessionsByTradeId.get(String(entry.trade.id));
+      const existingSession=localSession||hostedSession||null;
+      return {
+        ...base,
+        existing_session:existingSession?.id
+          ? {
+              session_id:String(existingSession.id),
+              share_url:buildShareUrlForSession(req,existingSession.id)
+            }
+          : null
+      };
+    }).filter(Boolean);
+    return json(res,200,payload);
+  }
+  if(req.method==="GET"&&url.pathname==="/api/challenges/outbound"){
+    let authenticatedUserName="";
+    try{
+      authenticatedUserName=ensureAuthenticatedUserName(req);
+    }catch(error){
+      return json(res,401,{error:error.message||"Authentication required"});
+    }
+    const statusFilter=String(url.searchParams.get("status")||"all").toLowerCase();
+    const normalizedFilter=["all","open","matched","expired"].includes(statusFilter)?statusFilter:"all";
+    if(useSupabase){
+      try{
+        await syncStateFromSupabase({force:true});
+      }catch(error){
+        console.warn("Challenges outbound Supabase sync failed",error.message);
+      }
+    }
+    let sessions=[];
+    let inviteRows=[];
+    let userNamesById=new Map();
+    if(useSupabase){
+      try{
+        const user=await ensureSupabaseDemoUser(authenticatedUserName);
+        sessions=await supabaseRequestAll("share_sessions",{
+          query:{
+            select:"id,trade_ids,status,expires_at,created_at",
+            created_by_user_id:`eq.${user.id}`,
+            order:"created_at.desc"
+          }
+        });
+        const sessionIds=(sessions||[]).map((session)=>String(session.id)).filter(Boolean);
+        inviteRows=await fetchHostedInviteResponsesBySessionIds(sessionIds);
+        userNamesById=await fetchUsersByIds(inviteRows.map((row)=>row.responder_user_id));
+      }catch(error){
+        return json(res,500,{error:error.message||"Unable to load outbound challenges"});
+      }
+    }else{
+      sessions=(state.shareSessions||[])
+        .filter((session)=>String(session.createdByUserName||"").toLowerCase()===String(authenticatedUserName||"").toLowerCase())
+        .map((session)=>({
+          id:session.id,
+          trade_ids:Array.isArray(session.tradeIds)?session.tradeIds.slice():[],
+          status:session.status||"active",
+          expires_at:session.expiresAt||null,
+          created_at:session.createdAt||null
+        }))
+        .sort((left,right)=>new Date(right.created_at||0)-new Date(left.created_at||0));
+      inviteRows=(state.shareInvites||[]).map((invite)=>({
+        id:invite.id,
+        share_session_id:invite.shareSessionId,
+        responder_user_id:null,
+        responder_username:invite.responderUserName||null,
+        action:invite.action,
+        decline_note:invite.declineNote,
+        responded_at:invite.respondedAt,
+        accepted_trade_id:invite.acceptedTradeId||null
+      }));
+    }
+    const responsesBySessionId=(inviteRows||[]).reduce((map,row)=>{
+      const key=String(row.share_session_id||"");
+      if(!key){
+        return map;
+      }
+      const current=map.get(key)||[];
+      const serialized=useSupabase
+        ? serializeChallengeResponseRow(row,userNamesById)
+        : {
+            invite_id:String(row.id||""),
+            action:String(row.action||"DECLINED").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED",
+            responder_username:row.responder_username||null,
+            decline_note:row.decline_note==null?null:String(row.decline_note),
+            responded_at:row.responded_at||new Date().toISOString()
+          };
+      current.push(serialized);
+      map.set(key,current);
+      return map;
+    },new Map());
+    const payload=(sessions||[])
+      .map((session)=>{
+        const tradeId=Array.isArray(session.trade_ids)&&session.trade_ids[0]?String(session.trade_ids[0]):"";
+        const match=tradeId?findTradeAndMarketById(tradeId):null;
+        const status=toChallengeSessionStatusForFilter(session);
+        return {
+          session_id:String(session.id),
+          trade_id:tradeId||null,
+          player_name:match?.market?.playerName||"Unknown player",
+          position:match?.market?.position||"",
+          side:match?.trade?.side||"",
+          line:Number(match?.trade?.side==="OVER"?(match?.trade?.entryOverLine??match?.trade?.entryLine):(match?.trade?.entryUnderLine??match?.trade?.entryLine))||0,
+          stake:Number(match?.trade?.stake)||0,
+          share_url:buildShareUrlForSession(req,session.id),
+          session_status:status,
+          expires_at:session.expires_at||null,
+          created_at:session.created_at||null,
+          responses:responsesBySessionId.get(String(session.id))||[]
+        };
+      })
+      .filter((session)=>doesChallengeStatusMatchFilter(session.session_status,normalizedFilter));
+    return json(res,200,payload);
   }
   if(req.method==="GET"&&url.pathname==="/api/popular-players"){
     const now=Date.now();
@@ -1719,16 +1939,41 @@ function normalizeSupabaseErrorMessage(error,fallback){
   return raw||fallback;
 }
 
+function challengeSessionStatusLabel(rawStatus,expiresAt=null){
+  const normalized=String(rawStatus||"active").trim().toLowerCase();
+  if(normalized==="completed"){
+    return "COMPLETED";
+  }
+  if(normalized==="expired"){
+    return "EXPIRED";
+  }
+  const expiresAtMs=Number(new Date(expiresAt||"").getTime());
+  if(Number.isFinite(expiresAtMs)&&expiresAtMs<=Date.now()){
+    return "EXPIRED";
+  }
+  return "ACTIVE";
+}
+
+function deriveChallengeShareSessionExpiry(tradeId){
+  const match=findTradeAndMarketById(tradeId);
+  if(!match){
+    return null;
+  }
+  return marketKickoffIso(match.market)||null;
+}
+
 async function createHostedShareSession(userName,tradeId){
   const user=await ensureSupabaseDemoUser(userName);
+  const expiresAt=deriveChallengeShareSessionExpiry(tradeId);
   const rows=await supabaseRequest("share_sessions",{
     method:"POST",
-    query:{select:"id"},
+    query:{select:"id,trade_ids,status,created_by_user_id,created_at,expires_at"},
     headers:{Prefer:"return=representation"},
     body:{
       created_by_user_id:user.id,
       trade_ids:[String(tradeId)],
-      status:"active"
+      status:"active",
+      expires_at:expiresAt
     }
   });
   return rows?.[0]||null;
@@ -1747,6 +1992,7 @@ function shouldFallbackShareSessionStorage(error){
   const message=String(error?.message||"");
   return /share_sessions/i.test(message)
     || /accept_share_trade/i.test(message)
+    || /expires_at/i.test(message)
     || /relation .*share_sessions/i.test(message)
     || /function .*accept_share_trade/i.test(message)
     || /Could not find the table/i.test(message)
@@ -1756,12 +2002,14 @@ function shouldFallbackShareSessionStorage(error){
 
 function createLocalShareSession(userName,tradeId,useSupabase=SUPABASE_ENABLED){
   state.shareSessions=Array.isArray(state.shareSessions)?state.shareSessions:[];
+  const expiresAt=deriveChallengeShareSessionExpiry(tradeId);
   const session={
     id:randomUUID(),
     createdByUserName:userName,
     tradeIds:[String(tradeId)],
     createdAt:new Date().toISOString(),
-    status:"active"
+    status:"active",
+    expiresAt
   };
   state.shareSessions.push(session);
   persistStateSnapshotDeferred(useSupabase);
@@ -1824,7 +2072,7 @@ async function fetchShareSessionPayload(shareId,useSupabase=SUPABASE_ENABLED){
 async function fetchHostedShareSessionRecord(shareId){
   const rows=await supabaseRequest("share_sessions",{
     query:{
-      select:"id,trade_ids,status,created_by_user_id",
+      select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
       id:`eq.${shareId}`,
       limit:1
     }
@@ -1844,7 +2092,9 @@ async function fetchHostedShareSessionRecord(shareId){
     id:row.id,
     tradeIds:Array.isArray(row.trade_ids)?row.trade_ids.map((tradeId)=>String(tradeId)) : [],
     status:String(row.status||"active"),
-    createdByUserName:userRows?.[0]?.username||"CrowdIQ user"
+    createdByUserName:userRows?.[0]?.username||"CrowdIQ user",
+    createdAt:row.created_at||null,
+    expiresAt:row.expires_at||null
   };
 }
 
@@ -1857,25 +2107,148 @@ function fetchLocalShareSessionRecord(shareId){
     id:row.id,
     tradeIds:Array.isArray(row.tradeIds)?row.tradeIds.map((tradeId)=>String(tradeId)) : [],
     status:String(row.status||"active"),
-    createdByUserName:row.createdByUserName||"CrowdIQ user"
+    createdByUserName:row.createdByUserName||"CrowdIQ user",
+    createdAt:row.createdAt||null,
+    expiresAt:row.expiresAt||null
   };
 }
 
-function findEligibleShareTrade(userName,tradeId){
-  const match=findTradeAndMarketById(tradeId);
-  if(!match){
+function findLocalActiveShareSessionByTrade(userName,tradeId){
+  const normalizedUserName=String(userName||"").trim().toLowerCase();
+  if(!normalizedUserName||!tradeId){
     return null;
   }
-  if(String(match.trade.userName||"").toLowerCase()!==String(userName||"").toLowerCase()){
-    return null;
+  return (state.shareSessions||[])
+    .filter((session)=>String(session.createdByUserName||"").trim().toLowerCase()===normalizedUserName)
+    .filter((session)=>Array.isArray(session.tradeIds)&&session.tradeIds.includes(String(tradeId)))
+    .filter((session)=>challengeSessionStatusLabel(session.status,session.expiresAt)==="ACTIVE")
+    .sort((left,right)=>new Date(right.createdAt||0)-new Date(left.createdAt||0))[0]||null;
+}
+
+async function fetchHostedActiveShareSessionsByUserId(userId){
+  if(!userId){
+    return [];
+  }
+  const rows=await supabaseRequest("share_sessions",{
+    query:{
+      select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+      created_by_user_id:`eq.${userId}`,
+      status:"eq.active",
+      order:"created_at.desc",
+      limit:200
+    }
+  });
+  return Array.isArray(rows)?rows:[];
+}
+
+async function findHostedActiveShareSessionByTrade(userId,tradeId){
+  const rows=await fetchHostedActiveShareSessionsByUserId(userId);
+  return rows.find((row)=>Array.isArray(row.trade_ids)&&row.trade_ids.map((id)=>String(id)).includes(String(tradeId)))||null;
+}
+
+function getChallengeTradeEligibilityForUser(userName,trade){
+  if(!trade){
+    return false;
+  }
+  const owner=String(trade.userName||"").trim().toLowerCase();
+  if(!owner||owner!==String(userName||"").trim().toLowerCase()){
+    return false;
+  }
+  const match=findTradeAndMarketById(trade.id);
+  if(!match){
+    return false;
   }
   if(getRoundNumberForMarket(match.market)!==getActiveRoundNumber(state)){
-    return null;
+    return false;
   }
-  if(!isTradeChallengeEligible(match.trade,match.market)){
-    return null;
+  return isTradeChallengeEligible(match.trade,match.market);
+}
+
+function listEligibleShareTradesForUser(userName){
+  const normalizedUserName=String(userName||"").trim().toLowerCase();
+  if(!normalizedUserName){
+    return [];
   }
-  return match;
+  const entries=[];
+  for(const market of state.markets||[]){
+    if(getRoundNumberForMarket(market)!==getActiveRoundNumber(state)){
+      continue;
+    }
+    for(const trade of market.trades||[]){
+      if(String(trade.userName||"").trim().toLowerCase()!==normalizedUserName){
+        continue;
+      }
+      if(!isTradeChallengeEligible(trade,market)){
+        continue;
+      }
+      entries.push({trade,market});
+    }
+  }
+  return entries.sort((left,right)=>new Date(right.trade?.timestamp||0)-new Date(left.trade?.timestamp||0));
+}
+
+function findEligibleShareTradeFromCollection(eligibleTrades,tradeId){
+  return (eligibleTrades||[]).find((entry)=>String(entry?.trade?.id||"")===String(tradeId))||null;
+}
+
+function isShareSessionActiveForTrade(session,tradeId){
+  const tradeIds=Array.isArray(session?.tradeIds)
+    ? session.tradeIds.map((id)=>String(id))
+    : Array.isArray(session?.trade_ids)
+      ? session.trade_ids.map((id)=>String(id))
+      : [];
+  if(!tradeIds.includes(String(tradeId))){
+    return false;
+  }
+  return challengeSessionStatusLabel(session?.status,session?.expiresAt||session?.expires_at)==="ACTIVE";
+}
+
+function buildShareUrlForSession(req,sessionId){
+  const shareOrigin=getPublicAppOrigin(req);
+  return `${shareOrigin}/challenge/${sessionId}`;
+}
+
+async function persistChallengeInviteResponse({
+  shareSessionId,
+  responderUserName,
+  action,
+  declineNote=null,
+  acceptedTradeId=null,
+  useSupabase=SUPABASE_ENABLED
+}){
+  const normalizedAction=String(action||"").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED";
+  const trimmedDeclineNote=declineNote==null?null:String(declineNote).trim().slice(0,SHARE_DECLINE_NOTE_MAX_LENGTH);
+  if(useSupabase){
+    const responderUser=await ensureSupabaseDemoUser(responderUserName);
+    await supabaseRequest("share_invites",{
+      method:"POST",
+      headers:{Prefer:"return=minimal"},
+      body:{
+        share_session_id:String(shareSessionId),
+        responder_user_id:responderUser?.id||null,
+        action:normalizedAction,
+        decline_note:trimmedDeclineNote,
+        accepted_trade_id:acceptedTradeId?String(acceptedTradeId):null,
+        responded_at:new Date().toISOString()
+      }
+    });
+    return;
+  }
+  state.shareInvites=Array.isArray(state.shareInvites)?state.shareInvites:[];
+  state.shareInvites.push({
+    id:randomUUID(),
+    shareSessionId:String(shareSessionId),
+    responderUserName:responderUserName?String(responderUserName):null,
+    action:normalizedAction,
+    declineNote:trimmedDeclineNote,
+    acceptedTradeId:acceptedTradeId?String(acceptedTradeId):null,
+    respondedAt:new Date().toISOString()
+  });
+  persistStateSnapshotDeferred(false);
+}
+
+function findEligibleShareTrade(userName,tradeId){
+  return findEligibleShareTradeFromCollection(listEligibleShareTradesForUser(userName),tradeId);
 }
 
 function findChallengeTradeById(tradeId){
@@ -2443,6 +2816,7 @@ function buildFreshState(){
     forceOpenGameIds:[],
     walletTransactions:[],
     shareSessions:[],
+    shareInvites:[],
     contactMessages:[],
     lastSettlementBatch:null,
     roundMetricsHistory:[],
@@ -2638,6 +3012,7 @@ function buildClientStateSnapshot(sourceState,{useSupabase=false,currentUserName
     forceOpenGameIds:Array.isArray(snapshot.forceOpenGameIds)?snapshot.forceOpenGameIds.slice():[],
     walletTransactions:trimmedWalletTransactions,
     shareSessions:Array.isArray(snapshot.shareSessions)?cloneValue(snapshot.shareSessions):[],
+    shareInvites:Array.isArray(snapshot.shareInvites)?cloneValue(snapshot.shareInvites):[],
     contactMessages:trimmedContactMessages,
     lastSettlementBatch:cloneValue(snapshot.lastSettlementBatch||null),
     roundMetricsHistory:trimmedRoundMetricsHistory,
@@ -2971,7 +3346,21 @@ function normalizeState(rawState,options={}){
             createdByUserName:String(entry.createdByUserName||""),
             tradeIds:Array.isArray(entry.tradeIds)?entry.tradeIds.map((tradeId)=>String(tradeId)).filter(Boolean):[],
             createdAt:entry.createdAt||new Date().toISOString(),
+            expiresAt:entry.expiresAt||null,
             status:["active","completed","expired"].includes(String(entry.status||""))?String(entry.status):"active"
+          }))
+      : [],
+    shareInvites:Array.isArray(rawState.shareInvites)
+      ? rawState.shareInvites
+          .filter((entry)=>entry&&entry.id&&entry.shareSessionId)
+          .map((entry)=>({
+            id:String(entry.id),
+            shareSessionId:String(entry.shareSessionId),
+            responderUserName:entry.responderUserName?String(entry.responderUserName):null,
+            action:String(entry.action||"DECLINED").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED",
+            declineNote:entry.declineNote==null?null:String(entry.declineNote).slice(0,SHARE_DECLINE_NOTE_MAX_LENGTH),
+            acceptedTradeId:entry.acceptedTradeId?String(entry.acceptedTradeId):null,
+            respondedAt:entry.respondedAt||new Date().toISOString()
           }))
       : [],
     contactMessages:Array.isArray(rawState.contactMessages)
@@ -3804,6 +4193,109 @@ async function ensureSupabaseReady(){
       setTimeout(()=>reject(new Error("Supabase seed readiness timed out")),SUPABASE_SEED_READY_TIMEOUT_MS);
     })
   ]);
+}
+
+function serializeChallengeEligibleTrade(entry){
+  const trade=entry?.trade;
+  const market=entry?.market;
+  if(!trade||!market){
+    return null;
+  }
+  const opponent=resolveChallengeOpponent(market);
+  return {
+    trade_id:String(trade.id),
+    player_name:market.playerName||"Unknown player",
+    position:market.position||"",
+    team:market.team||"",
+    opponent,
+    side:trade.side||"",
+    line:Number(trade.side==="OVER"?(trade.entryOverLine??trade.entryLine):(trade.entryUnderLine??trade.entryLine))||0,
+    stake:Number(trade.unmatchedStake||trade.stake)||0,
+    round:getRoundNumberForMarket(market),
+    kickoff_at:marketKickoffIso(market)
+  };
+}
+
+function resolveChallengeOpponent(market){
+  const directOpponent=String(market?.opponent||"").trim();
+  if(directOpponent){
+    return directOpponent;
+  }
+  const game=findGame(market?.gameId);
+  if(!game){
+    return "";
+  }
+  const marketTeam=String(normalizeTeamName(market?.team)||"").trim().toLowerCase();
+  const homeTeam=String(normalizeTeamName(game.homeTeam)||"").trim();
+  const awayTeam=String(normalizeTeamName(game.awayTeam)||"").trim();
+  if(!marketTeam){
+    return awayTeam||homeTeam||"";
+  }
+  if(homeTeam&&homeTeam.toLowerCase()===marketTeam){
+    return awayTeam||"";
+  }
+  if(awayTeam&&awayTeam.toLowerCase()===marketTeam){
+    return homeTeam||"";
+  }
+  return awayTeam||homeTeam||"";
+}
+
+function toChallengeSessionStatusForFilter(record){
+  return challengeSessionStatusLabel(record?.status,record?.expiresAt||record?.expires_at);
+}
+
+function doesChallengeStatusMatchFilter(status,filter){
+  if(filter==="open"){
+    return status==="ACTIVE";
+  }
+  if(filter==="matched"){
+    return status==="COMPLETED";
+  }
+  if(filter==="expired"){
+    return status==="EXPIRED";
+  }
+  return true;
+}
+
+async function fetchHostedInviteResponsesBySessionIds(sessionIds){
+  const validIds=(sessionIds||[]).map((id)=>String(id)).filter(Boolean);
+  if(!validIds.length){
+    return [];
+  }
+  const rows=await supabaseRequestAll("share_invites",{
+    query:{
+      select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
+      share_session_id:`in.(${validIds.join(",")})`,
+      order:"responded_at.asc"
+    }
+  });
+  return Array.isArray(rows)?rows:[];
+}
+
+async function fetchUsersByIds(userIds){
+  const validIds=[...new Set((userIds||[]).map((id)=>String(id)).filter(Boolean))];
+  if(!validIds.length){
+    return new Map();
+  }
+  const rows=await supabaseRequestAll("users",{
+    query:{
+      select:"id,username",
+      id:`in.(${validIds.join(",")})`,
+      limit:500
+    }
+  });
+  return new Map((rows||[]).map((row)=>[String(row.id),row.username||null]));
+}
+
+function serializeChallengeResponseRow(row,userNamesById=new Map()){
+  const responderUserId=row?.responder_user_id?String(row.responder_user_id):null;
+  return {
+    invite_id:String(row?.id||""),
+    action:String(row?.action||"DECLINED").toUpperCase()==="ACCEPTED"?"ACCEPTED":"DECLINED",
+    responder_username:responderUserId?(userNamesById.get(responderUserId)||null):null,
+    decline_note:row?.decline_note==null?null:String(row.decline_note),
+    responded_at:row?.responded_at||new Date().toISOString()
+  };
 }
 
 function hostedActiveRoundNumber(activeRoundSetting,runtimeState,nextState){
