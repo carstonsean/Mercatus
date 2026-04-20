@@ -8,6 +8,8 @@ const RELEASE_FILES=[
   "app.js",
   "index.html",
   "styles.css",
+  "admin-shell.css",
+  "admin-shell.js",
   "server.js",
   "seed-data.js",
   "package.json",
@@ -46,6 +48,9 @@ const RELEASE_FILES=[
   "supabase/migrations/006_share_trade_rpc.sql",
   "supabase/migrations/007_analytics_events.sql",
   "supabase/migrations/008_analytics_event_sources.sql",
+  "supabase/migrations/009_performance_indexes.sql",
+  "supabase/migrations/010_affiliate_referrals.sql",
+  "supabase/migrations/011_share_invites.sql",
   "supabase/config.toml"
 ].filter((relativePath)=>fs.existsSync(path.join(ROOT_DIR,relativePath)));
 
