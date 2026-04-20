@@ -18,7 +18,7 @@ const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
 const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
 const AUTH_TOKEN_KEY = "authToken";
 const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
-const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
+const PENDING_CHALLENGE_KEY = "pendingChallengeShareId";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const LIVE_SYNC_MS = 5000;
 const PRIZE_POOL_POLL_MS = 10000;
@@ -176,6 +176,7 @@ let adminSourcesChart = null;
 let marketViewTrackKey = "";
 let marketViewTrackedAt = 0;
 const MAX_SINGLE_BID = 10;
+const ACCOUNT_VIEWS = ["portfolio", "wallet", "challenges"];
 
 const uiState = {
   activeScreen: "home",
@@ -302,6 +303,7 @@ const elements = {
   homeMostOverpriced: document.getElementById("home-most-overpriced"),
   homeMostTraded: document.getElementById("home-most-traded"),
   homeUserLeaderboard: document.getElementById("home-user-leaderboard"),
+  homeChallengeSection: document.getElementById("home-challenge-section"),
   homeLeaderboardLink: document.getElementById("home-leaderboard-link"),
   homeCarousel: document.getElementById("home-carousel"),
   homeCarouselNav: document.getElementById("home-carousel-nav"),
@@ -326,8 +328,8 @@ const elements = {
   portfolioPageSubtitle: document.getElementById("portfolio-page-subtitle"),
   accountViewSwitch: document.getElementById("account-view-switch"),
   accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
-  accountPortfolioView: document.getElementById("account-portfolio-view"),
-  accountWalletView: document.getElementById("account-wallet-view"),
+  accountViewPanels: [...document.querySelectorAll(".account-view-panel")],
+  accountChallengesView: document.getElementById("account-challenges-view"),
   prizePoolView: document.getElementById("prize-pool-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
@@ -528,8 +530,19 @@ function bindEvents() {
   elements.accountViewSwitch?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-view]");
     if (!button) return;
+    if (!ACCOUNT_VIEWS.includes(button.dataset.accountView)) return;
     uiState.activeAccountView = button.dataset.accountView;
     renderScreens();
+  });
+  document.addEventListener("crowdiq:create-challenge-link", async (event) => {
+    const detail = event?.detail || {};
+    const tradeIds = Array.isArray(detail.tradeIds)
+      ? detail.tradeIds
+      : detail.tradeId
+        ? [detail.tradeId]
+        : [];
+    const positionKey = String(detail.positionKey || "");
+    await openPortfolioChallengeModal(tradeIds, positionKey);
   });
   elements.headerBalance?.addEventListener("click", () => {
     if (!isAuthenticated()) {
@@ -617,11 +630,6 @@ function bindEvents() {
   });
   elements.purgeLegacyBots?.addEventListener("click", async () => {
     await purgeLegacyBots();
-  });
-  elements.botPerformanceList?.addEventListener("click", async (event) => {
-    const deleteButton = event.target.closest("[data-delete-bot-user]");
-    if (!deleteButton) return;
-    await deleteBotUser(deleteButton.dataset.deleteBotUser || "");
   });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
@@ -1054,6 +1062,9 @@ function hasAuthenticatedBefore() {
 }
 
 function openAuthPrompt(mode = "signup") {
+  if (uiState.challengeRouteShareId) {
+    localStorage.setItem(PENDING_CHALLENGE_KEY, uiState.challengeRouteShareId);
+  }
   if (onboardingModal) {
     openOnboardingSignupPopup();
     return;
@@ -1294,6 +1305,7 @@ async function handlePageResume() {
 
 function renderAll() {
   normalizeNavigationState();
+  safelyRender("challenge anchors", ensureChallengeSurfaceAnchors);
   safelyRender("challenge route", renderChallengeRoute);
   safelyRender("header balance", renderHeaderBalance);
   safelyRender("app chrome", renderAppChrome);
@@ -1857,6 +1869,9 @@ function appModalContentMarkup(modalKey) {
 
 function renderScreens() {
   const challengeActive = isChallengeRouteActive();
+  if (!ACCOUNT_VIEWS.includes(uiState.activeAccountView)) {
+    uiState.activeAccountView = "portfolio";
+  }
   elements.navButtons.forEach((button) =>
     button.classList.toggle("active", !challengeActive && button.dataset.screenTarget === uiState.activeScreen)
   );
@@ -1865,11 +1880,16 @@ function renderScreens() {
   );
   document.querySelector(".bottom-nav")?.classList.toggle("is-hidden", challengeActive);
   document.querySelector(".app-header")?.classList.toggle("is-hidden", challengeActive);
-  elements.accountViewTabs?.forEach((button) =>
-    button.classList.toggle("active", button.dataset.accountView === uiState.activeAccountView)
-  );
-  elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
-  elements.accountWalletView?.classList.toggle("active", uiState.activeAccountView === "wallet");
+  elements.accountViewTabs.forEach((button) => {
+    const isActive = button.dataset.accountView === uiState.activeAccountView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  elements.accountViewPanels.forEach((panel) => {
+    const isActive = panel.dataset.accountPanel === uiState.activeAccountView;
+    panel.classList.toggle("active", isActive);
+    panel.hidden = !isActive;
+  });
   elements.toast?.classList.toggle("toast-low", ["quickpick", "prizepool"].includes(uiState.activeScreen));
 }
 
@@ -2058,6 +2078,30 @@ function openInlineTrade(market, side) {
   renderAll();
 }
 
+function ensureChallengeSurfaceAnchors() {
+  if (!elements.homeChallengeSection) {
+    const leaderboardSection = elements.homeUserLeaderboard?.closest("section");
+    const homeScroll = elements.homeUserLeaderboard?.closest(".screen-scroll");
+    if (leaderboardSection && homeScroll) {
+      const section = document.createElement("section");
+      section.className = "section-block home-section-block";
+      const host = document.createElement("div");
+      host.id = "home-challenge-section";
+      section.appendChild(host);
+      homeScroll.insertBefore(section, leaderboardSection);
+      elements.homeChallengeSection = host;
+    }
+  }
+  elements.accountChallengesView = document.getElementById("account-challenges-view");
+  if (!elements.portfolioChallengeEntry) {
+    elements.portfolioChallengeEntry = document.getElementById("portfolio-challenge-entry");
+  }
+}
+
+function dispatchTradeCreatedEvent() {
+  document.dispatchEvent(new CustomEvent("crowdiq:trade-created"));
+}
+
 function marketDetailMarkup(market) {
   const stakeDraft = uiState.stakeDrafts[market.id] ?? 10;
   const isPending = uiState.pendingTradeMarketId === market.id;
@@ -2243,6 +2287,7 @@ async function submitTrade(marketId, stake, panel) {
       applyIncrementalTradeResponse(response, marketId);
     }
     const submittedTrade = response.trade;
+    dispatchTradeCreatedEvent();
     delete uiState.stakeDrafts[marketId];
     uiState.pendingTradeMarketId = "";
     uiState.focusStakeMarketId = "";
@@ -2983,7 +3028,11 @@ function renderQuickTake() {
 
 function renderPortfolioChallengeEntry() {
   if (!elements.portfolioChallengeEntry) return;
-  elements.portfolioChallengeEntry.innerHTML = "";
+  if (typeof window.renderChallengeStatus === "function") {
+    window.renderChallengeStatus(elements.portfolioChallengeEntry);
+    return;
+  }
+  elements.portfolioChallengeEntry.innerHTML = `<div class="portfolio-empty-state"><strong>Challenges unavailable</strong><span>Challenge status will appear here when the module loads.</span></div>`;
 }
 
 function renderChallengeRoute() {
@@ -3010,6 +3059,9 @@ function renderChallengeRoute() {
   if (!uiState.challengeRouteSession) {
     elements.challengeRoute.innerHTML = `<div class="challenge-shell"><div class="challenge-loading">Loading challenge...</div></div>`;
     return;
+  }
+  if (!isAuthenticated() && uiState.challengeRouteShareId) {
+    localStorage.setItem(PENDING_CHALLENGE_KEY, uiState.challengeRouteShareId);
   }
   elements.challengeRoute.innerHTML = isAuthenticated()
     ? challengeAcceptanceMarkup()
@@ -3104,6 +3156,26 @@ function challengeTradeRowMarkup(trade) {
   `;
 }
 
+function openChallengeLinkModalState({
+  shareUrl,
+  selectedTradeIds = [],
+  createdTradeCount = 1,
+  excludedTradeCount = 0
+}) {
+  resetChallengeModalState();
+  uiState.activeAppModal = "challenge-friends";
+  uiState.challengeModalStep = "link";
+  uiState.challengeCreatePending = false;
+  uiState.challengeCreateError = "";
+  uiState.challengeCreatedUrl = String(shareUrl || "").trim();
+  uiState.challengeCreatedTradeCount = Math.max(1, Number(createdTradeCount) || 1);
+  uiState.challengeExcludedTradeCount = Math.max(0, Number(excludedTradeCount) || 0);
+  uiState.challengeSelectedTradeIds = Array.isArray(selectedTradeIds)
+    ? selectedTradeIds.map((tradeId) => String(tradeId)).filter(Boolean)
+    : [];
+  renderAppChrome();
+}
+
 async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
   const candidateTradeIds = Array.isArray(tradeIds) ? tradeIds.map((tradeId) => String(tradeId)).filter(Boolean) : [String(tradeIds || "")].filter(Boolean);
   if (!candidateTradeIds.length) return;
@@ -3120,13 +3192,12 @@ async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
       const response = await api("/api/share/create", {
         trade_id: tradeId
       });
-      uiState.challengeModalStep = "link";
-      uiState.challengeCreatePending = false;
-      uiState.challengeCreatedUrl = response.share_url;
-      uiState.challengeCreatedTradeCount = 1;
-      uiState.challengeExcludedTradeCount = Math.max(0, candidateTradeIds.length - 1);
-      uiState.challengeSelectedTradeIds = [tradeId];
-      renderAppChrome();
+      openChallengeLinkModalState({
+        shareUrl: response.share_url,
+        selectedTradeIds: [tradeId],
+        createdTradeCount: 1,
+        excludedTradeCount: Math.max(0, candidateTradeIds.length - 1)
+      });
       return;
     } catch (error) {
       lastError = error;
@@ -3443,9 +3514,8 @@ function bindChallengeRouteEvents() {
     markChallengeReviewStatus(currentChallengeTradeRecord(), "expired");
     advanceChallengeTrade();
   });
-  elements.challengeRoute.querySelector("[data-challenge-decline]")?.addEventListener("click", () => {
-    markChallengeReviewStatus(currentChallengeTradeRecord(), "declined");
-    advanceChallengeTrade();
+  elements.challengeRoute.querySelector("[data-challenge-decline]")?.addEventListener("click", async () => {
+    await declineCurrentChallengeTrade();
   });
   elements.challengeRoute.querySelector("[data-challenge-accept]")?.addEventListener("click", async () => {
     await acceptCurrentChallengeTrade();
@@ -3575,6 +3645,101 @@ function advanceChallengeTrade() {
   renderAll();
 }
 
+function openChallengeDeclineSheet() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(6,6,14,0.8)";
+    overlay.style.zIndex = "1200";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "flex-end";
+    overlay.style.justifyContent = "center";
+    overlay.style.padding = "12px";
+
+    const sheet = document.createElement("div");
+    sheet.style.position = "fixed";
+    sheet.style.bottom = "0";
+    sheet.style.left = "50%";
+    sheet.style.transform = "translateX(-50%)";
+    sheet.style.width = "min(640px, 100%)";
+    sheet.style.maxHeight = "calc(100vh - env(keyboard-inset-height, 0px) - 12px)";
+    sheet.style.overflow = "auto";
+    sheet.style.background = "#1A1A2E";
+    sheet.style.border = "1px solid rgba(255,255,255,0.12)";
+    sheet.style.borderRadius = "16px 16px 0 0";
+    sheet.style.padding = "16px 16px calc(16px + env(safe-area-inset-bottom))";
+    sheet.innerHTML = `
+      <h3 style="margin:0;color:#fff;font-size:18px;">Leave a note?</h3>
+      <p style="margin:6px 0 10px;color:rgba(255,255,255,0.7);font-size:13px;">Optional — your mate will see this</p>
+      <textarea data-decline-note maxlength="100" placeholder="e.g. I don't think he'll go big this week…" style="width:100%;min-height:100px;resize:vertical;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:#0D0D1A;color:#fff;padding:10px 12px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;"><span data-char-count style="font-size:11px;color:rgba(255,255,255,0.62);">100 left</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;position:sticky;bottom:0;padding-top:10px;background:linear-gradient(180deg, rgba(26,26,46,0.0) 0%, rgba(26,26,46,1) 34%);">
+        <button type="button" data-confirm-decline style="padding:11px 12px;border-radius:10px;border:1px solid rgba(255,91,91,0.7);background:transparent;color:#ff7d7d;font-weight:700;">Decline challenge</button>
+        <button type="button" data-skip-decline style="padding:6px 12px;border:0;background:transparent;color:rgba(255,255,255,0.62);">Skip — just decline</button>
+      </div>
+    `;
+
+    function close(result) {
+      overlay.remove();
+      sheet.remove();
+      resolve(result);
+    }
+
+    const noteInput = sheet.querySelector("[data-decline-note]");
+    const charCount = sheet.querySelector("[data-char-count]");
+    noteInput?.addEventListener("input", () => {
+      const remaining = Math.max(0, 100 - String(noteInput.value || "").length);
+      if (charCount) {
+        charCount.textContent = `${remaining} left`;
+        charCount.style.color = remaining < 20 ? "#ffb84d" : "rgba(255,255,255,0.62)";
+      }
+    });
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        close({ cancelled: true });
+      }
+    });
+    sheet.querySelector("[data-confirm-decline]")?.addEventListener("click", () => {
+      const note = String(noteInput?.value || "").trim();
+      close({ cancelled: false, note: note || null });
+    });
+    sheet.querySelector("[data-skip-decline]")?.addEventListener("click", () => {
+      close({ cancelled: false, note: null });
+    });
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(sheet);
+    window.setTimeout(() => {
+      noteInput?.focus();
+    }, 20);
+  });
+}
+
+async function declineCurrentChallengeTrade() {
+  const trade = currentChallengeTradeRecord();
+  if (!trade || !uiState.challengeRouteShareId) {
+    markChallengeReviewStatus(trade, "declined");
+    advanceChallengeTrade();
+    return;
+  }
+  const response = await openChallengeDeclineSheet();
+  if (response?.cancelled) {
+    return;
+  }
+  try {
+    await api("/api/share/respond", {
+      share_session_id: uiState.challengeRouteShareId,
+      action: "decline",
+      decline_note: response?.note || null
+    });
+  } catch (error) {
+    void error;
+  }
+  markChallengeReviewStatus(trade, "declined");
+  advanceChallengeTrade();
+}
+
 async function submitQuickTake(marketId, side, card) {
   const activeCardId = getActiveQuickTakeMarketId();
   if (!marketId || marketId !== activeCardId || uiState.quickPickPendingRequestId) return;
@@ -3598,6 +3763,7 @@ async function submitQuickTake(marketId, side, card) {
     const response = await executeQuickTakeTrade(marketId, side);
     if (uiState.quickPickPendingRequestId !== requestId) return;
     applyQuickTakeTradeResponse(response, marketId);
+    dispatchTradeCreatedEvent();
     const submittedTrade = response.trade;
     const liveCard = elements.quickPickDeck.querySelector(`.quick-take-card.is-front[data-card-id="${marketId}"]`) || card;
     if (liveCard) {
@@ -5590,7 +5756,7 @@ function renderBotSimulation() {
       ? performance.bots
           .map(
             (row, index) =>
-              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} Random Prob</p><h4>${row.userName}</h4></div><button class="ghost-button bot-delete-button" type="button" data-delete-bot-user="${escapeHtml(row.userName)}">Retire</button></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
+              `<article class="bot-performance-row"><div class="bot-performance-cell bot-performance-bot"><span class="bot-performance-label">Bot</span><div><p class="eyebrow">#${index + 1} Random Prob</p><h4>${row.userName}</h4></div></div><div class="bot-performance-cell"><span class="bot-performance-label">P/L</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatSignedStake(row.realizedProfit)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Bankroll</span><strong class="bot-performance-value">${formatStake(row.bankroll)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">ROI</span><strong class="bot-performance-value ${row.realizedProfit > 0 ? "positive" : row.realizedProfit < 0 ? "negative" : ""}">${formatPercentage(row.roi)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Win rate</span><strong class="bot-performance-value">${row.winRate}%</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Settled</span><strong class="bot-performance-value">${row.settledTrades}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Open exp.</span><strong class="bot-performance-value">${formatStake(row.openExposure)}</strong></div><div class="bot-performance-cell"><span class="bot-performance-label">Avg stake</span><strong class="bot-performance-value">${formatStake(row.averageSettledStake)}</strong></div></article>`
           )
           .join("")
       : `<div class="section-meta">Bot results will appear here once trades have been placed.</div>`;
@@ -5738,11 +5904,9 @@ function getLatestRoundMetrics() {
 
 function getBotPerformanceSummary() {
   const botMap = getBotRosterMap();
-  const retiredBotUsers = getRetiredBotUserNameSet();
   const botRows = new Map();
   const allBotLogs = state.botSimulation?.config?.logs || [];
   botMap.forEach((bot, userName) => {
-    if (retiredBotUsers.has(String(userName || "").toLowerCase())) return;
     botRows.set(userName, {
       userName,
       archetype: bot.archetype || "random-prob",
@@ -5758,7 +5922,6 @@ function getBotPerformanceSummary() {
   });
   getLikelyBotUserNames().forEach((userName) => {
     if (botRows.has(userName)) return;
-    if (retiredBotUsers.has(String(userName || "").toLowerCase())) return;
     botRows.set(userName, {
       userName,
       archetype: "random-prob",
@@ -5774,7 +5937,7 @@ function getBotPerformanceSummary() {
   });
   const allBotTrades = state.markets.flatMap((market) =>
     (market.trades || [])
-      .filter((trade) => isBotTrade(trade) && !retiredBotUsers.has(String(trade?.userName || "").toLowerCase()))
+      .filter((trade) => isBotTrade(trade))
       .map((trade) => ({ trade }))
   );
   allBotTrades.forEach(({ trade }) => {
@@ -5878,10 +6041,6 @@ function getBotRosterMap() {
   return new Map((state.botSimulation?.bots || []).map((bot) => [bot.userName, bot]));
 }
 
-function getRetiredBotUserNameSet() {
-  return new Set((state.botSimulation?.retiredUserNames || []).map((userName) => String(userName || "").toLowerCase()).filter(Boolean));
-}
-
 function isGeneratedBotName(userName) {
   const trimmed = String(userName || "").trim();
   if (!trimmed) return false;
@@ -5891,10 +6050,9 @@ function isGeneratedBotName(userName) {
 }
 
 function getLikelyBotUserNames() {
-  const retiredBotUsers = getRetiredBotUserNameSet();
   const names = new Set();
   Object.keys(state.bankrolls || {}).forEach((userName) => {
-    if (isGeneratedBotName(userName) && !retiredBotUsers.has(String(userName || "").toLowerCase())) {
+    if (isGeneratedBotName(userName)) {
       names.add(userName);
     }
   });
@@ -6018,7 +6176,7 @@ async function createSimulationBot() {
 }
 
 async function purgeLegacyBots() {
-  const confirmed = window.confirm("Retire legacy bot users (excluding currently active bots)? This cancels unmatched orders, resets bankroll to $200, and keeps matched history.");
+  const confirmed = window.confirm("Delete legacy bot users (excluding currently active bots) from data and leaderboard?");
   if (!confirmed) return;
   try {
     const response = await api("/api/admin/bots/purge", { includeActiveBots: false });
@@ -6027,31 +6185,11 @@ async function purgeLegacyBots() {
     const preview = (response.deletedUsers || []).slice(0, 4).join(", ");
     const suffix = response.deletedUsers?.length > 4 ? " ..." : "";
     elements.botRunFeedback.textContent = response.deletedCount
-      ? `Retired ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
+      ? `Deleted ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
       : "No legacy bot users found.";
-    showToast("Bot cleanup complete", elements.botRunFeedback.textContent);
     refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
-    showToast("Bot cleanup failed", error.message);
-  }
-}
-
-async function deleteBotUser(userName) {
-  const normalized = String(userName || "").trim();
-  if (!normalized) return;
-  const confirmed = window.confirm(`Retire bot "${normalized}"? Unmatched orders will be cancelled and bankroll reset to $200. Matched/settled trades are kept.`);
-  if (!confirmed) return;
-  try {
-    const response = await api("/api/admin/bots/delete", { userName: normalized });
-    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
-    renderAll();
-    elements.botRunFeedback.textContent = response.message || `Retired bot user ${normalized}.`;
-    showToast("Bot retired", elements.botRunFeedback.textContent);
-    refreshSharedState();
-  } catch (error) {
-    elements.botRunFeedback.textContent = error.message;
-    showToast("Retire failed", error.message);
   }
 }
 
@@ -6312,12 +6450,8 @@ function getPortfolioData() {
 function getLeaderboardRows(options = {}) {
   const timeFilter = options.timeFilter || uiState.leaderboardTimeFilter;
   const sort = options.sort || uiState.leaderboardSort;
-  const retiredBotUsers = getRetiredBotUserNameSet();
   if (timeFilter === "ALL_TIME" && backendState.mode === "supabase" && backendState.dashboard?.leaderboard?.length) {
-    return sortLeaderboardRows(
-      backendState.dashboard.leaderboard.filter((row) => !retiredBotUsers.has(String(row?.userName || "").toLowerCase())),
-      sort
-    );
+    return sortLeaderboardRows(backendState.dashboard.leaderboard, sort);
   }
   return sortLeaderboardRows(buildLeaderboardRows(timeFilter), sort);
 }
@@ -6499,6 +6633,13 @@ function renderHome() {
     headingTitle: "Overpriced",
     emptyMessage: "Overpriced players will appear here once official Fantasy prices are available."
   }));
+  safelyRender("home challenge friends", () => {
+    if (typeof window.renderChallengeHomeSection === "function" && elements.homeChallengeSection) {
+      window.renderChallengeHomeSection(elements.homeChallengeSection);
+    } else if (elements.homeChallengeSection) {
+      elements.homeChallengeSection.innerHTML = "";
+    }
+  });
 
   safelyRender("home user leaderboard", () => renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows));
 
@@ -6878,9 +7019,7 @@ function leaderboardMetricCard(label, value) {
 
 function buildLeaderboardRows(timeFilter = "ALL_TIME") {
   const scopedMarkets = timeFilter === "THIS_ROUND" ? getActiveRoundMarkets() : state.markets;
-  const retiredBotUsers = getRetiredBotUserNameSet();
   return [...new Set([...Object.keys(state.bankrolls), ...scopedMarkets.flatMap((market) => market.trades.map((trade) => trade.userName))])]
-    .filter((userName) => !retiredBotUsers.has(String(userName || "").toLowerCase()))
     .map((userName) => {
       const trades = scopedMarkets.flatMap((market) => (market.trades || []).filter((trade) => trade.userName === userName));
       const settled = trades.filter((trade) => trade.result);

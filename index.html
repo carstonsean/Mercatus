@@ -265,87 +265,95 @@
                 <p id="portfolio-page-subtitle" class="section-meta portfolio-page-subtitle"></p>
               </div>
             </div>
-            <div id="account-view-switch" class="account-view-switch">
-              <button class="account-view-tab active" type="button" data-account-view="portfolio">Portfolio</button>
-              <button class="account-view-tab" type="button" data-account-view="wallet">Wallet</button>
+            <div id="account-view-switch" class="account-view-switch" role="tablist" aria-label="Portfolio views">
+              <button id="account-view-tab-portfolio" class="account-view-tab active" type="button" role="tab" aria-selected="true" aria-controls="account-portfolio-view" data-account-view="portfolio">Portfolio</button>
+              <button id="account-view-tab-wallet" class="account-view-tab" type="button" role="tab" aria-selected="false" aria-controls="account-wallet-view" data-account-view="wallet">Wallet</button>
+              <button id="account-view-tab-challenges" class="account-view-tab" type="button" role="tab" aria-selected="false" aria-controls="account-challenges-view" data-account-view="challenges">Challenges</button>
             </div>
           </section>
 
-          <div id="account-portfolio-view" class="account-view-panel active">
-            <section class="hero-strip portfolio-strip premium-portfolio-strip portfolio-mode-hero">
-              <div id="portfolio-summary" class="portfolio-summary-grid"></div>
-            </section>
+          <div class="account-view-panels">
+            <div id="account-portfolio-view" class="account-view-panel active" data-account-panel="portfolio" role="tabpanel" aria-labelledby="account-view-tab-portfolio">
+              <section class="hero-strip portfolio-strip premium-portfolio-strip portfolio-mode-hero">
+                <div id="portfolio-summary" class="portfolio-summary-grid"></div>
+              </section>
 
-            <section class="section-block profile-prize-pool-block">
-              <div id="portfolio-prize-pool-card"></div>
-            </section>
+              <section class="section-block profile-prize-pool-block">
+                <div id="portfolio-prize-pool-card"></div>
+              </section>
 
-            <section class="section-block portfolio-controls-block">
-              <div class="section-heading compact-heading portfolio-controls-heading">
-                <div>
-                  <h3>Your Positions</h3>
+              <section class="section-block portfolio-controls-block">
+                <div class="section-heading compact-heading portfolio-controls-heading">
+                  <div>
+                    <h3>Your Positions</h3>
+                  </div>
                 </div>
-              </div>
-              <div class="portfolio-controls">
-                <div id="portfolio-filters" class="portfolio-chip-row"></div>
-                <button id="portfolio-sort-button" class="portfolio-sort-button" type="button"></button>
-              </div>
-            </section>
-
-            <section class="section-block portfolio-list-block">
-              <div id="portfolio-list" class="portfolio-list"></div>
-            </section>
-
-          </div>
-
-          <div id="account-wallet-view" class="account-view-panel">
-            <section class="hero-strip portfolio-strip wallet-strip">
-              <div class="leaderboard-title-row">
-                <div>
-                  <p class="eyebrow">Wallet</p>
-                  <h2>Balance & Activity</h2>
+                <div class="portfolio-controls">
+                  <div id="portfolio-filters" class="portfolio-chip-row"></div>
+                  <button id="portfolio-sort-button" class="portfolio-sort-button" type="button"></button>
                 </div>
-              </div>
-              <div id="wallet-summary" class="portfolio-summary-grid"></div>
-            </section>
+              </section>
 
-            <section class="section-block wallet-actions-block">
-              <div class="section-heading compact-heading">
-                <div>
-                  <p class="eyebrow">Actions</p>
-                  <h3>Deposit or withdraw</h3>
-                </div>
-              </div>
-              <div class="wallet-actions-card">
-                <label class="wallet-amount-field">
-                  Amount
-                  <input id="wallet-amount-input" name="walletAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="25" autocomplete="off">
-                </label>
-                <div class="wallet-amount-presets" id="wallet-amount-presets">
-                  <button class="portfolio-chip" type="button" data-wallet-amount="10">$10</button>
-                  <button class="portfolio-chip" type="button" data-wallet-amount="25">$25</button>
-                  <button class="portfolio-chip" type="button" data-wallet-amount="50">$50</button>
-                  <button class="portfolio-chip" type="button" data-wallet-amount="100">$100</button>
-                </div>
-                <div class="wallet-action-row">
-                  <button id="wallet-deposit-button" class="primary-button" type="button">Deposit Funds</button>
-                  <button id="wallet-withdraw-button" class="secondary-button" type="button">Withdraw</button>
-                </div>
-                <p id="wallet-feedback" class="feedback wallet-feedback" aria-live="polite"></p>
-                <p class="section-meta wallet-helper-copy">Funds only leave your wallet when a trade matches. Withdrawals are demo-only and stop here.</p>
-              </div>
-            </section>
+              <section class="section-block portfolio-list-block">
+                <div id="portfolio-list" class="portfolio-list"></div>
+              </section>
+            </div>
 
-            <section class="section-block wallet-transactions-block">
-              <div class="section-heading compact-heading">
-                <div>
-                  <p class="eyebrow">History</p>
-                  <h3>Transaction feed</h3>
+            <div id="account-wallet-view" class="account-view-panel" data-account-panel="wallet" role="tabpanel" aria-labelledby="account-view-tab-wallet" hidden>
+              <section class="hero-strip portfolio-strip wallet-strip">
+                <div class="leaderboard-title-row">
+                  <div>
+                    <p class="eyebrow">Wallet</p>
+                    <h2>Balance & Activity</h2>
+                  </div>
                 </div>
-              </div>
-              <div id="wallet-filters" class="portfolio-chip-row"></div>
-              <div id="wallet-transaction-list" class="wallet-transaction-list"></div>
-            </section>
+                <div id="wallet-summary" class="portfolio-summary-grid"></div>
+              </section>
+
+              <section class="section-block wallet-actions-block">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Actions</p>
+                    <h3>Deposit or withdraw</h3>
+                  </div>
+                </div>
+                <div class="wallet-actions-card">
+                  <label class="wallet-amount-field">
+                    Amount
+                    <input id="wallet-amount-input" name="walletAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="25" autocomplete="off">
+                  </label>
+                  <div class="wallet-amount-presets" id="wallet-amount-presets">
+                    <button class="portfolio-chip" type="button" data-wallet-amount="10">$10</button>
+                    <button class="portfolio-chip" type="button" data-wallet-amount="25">$25</button>
+                    <button class="portfolio-chip" type="button" data-wallet-amount="50">$50</button>
+                    <button class="portfolio-chip" type="button" data-wallet-amount="100">$100</button>
+                  </div>
+                  <div class="wallet-action-row">
+                    <button id="wallet-deposit-button" class="primary-button" type="button">Deposit Funds</button>
+                    <button id="wallet-withdraw-button" class="secondary-button" type="button">Withdraw</button>
+                  </div>
+                  <p id="wallet-feedback" class="feedback wallet-feedback" aria-live="polite"></p>
+                  <p class="section-meta wallet-helper-copy">Funds only leave your wallet when a trade matches. Withdrawals are demo-only and stop here.</p>
+                </div>
+              </section>
+
+              <section class="section-block wallet-transactions-block">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">History</p>
+                    <h3>Transaction feed</h3>
+                  </div>
+                </div>
+                <div id="wallet-filters" class="portfolio-chip-row"></div>
+                <div id="wallet-transaction-list" class="wallet-transaction-list"></div>
+              </section>
+            </div>
+
+            <div id="account-challenges-view" class="account-view-panel" data-account-panel="challenges" role="tabpanel" aria-labelledby="account-view-tab-challenges" hidden>
+              <section class="section-block portfolio-list-block">
+                <div id="portfolio-challenge-entry"></div>
+              </section>
+            </div>
           </div>
         </div>
       </section>
@@ -573,7 +581,7 @@
               <div id="bot-summary" class="position-grid bot-summary-grid"></div>
               <div class="bot-run-actions">
                 <button id="create-random-prob-bot" class="primary-button" type="button">Create random prob bot</button>
-                <button id="purge-legacy-bots" class="ghost-button" type="button">Retire legacy bots</button>
+                <button id="purge-legacy-bots" class="ghost-button" type="button">Delete legacy bots</button>
               </div>
             </div>
             <p id="bot-run-feedback" class="feedback" aria-live="polite"></p>
@@ -713,6 +721,8 @@
   <script src="/lib/derived-fantasy-data.js?v=2.4"></script>
   <script src="/lib/onboarding-modal.js?v=2.4"></script>
   <script src="/seed-data.js?v=2.4"></script>
+  <script src="/challenge-home-section.js?v=2.4"></script>
+  <script src="/challenge-status.js?v=2.4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/app.js?v=2.4"></script>
 </body>

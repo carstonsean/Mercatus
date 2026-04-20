@@ -1,0 +1,1724 @@
+Cleared 397 self-crossing bot orders across 49 markets during Supabase sync.
+Supabase bot cleanup persistence failed Supabase request failed (409): {"code":"23505","details":"Key (external_ledger_key)=(a4e68123-5685-4fd7-a32a-81dc155ba367) already exists.","hint":null,"message":"duplicate key value violates unique constraint \"idx_wallet_ledger_external_key\""}
+Popular player unmatched: Thomas Mikaele (North Queensland Cowboys)
+Cleared 340 self-crossing bot orders across 39 markets during Supabase sync.
+Cleared 272 self-crossing bot orders across 33 markets during Supabase sync.
+Cleared 228 self-crossing bot orders across 29 markets during Supabase sync.
+Cleared 205 self-crossing bot orders across 26 markets during Supabase sync.
+Cleared 166 self-crossing bot orders across 20 markets during Supabase sync.
+Cleared 146 self-crossing bot orders across 18 markets during Supabase sync.
+Cleared 143 self-crossing bot orders across 16 markets during Supabase sync.
+Cleared 198 self-crossing bot orders across 20 markets during Supabase sync.
+Cleared 232 self-crossing bot orders across 23 markets during Supabase sync.
+Cleared 256 self-crossing bot orders across 26 markets during Supabase sync.
+Cleared 286 self-crossing bot orders across 30 markets during Supabase sync.
+Cleared 241 self-crossing bot orders across 28 markets during Supabase sync.
+Cleared 246 self-crossing bot orders across 28 markets during Supabase sync.
+Cleared 212 self-crossing bot orders across 24 markets during Supabase sync.
+Cleared 210 self-crossing bot orders across 23 markets during Supabase sync.
+Cleared 205 self-crossing bot orders across 23 markets during Supabase sync.
+Cleared 211 self-crossing bot orders across 26 markets during Supabase sync.
+Cleared 252 self-crossing bot orders across 31 markets during Supabase sync.
+Cleared 218 self-crossing bot orders across 28 markets during Supabase sync.
+Cleared 242 self-crossing bot orders across 28 markets during Supabase sync.
+Cleared 260 self-crossing bot orders across 30 markets during Supabase sync.
+Cleared 218 self-crossing bot orders across 27 markets during Supabase sync.
+Cleared 191 self-crossing bot orders across 25 markets during Supabase sync.
+Cleared 173 self-crossing bot orders across 22 markets during Supabase sync.
+Cleared 163 self-crossing bot orders across 21 markets during Supabase sync.
+Cleared 140 self-crossing bot orders across 19 markets during Supabase sync.
+Cleared 110 self-crossing bot orders across 17 markets during Supabase sync.
+Cleared 103 self-crossing bot orders across 15 markets during Supabase sync.
+Hosted bot persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:34 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f14de33d74d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Hosted bot persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:34 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f14d132074d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:34 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f14e17a174d0</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:34 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f15083fc74d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:35 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f152448274d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:35 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f153e51674d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:35 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f155859574d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:35 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f157361074d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:36 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f158c66874d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:36 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f15a86bf74d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Hosted bot persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:36 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f15c270874d2</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase bot cleanup persistence failed Supabase request failed (521): <!DOCTYPE html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en-US"> <!--<![endif]-->
+<head>
+
+
+<title>olzjwymvkorkqggafgem.supabase.co | 521: Web server is down</title>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" id="cf_styles-css" href="/cdn-cgi/styles/main.css" />
+
+
+</head>
+<body>
+<div id="cf-wrapper">
+    <div id="cf-error-details" class="p-0">
+        <header class="mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8">
+            <h1 class="inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2">
+              <span class="inline-block">Web server is down</span>
+              <span class="code-label">Error code 521</span>
+            </h1>
+            <div>
+               Visit <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">cloudflare.com</a> for more information.
+            </div>
+            <div class="mt-3">2026-04-17 08:08:36 UTC</div>
+        </header>
+        <div class="my-8 bg-gradient-gray">
+            <div class="w-240 lg:w-full mx-auto">
+                <div class="clearfix md:px-8">
+                  
+<div id="cf-browser-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">You</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Browser
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-cloudflare-status" class=" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    <span class="cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    </a>
+  </div>
+  <span class="md:block w-full truncate">Christchurch</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    <a href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" target="_blank" rel="noopener noreferrer">
+    Cloudflare
+    </a>
+  </h3>
+  <span class="leading-1.3 text-2xl text-green-success">Working</span>
+</div>
+
+<div id="cf-host-status" class="cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center">
+  <div class="relative mb-10 md:m-0">
+    
+    <span class="cf-icon-server block md:hidden h-20 bg-center bg-no-repeat"></span>
+    <span class="cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4"></span>
+    
+  </div>
+  <span class="md:block w-full truncate">olzjwymvkorkqggafgem.supabase.co</span>
+  <h3 class="md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3">
+    
+    Host
+    
+  </h3>
+  <span class="leading-1.3 text-2xl text-red-error">Error</span>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="w-240 lg:w-full mx-auto mb-8 lg:px-8">
+            <div class="clearfix">
+                <div class="w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What happened?</h2>
+                    <p>The web server is not returning a connection. As a result, the web page is not displaying.</p>
+                </div>
+                <div class="w-1/2 md:w-full float-left leading-relaxed">
+                    <h2 class="text-3xl font-normal leading-1.3 mb-4">What can I do?</h2>
+                          <h3 class="text-15 font-semibold mb-2">If you are a visitor of this website:</h3>
+      <p class="mb-6">Please try again in a few minutes.</p>
+
+      <h3 class="text-15 font-semibold mb-2">If you are the owner of this website:</h3>
+      <p><span>Contact your hosting provider letting them know your web server is not responding.</span> <a rel="noopener noreferrer" href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-521/">Additional troubleshooting information</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300">
+  <p class="text-13">
+    <span class="cf-footer-item sm:block sm:mb-1">Cloudflare Ray ID: <strong class="font-semibold">9ed9f15c221574d0</strong></span>
+    <span class="cf-footer-separator sm:hidden">&bull;</span>
+    <span id="cf-footer-item-ip" class="cf-footer-item hidden sm:block sm:mb-1">
+      Your IP:
+      <button type="button" id="cf-footer-ip-reveal" class="cf-footer-ip-reveal-btn">Click to reveal</button>
+      <span class="hidden" id="cf-footer-ip">180.148.102.126</span>
+      <span class="cf-footer-separator sm:hidden">&bull;</span>
+    </span>
+    <span class="cf-footer-item sm:block sm:mb-1"><span>Performance &amp; security by</span> <a rel="noopener noreferrer" href="https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_521&utm_campaign=olzjwymvkorkqggafgem.supabase.co" id="brand_link" target="_blank">Cloudflare</a></span>
+    
+  </p>
+  <script>(function(){function d(){var b=a.getElementById("cf-footer-item-ip"),c=a.getElementById("cf-footer-ip-reveal");b&&"classList"in b&&(b.classList.remove("hidden"),c.addEventListener("click",function(){c.classList.add("hidden");a.getElementById("cf-footer-ip").classList.remove("hidden")}))}var a=document;document.addEventListener&&a.addEventListener("DOMContentLoaded",d)})();</script>
+</div><!-- /.error-footer -->
+
+
+    </div>
+</div>
+</body>
+</html>
+
+Supabase session sync failed This operation was aborted
+Supabase bot cleanup persistence failed This operation was aborted
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase active round fetch failed Supabase request failed (410): Project removed.
+Supabase runtime overlay fetch failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase state sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed This operation was aborted
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed This operation was aborted
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase bot cleanup persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase active round fetch failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase runtime overlay fetch failed Supabase request failed (410): Project removed.
+Supabase state sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Supabase session sync failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed Supabase request failed (410): Project removed.
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase active round fetch failed fetch failed
+Supabase runtime overlay fetch failed fetch failed
+Supabase session sync failed fetch failed
+Supabase state sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase active round fetch failed fetch failed
+Supabase runtime overlay fetch failed fetch failed
+Supabase session sync failed fetch failed
+Supabase state sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase active round fetch failed fetch failed
+Supabase session sync failed fetch failed
+Supabase runtime overlay fetch failed fetch failed
+Supabase state sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase active round fetch failed fetch failed
+Supabase session sync failed fetch failed
+Supabase runtime overlay fetch failed fetch failed
+Supabase state sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase active round fetch failed fetch failed
+Supabase runtime overlay fetch failed fetch failed
+Supabase session sync failed fetch failed
+Supabase state sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase runtime overlay fetch failed fetch failed
+Supabase active round fetch failed fetch failed
+Supabase session sync failed fetch failed
+Supabase state sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed
+Supabase session sync failed fetch failed
+Hosted bot persistence failed fetch failed
+Hosted bot persistence failed fetch failed

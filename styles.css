@@ -4688,47 +4688,91 @@ label {
 }
 
 .account-view-switch {
-  display: inline-flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
   padding: 4px;
-  border-radius: 18px;
+  min-height: 48px;
+  border-radius: 16px;
   border: 1px solid rgba(104, 217, 255, 0.12);
   background: linear-gradient(180deg, rgba(16, 23, 34, 0.94), rgba(11, 15, 22, 0.88));
   box-shadow:
     0 10px 24px rgba(0,0,0,0.22),
     inset 0 1px 0 rgba(255,255,255,0.04);
-  width: fit-content;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .account-view-tab {
-  min-height: 40px;
-  padding: 0 16px;
-  border-radius: 14px;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.04em;
-  transition: background 150ms ease-in-out, color 150ms ease-in-out, box-shadow 150ms ease-in-out;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 150ms ease-in-out, color 150ms ease-in-out, border-color 150ms ease-in-out;
 }
 
 .account-view-tab.active {
   color: #081016;
   background: linear-gradient(135deg, #36df98, #f8c04e);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+  border-color: transparent;
+}
+
+.account-view-tab:focus-visible {
+  outline: 2px solid rgba(104, 217, 255, 0.4);
+  outline-offset: 1px;
+}
+
+.account-view-panels {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  padding-top: 4px;
 }
 
 .account-view-panel {
   display: none;
+  gap: 0;
+  min-width: 0;
 }
 
 .account-view-panel.active {
   display: grid;
-  gap: 0;
 }
 
 .profile-strip {
   display: grid;
   gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .account-view-switch {
+    gap: 6px;
+    min-height: 46px;
+  }
+
+  .account-view-tab {
+    height: 38px;
+    padding: 0 8px;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+  }
 }
 
 .portfolio-mode-hero {
@@ -5318,6 +5362,23 @@ label {
   gap: 14px;
 }
 
+#account-wallet-view {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+#account-wallet-view .wallet-actions-card,
+#account-wallet-view .wallet-action-row,
+#account-wallet-view .wallet-transaction-card,
+#account-wallet-view .wallet-transaction-main,
+#account-wallet-view .wallet-transaction-copy,
+#account-wallet-view #wallet-summary,
+#account-wallet-view #wallet-filters,
+#account-wallet-view #wallet-transaction-list {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .wallet-actions-block,
 .wallet-transactions-block {
   padding-top: 4px;
@@ -5433,6 +5494,42 @@ label {
   font-size: 0.96rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+  .wallet-strip,
+  .wallet-actions-card,
+  .wallet-action-row,
+  .wallet-transaction-card,
+  .wallet-transaction-main {
+    min-width: 0;
+  }
+
+  .wallet-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .wallet-transaction-main {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .wallet-transaction-title,
+  .wallet-transaction-subtitle,
+  .wallet-transaction-meta span,
+  .wallet-transaction-amount {
+    overflow-wrap: anywhere;
+  }
+
+  #wallet-filters {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .wallet-transaction-amount {
+    width: 100%;
+    text-align: left;
+  }
 }
 
 .wallet-transaction-amount.positive {

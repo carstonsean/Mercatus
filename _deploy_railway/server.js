@@ -75,8 +75,8 @@ const AVAILABLE_ROUND_NUMBERS=[...new Set([
 ])].sort((left,right)=>left-right);
 const SUPABASE_STATE_SYNC_TTL_MS=30000;
 const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
-const SUPABASE_SEED_READY_TIMEOUT_MS=4000;
-const SUPABASE_BACKEND_USER_TIMEOUT_MS=4000;
+const SUPABASE_SEED_READY_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_SEED_READY_TIMEOUT_MS)||30000);
+const SUPABASE_BACKEND_USER_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_BACKEND_USER_TIMEOUT_MS)||15000);
 const SHARE_SESSION_CREATE_TIMEOUT_MS=4000;
 const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
@@ -498,21 +498,22 @@ async function handleApi(req,res,url,sessionContext){
   }
   if(req.method==="POST"&&url.pathname==="/api/trades"){
     const body=await parseJson(req);
+    let tradeUseSupabase=useSupabase;
     let username="";
     try{
       username=ensureAuthenticatedUserName(req);
     }catch(error){
       return json(res,401,{error:error.message||"Authentication required"});
     }
-    if(useSupabase){
+    if(tradeUseSupabase){
       try{
         await ensureSupabaseReady();
       }catch(error){
-        console.warn("Supabase unavailable for trade request; rejecting hosted trade",error.message);
-        return json(res,503,{error:"Trading is temporarily unavailable. Please try again."});
+        console.warn("Supabase unavailable for trade request; falling back to in-memory trade handling",error.message);
+        tradeUseSupabase=false;
       }
     }
-    if(!useSupabase){
+    if(!tradeUseSupabase){
       syncDerivedBalances();
     }
     const market=findMarket(body.marketId);
@@ -531,37 +532,41 @@ async function handleApi(req,res,url,sessionContext){
     if(stake>bankroll){
       return json(res,400,{error:`${username} has $${bankroll.toFixed(0)} available.`});
     }
-    const stateSnapshot=useSupabase?cloneValue(state):null;
+    const stateSnapshot=tradeUseSupabase?cloneValue(state):null;
     let trade=null;
     try{
       trade=executeProjectionTrade(market,{userName:username,side,stake});
       lastStateMutationAt=Date.now();
       syncPrizePoolState(state);
-      if(useSupabase){
-        await enqueueSupabaseMarketPersistence(market,state);
-        enqueueSupabaseRuntimeSnapshot().catch((error)=>{
-          console.warn("Supabase runtime snapshot failed after durable trade persist",error.message);
-        });
-        getSupabaseDemoUser(username)
-          .then((backendUser)=>logAnalyticsEvent({
-            eventType:"trade_placed",
-            sessionId:sessionContext.sessionId,
-            userId:backendUser?.id||null,
-            metadata:{
-              username,
-              market_id:String(market.id),
-              side,
-              stake
-            }
-          }))
-          .catch((error)=>{
-            console.warn("Trade analytics logging failed",error.message);
+      if(tradeUseSupabase){
+        try{
+          await enqueueSupabaseMarketPersistence(market,state);
+          enqueueSupabaseRuntimeSnapshot().catch((error)=>{
+            console.warn("Supabase runtime snapshot failed after durable trade persist",error.message);
           });
+          getSupabaseDemoUser(username)
+            .then((backendUser)=>logAnalyticsEvent({
+              eventType:"trade_placed",
+              sessionId:sessionContext.sessionId,
+              userId:backendUser?.id||null,
+              metadata:{
+                username,
+                market_id:String(market.id),
+                side,
+                stake
+              }
+            }))
+            .catch((error)=>{
+              console.warn("Trade analytics logging failed",error.message);
+            });
+        }catch(error){
+          console.warn("Supabase persistence failed after trade; keeping in-memory state",error.message);
+        }
       }else{
         await persistStateSnapshot(false);
       }
     }catch(error){
-      if(useSupabase&&stateSnapshot){
+      if(tradeUseSupabase&&stateSnapshot){
         state=normalizeState(stateSnapshot,{skipWalletBootstrap:true});
         syncPrizePoolState(state);
       }
@@ -1434,9 +1439,17 @@ function shouldFallbackShareSessionStorage(error){
   const message=String(error?.message||"");
   return /share_sessions/i.test(message)
     || /accept_share_trade/i.test(message)
+    || /expires_at/i.test(message)
     || /relation .*share_sessions/i.test(message)
     || /function .*accept_share_trade/i.test(message)
     || /Could not find the table/i.test(message)
+    || /Supabase fetch failed/i.test(message)
+    || /fetch failed/i.test(message)
+    || /EAI_AGAIN/i.test(message)
+    || /ENOTFOUND/i.test(message)
+    || /ECONNRESET/i.test(message)
+    || /ETIMEDOUT/i.test(message)
+    || /UND_ERR_CONNECT_TIMEOUT/i.test(message)
     || /aborted/i.test(message)
     || /timed out/i.test(message);
 }
