@@ -1766,12 +1766,84 @@ function deriveChallengeShareSessionExpiry(tradeId){
   return marketKickoffIso(match.market)||null;
 }
 
+const SHARE_SESSION_SELECT_BASE="id,trade_ids,status,created_by_user_id,created_at";
+const SHARE_SESSION_SELECT_WITH_EXPIRY=`${SHARE_SESSION_SELECT_BASE},expires_at`;
+let shareSessionExpiresColumnSupported=null;
+
+function stripShareSessionExpiryFromSelect(selectValue){
+  return String(selectValue||"")
+    .split(",")
+    .map((entry)=>entry.trim())
+    .filter(Boolean)
+    .filter((entry)=>entry!=="expires_at")
+    .join(",");
+}
+
+function stripShareSessionExpiryFromBody(body){
+  if(!body||typeof body!=="object"||Array.isArray(body)){
+    return body;
+  }
+  const nextBody={...body};
+  delete nextBody.expires_at;
+  return nextBody;
+}
+
+function isShareSessionExpiryColumnMissing(error){
+  const message=String(error?.message||"");
+  return /share_sessions\.expires_at/i.test(message)
+    || /column .*expires_at .* does not exist/i.test(message);
+}
+
+function normalizeShareSessionRequestOptions(options,includeExpiry=true){
+  const nextOptions={...options};
+  if(nextOptions.query&&typeof nextOptions.query==="object"){
+    nextOptions.query={...nextOptions.query};
+    if(typeof nextOptions.query.select==="string"){
+      nextOptions.query.select=includeExpiry
+        ? nextOptions.query.select
+        : stripShareSessionExpiryFromSelect(nextOptions.query.select);
+    }
+  }
+  if(!includeExpiry){
+    nextOptions.body=stripShareSessionExpiryFromBody(nextOptions.body);
+  }else if(nextOptions.body&&typeof nextOptions.body==="object"&&!Array.isArray(nextOptions.body)){
+    nextOptions.body={...nextOptions.body};
+  }
+  return nextOptions;
+}
+
+async function supabaseShareSessionsRequest(options={}){
+  const includeExpiry=shareSessionExpiresColumnSupported!==false;
+  try{
+    return await supabaseRequest("share_sessions",normalizeShareSessionRequestOptions(options,includeExpiry));
+  }catch(error){
+    if(includeExpiry&&isShareSessionExpiryColumnMissing(error)){
+      shareSessionExpiresColumnSupported=false;
+      return supabaseRequest("share_sessions",normalizeShareSessionRequestOptions(options,false));
+    }
+    throw error;
+  }
+}
+
+async function supabaseShareSessionsRequestAll(options={}){
+  const includeExpiry=shareSessionExpiresColumnSupported!==false;
+  try{
+    return await supabaseRequestAll("share_sessions",normalizeShareSessionRequestOptions(options,includeExpiry));
+  }catch(error){
+    if(includeExpiry&&isShareSessionExpiryColumnMissing(error)){
+      shareSessionExpiresColumnSupported=false;
+      return supabaseRequestAll("share_sessions",normalizeShareSessionRequestOptions(options,false));
+    }
+    throw error;
+  }
+}
+
 async function createHostedShareSession(userName,tradeId){
   const user=await ensureSupabaseDemoUser(userName);
   const expiresAt=deriveChallengeShareSessionExpiry(tradeId);
-  const rows=await supabaseRequest("share_sessions",{
+  const rows=await supabaseShareSessionsRequest({
     method:"POST",
-    query:{select:"id,trade_ids,status,created_by_user_id,created_at,expires_at"},
+    query:{select:SHARE_SESSION_SELECT_WITH_EXPIRY},
     headers:{Prefer:"return=representation"},
     body:{
       created_by_user_id:user.id,
@@ -2183,9 +2255,9 @@ async function buildChallengeStatusFeed({
   if(useSupabase){
     try{
       const user=await ensureSupabaseDemoUser(userName);
-      const outboundRows=await supabaseRequestAll("share_sessions",{
+      const outboundRows=await supabaseShareSessionsRequestAll({
         query:{
-          select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+          select:SHARE_SESSION_SELECT_WITH_EXPIRY,
           created_by_user_id:`eq.${user.id}`,
           order:"created_at.desc"
         }
@@ -2200,9 +2272,9 @@ async function buildChallengeStatusFeed({
       const inboundSessionIds=[...new Set((inboundInviteRows||[]).map((row)=>String(row.share_session_id||"")).filter(Boolean))];
       let inboundRows=[];
       if(inboundSessionIds.length){
-        inboundRows=await supabaseRequestAll("share_sessions",{
+        inboundRows=await supabaseShareSessionsRequestAll({
           query:{
-            select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+            select:SHARE_SESSION_SELECT_WITH_EXPIRY,
             id:`in.(${inboundSessionIds.join(",")})`,
             order:"created_at.desc"
           }
@@ -2376,9 +2448,9 @@ async function fetchShareSessionPayload(shareId,useSupabase=SUPABASE_ENABLED){
 }
 
 async function fetchHostedShareSessionRecord(shareId){
-  const rows=await supabaseRequest("share_sessions",{
+  const rows=await supabaseShareSessionsRequest({
     query:{
-      select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+      select:SHARE_SESSION_SELECT_WITH_EXPIRY,
       id:`eq.${shareId}`,
       limit:1
     }
@@ -2444,9 +2516,9 @@ async function fetchHostedActiveShareSessionsByUserId(userId){
   if(!userId){
     return [];
   }
-  const rows=await supabaseRequest("share_sessions",{
+  const rows=await supabaseShareSessionsRequest({
     query:{
-      select:"id,trade_ids,status,created_by_user_id,created_at,expires_at",
+      select:SHARE_SESSION_SELECT_WITH_EXPIRY,
       created_by_user_id:`eq.${userId}`,
       status:"eq.active",
       order:"created_at.desc",
