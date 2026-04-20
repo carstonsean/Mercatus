@@ -1794,6 +1794,16 @@ function isShareSessionExpiryColumnMissing(error){
     || /column .*expires_at .* does not exist/i.test(message);
 }
 
+function isShareInviteTableMissing(error){
+  const message=String(error?.message||"");
+  return /share_invites/i.test(message)
+    && (
+      /Could not find the table/i.test(message)
+      || /schema cache/i.test(message)
+      || /relation .*share_invites/i.test(message)
+    );
+}
+
 function normalizeShareSessionRequestOptions(options,includeExpiry=true){
   const nextOptions={...options};
   if(nextOptions.query&&typeof nextOptions.query==="object"){
@@ -2262,13 +2272,22 @@ async function buildChallengeStatusFeed({
           order:"created_at.desc"
         }
       });
-      const inboundInviteRows=await supabaseRequestAll("share_invites",{
-        query:{
-          select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
-          responder_user_id:`eq.${user.id}`,
-          order:"responded_at.desc"
+      let inboundInviteRows=[];
+      try{
+        inboundInviteRows=await supabaseRequestAll("share_invites",{
+          query:{
+            select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
+            responder_user_id:`eq.${user.id}`,
+            order:"responded_at.desc"
+          }
+        });
+      }catch(error){
+        if(!isShareInviteTableMissing(error)){
+          throw error;
         }
-      });
+        challengeLifecycleLog("status-share-invites-missing",{reason:error.message});
+        inboundInviteRows=[];
+      }
       const inboundSessionIds=[...new Set((inboundInviteRows||[]).map((row)=>String(row.share_session_id||"")).filter(Boolean))];
       let inboundRows=[];
       if(inboundSessionIds.length){
@@ -4658,13 +4677,22 @@ async function fetchHostedInviteResponsesBySessionIds(sessionIds){
   if(!validIds.length){
     return [];
   }
-  const rows=await supabaseRequestAll("share_invites",{
-    query:{
-      select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
-      share_session_id:`in.(${validIds.join(",")})`,
-      order:"responded_at.asc"
+  let rows=[];
+  try{
+    rows=await supabaseRequestAll("share_invites",{
+      query:{
+        select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
+        share_session_id:`in.(${validIds.join(",")})`,
+        order:"responded_at.asc"
+      }
+    });
+  }catch(error){
+    if(!isShareInviteTableMissing(error)){
+      throw error;
     }
-  });
+    challengeLifecycleLog("share-invites-missing",{reason:error.message});
+    rows=[];
+  }
   return Array.isArray(rows)?rows:[];
 }
 
