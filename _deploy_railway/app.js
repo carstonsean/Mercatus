@@ -2,6 +2,14 @@
 const LINE_STEP = 1;
 const PRESSURE_STEP = 2;
 const BOT_PRESSURE_MULTIPLIER = 1;
+const BOT_NAME_PREFIXES = new Set([
+  "ari","beau","cruz","dax","eli","finn","hudson","jett",
+  "kai","luca","milo","nash","remy","rory","taj","zeke"
+]);
+const BOT_NAME_SUFFIXES = new Set([
+  "aces","atlas","comets","crew","dash","flux","forge","nova",
+  "orbit","raiders","shift","signal","slate","volt","wave","yard"
+]);
 const STARTING_BANKROLL = 200;
 const SWIPE_THRESHOLD = 60;
 const DEFAULT_USER_NAME = "Demo Trader";
@@ -10,7 +18,7 @@ const HAS_AUTHENTICATED_KEY = "mercatus-has-authenticated";
 const HAS_SEEN_ONBOARDING_KEY = "hasSeenOnboarding";
 const AUTH_TOKEN_KEY = "authToken";
 const DISMISSED_HOW_IT_WORKS_KEY = "dismissedHowItWorks";
-const PENDING_CHALLENGE_KEY = "crowdiq_pending_challenge_id";
+const PENDING_CHALLENGE_KEY = "pendingChallengeShareId";
 const ADMIN_ACCESS_KEY = "mercatus-admin-access";
 const LIVE_SYNC_MS = 5000;
 const PRIZE_POOL_POLL_MS = 10000;
@@ -168,6 +176,7 @@ let adminSourcesChart = null;
 let marketViewTrackKey = "";
 let marketViewTrackedAt = 0;
 const MAX_SINGLE_BID = 10;
+const ACCOUNT_VIEWS = ["portfolio", "wallet", "challenges"];
 
 const uiState = {
   activeScreen: "home",
@@ -249,13 +258,19 @@ const uiState = {
   adminMarketLimit: 24,
   adminTradeFilter: "OPEN",
   adminTradeLimit: 60,
+  adminActiveTab: "operations",
   adminAnalyticsRange: "30d",
   adminAnalyticsOverview: null,
   adminAnalyticsTrends: null,
   adminAnalyticsSources: null,
   adminAnalyticsReturning: null,
   adminAnalyticsFunnel: null,
-  adminAnalyticsLoading: false
+  adminAnalyticsLoading: false,
+  adminAffiliatesLoading: false,
+  adminAffiliatesLoaded: false,
+  adminAffiliatesError: "",
+  adminAffiliates: [],
+  adminAffiliateReferrals: []
 };
 
 const elements = {
@@ -288,6 +303,7 @@ const elements = {
   homeMostOverpriced: document.getElementById("home-most-overpriced"),
   homeMostTraded: document.getElementById("home-most-traded"),
   homeUserLeaderboard: document.getElementById("home-user-leaderboard"),
+  homeChallengeSection: document.getElementById("home-challenge-section"),
   homeLeaderboardLink: document.getElementById("home-leaderboard-link"),
   homeCarousel: document.getElementById("home-carousel"),
   homeCarouselNav: document.getElementById("home-carousel-nav"),
@@ -312,8 +328,8 @@ const elements = {
   portfolioPageSubtitle: document.getElementById("portfolio-page-subtitle"),
   accountViewSwitch: document.getElementById("account-view-switch"),
   accountViewTabs: [...document.querySelectorAll("[data-account-view]")],
-  accountPortfolioView: document.getElementById("account-portfolio-view"),
-  accountWalletView: document.getElementById("account-wallet-view"),
+  accountViewPanels: [...document.querySelectorAll(".account-view-panel")],
+  accountChallengesView: document.getElementById("account-challenges-view"),
   prizePoolView: document.getElementById("prize-pool-view"),
   portfolioBalancePill: document.getElementById("portfolio-balance-pill"),
   portfolioSummary: document.getElementById("portfolio-summary"),
@@ -339,6 +355,8 @@ const elements = {
   adminShell: document.getElementById("admin-shell"),
   openShareableContentButton: document.getElementById("open-shareable-content-button"),
   adminShareableWorkspace: document.getElementById("admin-shareable-workspace"),
+  adminTabControls: document.getElementById("admin-tab-controls"),
+  adminTabPanels: [...document.querySelectorAll(".admin-tab-panel")],
   closeAdminButton: document.getElementById("close-admin-button"),
   adminRoundForm: document.getElementById("admin-round-form"),
   adminRoundSelect: document.getElementById("admin-round-select"),
@@ -358,6 +376,7 @@ const elements = {
   botSummary: document.getElementById("bot-summary"),
   botPerformanceList: document.getElementById("bot-performance-list"),
   createRandomProbBot: document.getElementById("create-random-prob-bot"),
+  purgeLegacyBots: document.getElementById("purge-legacy-bots"),
   botRunFeedback: document.getElementById("bot-run-feedback"),
   botLog: document.getElementById("bot-log"),
   adminDashboard: document.getElementById("admin-dashboard"),
@@ -371,6 +390,9 @@ const elements = {
   adminMarketControls: document.getElementById("admin-market-controls"),
   adminMarketList: document.getElementById("admin-market-list"),
   adminTradeControls: document.getElementById("admin-trade-controls"),
+  adminAffiliateSummary: document.getElementById("admin-affiliate-summary"),
+  adminAffiliateReferralsBody: document.getElementById("admin-affiliate-referrals-body"),
+  adminAffiliateFeedback: document.getElementById("admin-affiliate-feedback"),
   positionsBody: document.getElementById("positions-body"),
   resetDemo: document.getElementById("reset-demo"),
   toast: document.getElementById("toast")
@@ -508,8 +530,19 @@ function bindEvents() {
   elements.accountViewSwitch?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-account-view]");
     if (!button) return;
+    if (!ACCOUNT_VIEWS.includes(button.dataset.accountView)) return;
     uiState.activeAccountView = button.dataset.accountView;
     renderScreens();
+  });
+  document.addEventListener("crowdiq:create-challenge-link", async (event) => {
+    const detail = event?.detail || {};
+    const tradeIds = Array.isArray(detail.tradeIds)
+      ? detail.tradeIds
+      : detail.tradeId
+        ? [detail.tradeId]
+        : [];
+    const positionKey = String(detail.positionKey || "");
+    await openPortfolioChallengeModal(tradeIds, positionKey);
   });
   elements.headerBalance?.addEventListener("click", () => {
     if (!isAuthenticated()) {
@@ -595,6 +628,9 @@ function bindEvents() {
   elements.createRandomProbBot?.addEventListener("click", async () => {
     await createSimulationBot();
   });
+  elements.purgeLegacyBots?.addEventListener("click", async () => {
+    await purgeLegacyBots();
+  });
   elements.resetDemo.addEventListener("click", async () => {
     await api("/api/admin/reset", {});
     await syncSession();
@@ -639,6 +675,12 @@ function bindEvents() {
     uiState.adminAnalyticsRange = nextRange;
     renderAdminAnalyticsControls();
     void refreshAdminAnalytics(true);
+  });
+
+  elements.adminTabControls?.addEventListener("click", (event) => {
+    const tabButton = event.target.closest("[data-admin-tab]");
+    if (!tabButton) return;
+    void setActiveAdminTab(tabButton.dataset.adminTab || "operations");
   });
 
   bindSwipeNavigation();
@@ -931,7 +973,22 @@ async function handleLogout() {
 async function handleOpenAdminTools() {
   if (!await requestAdminAccess()) return;
   uiState.adminOpen = true;
+  uiState.adminActiveTab = "operations";
   renderAdminShell();
+  await refreshAdminAnalytics(true);
+}
+
+async function setActiveAdminTab(nextTab) {
+  const normalizedTab = nextTab === "affiliates" ? "affiliates" : "operations";
+  if (uiState.adminActiveTab === normalizedTab) {
+    return;
+  }
+  uiState.adminActiveTab = normalizedTab;
+  renderAdminShell();
+  if (normalizedTab === "affiliates") {
+    await refreshAdminAffiliates();
+    return;
+  }
   await refreshAdminAnalytics(true);
 }
 
@@ -1005,6 +1062,9 @@ function hasAuthenticatedBefore() {
 }
 
 function openAuthPrompt(mode = "signup") {
+  if (uiState.challengeRouteShareId) {
+    localStorage.setItem(PENDING_CHALLENGE_KEY, uiState.challengeRouteShareId);
+  }
   if (onboardingModal) {
     openOnboardingSignupPopup();
     return;
@@ -1245,6 +1305,7 @@ async function handlePageResume() {
 
 function renderAll() {
   normalizeNavigationState();
+  safelyRender("challenge anchors", ensureChallengeSurfaceAnchors);
   safelyRender("challenge route", renderChallengeRoute);
   safelyRender("header balance", renderHeaderBalance);
   safelyRender("app chrome", renderAppChrome);
@@ -1269,6 +1330,7 @@ function renderAll() {
   safelyRender("admin shareable workspace", renderAdminShareableWorkspace);
   safelyRender("admin dashboard", renderAdminDashboard);
   safelyRender("admin analytics", renderAdminAnalytics);
+  safelyRender("admin affiliates", renderAdminAffiliates);
   safelyRender("admin contact inbox", renderAdminContactInbox);
   safelyRender("admin markets", renderAdminMarkets);
   safelyRender("bot simulation", renderBotSimulation);
@@ -1807,6 +1869,9 @@ function appModalContentMarkup(modalKey) {
 
 function renderScreens() {
   const challengeActive = isChallengeRouteActive();
+  if (!ACCOUNT_VIEWS.includes(uiState.activeAccountView)) {
+    uiState.activeAccountView = "portfolio";
+  }
   elements.navButtons.forEach((button) =>
     button.classList.toggle("active", !challengeActive && button.dataset.screenTarget === uiState.activeScreen)
   );
@@ -1815,11 +1880,16 @@ function renderScreens() {
   );
   document.querySelector(".bottom-nav")?.classList.toggle("is-hidden", challengeActive);
   document.querySelector(".app-header")?.classList.toggle("is-hidden", challengeActive);
-  elements.accountViewTabs?.forEach((button) =>
-    button.classList.toggle("active", button.dataset.accountView === uiState.activeAccountView)
-  );
-  elements.accountPortfolioView?.classList.toggle("active", uiState.activeAccountView === "portfolio");
-  elements.accountWalletView?.classList.toggle("active", uiState.activeAccountView === "wallet");
+  elements.accountViewTabs.forEach((button) => {
+    const isActive = button.dataset.accountView === uiState.activeAccountView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  elements.accountViewPanels.forEach((panel) => {
+    const isActive = panel.dataset.accountPanel === uiState.activeAccountView;
+    panel.classList.toggle("active", isActive);
+    panel.hidden = !isActive;
+  });
   elements.toast?.classList.toggle("toast-low", ["quickpick", "prizepool"].includes(uiState.activeScreen));
 }
 
@@ -2008,6 +2078,30 @@ function openInlineTrade(market, side) {
   renderAll();
 }
 
+function ensureChallengeSurfaceAnchors() {
+  if (!elements.homeChallengeSection) {
+    const leaderboardSection = elements.homeUserLeaderboard?.closest("section");
+    const homeScroll = elements.homeUserLeaderboard?.closest(".screen-scroll");
+    if (leaderboardSection && homeScroll) {
+      const section = document.createElement("section");
+      section.className = "section-block home-section-block";
+      const host = document.createElement("div");
+      host.id = "home-challenge-section";
+      section.appendChild(host);
+      homeScroll.insertBefore(section, leaderboardSection);
+      elements.homeChallengeSection = host;
+    }
+  }
+  elements.accountChallengesView = document.getElementById("account-challenges-view");
+  if (!elements.portfolioChallengeEntry) {
+    elements.portfolioChallengeEntry = document.getElementById("portfolio-challenge-entry");
+  }
+}
+
+function dispatchTradeCreatedEvent() {
+  document.dispatchEvent(new CustomEvent("crowdiq:trade-created"));
+}
+
 function marketDetailMarkup(market) {
   const stakeDraft = uiState.stakeDrafts[market.id] ?? 10;
   const isPending = uiState.pendingTradeMarketId === market.id;
@@ -2193,6 +2287,7 @@ async function submitTrade(marketId, stake, panel) {
       applyIncrementalTradeResponse(response, marketId);
     }
     const submittedTrade = response.trade;
+    dispatchTradeCreatedEvent();
     delete uiState.stakeDrafts[marketId];
     uiState.pendingTradeMarketId = "";
     uiState.focusStakeMarketId = "";
@@ -2933,7 +3028,11 @@ function renderQuickTake() {
 
 function renderPortfolioChallengeEntry() {
   if (!elements.portfolioChallengeEntry) return;
-  elements.portfolioChallengeEntry.innerHTML = "";
+  if (typeof window.renderChallengeStatus === "function") {
+    window.renderChallengeStatus(elements.portfolioChallengeEntry);
+    return;
+  }
+  elements.portfolioChallengeEntry.innerHTML = `<div class="portfolio-empty-state"><strong>Challenges unavailable</strong><span>Challenge status will appear here when the module loads.</span></div>`;
 }
 
 function renderChallengeRoute() {
@@ -2960,6 +3059,9 @@ function renderChallengeRoute() {
   if (!uiState.challengeRouteSession) {
     elements.challengeRoute.innerHTML = `<div class="challenge-shell"><div class="challenge-loading">Loading challenge...</div></div>`;
     return;
+  }
+  if (!isAuthenticated() && uiState.challengeRouteShareId) {
+    localStorage.setItem(PENDING_CHALLENGE_KEY, uiState.challengeRouteShareId);
   }
   elements.challengeRoute.innerHTML = isAuthenticated()
     ? challengeAcceptanceMarkup()
@@ -3054,6 +3156,26 @@ function challengeTradeRowMarkup(trade) {
   `;
 }
 
+function openChallengeLinkModalState({
+  shareUrl,
+  selectedTradeIds = [],
+  createdTradeCount = 1,
+  excludedTradeCount = 0
+}) {
+  resetChallengeModalState();
+  uiState.activeAppModal = "challenge-friends";
+  uiState.challengeModalStep = "link";
+  uiState.challengeCreatePending = false;
+  uiState.challengeCreateError = "";
+  uiState.challengeCreatedUrl = String(shareUrl || "").trim();
+  uiState.challengeCreatedTradeCount = Math.max(1, Number(createdTradeCount) || 1);
+  uiState.challengeExcludedTradeCount = Math.max(0, Number(excludedTradeCount) || 0);
+  uiState.challengeSelectedTradeIds = Array.isArray(selectedTradeIds)
+    ? selectedTradeIds.map((tradeId) => String(tradeId)).filter(Boolean)
+    : [];
+  renderAppChrome();
+}
+
 async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
   const candidateTradeIds = Array.isArray(tradeIds) ? tradeIds.map((tradeId) => String(tradeId)).filter(Boolean) : [String(tradeIds || "")].filter(Boolean);
   if (!candidateTradeIds.length) return;
@@ -3070,13 +3192,12 @@ async function openPortfolioChallengeModal(tradeIds, positionKey = "") {
       const response = await api("/api/share/create", {
         trade_id: tradeId
       });
-      uiState.challengeModalStep = "link";
-      uiState.challengeCreatePending = false;
-      uiState.challengeCreatedUrl = response.share_url;
-      uiState.challengeCreatedTradeCount = 1;
-      uiState.challengeExcludedTradeCount = Math.max(0, candidateTradeIds.length - 1);
-      uiState.challengeSelectedTradeIds = [tradeId];
-      renderAppChrome();
+      openChallengeLinkModalState({
+        shareUrl: response.share_url,
+        selectedTradeIds: [tradeId],
+        createdTradeCount: 1,
+        excludedTradeCount: Math.max(0, candidateTradeIds.length - 1)
+      });
       return;
     } catch (error) {
       lastError = error;
@@ -3393,9 +3514,8 @@ function bindChallengeRouteEvents() {
     markChallengeReviewStatus(currentChallengeTradeRecord(), "expired");
     advanceChallengeTrade();
   });
-  elements.challengeRoute.querySelector("[data-challenge-decline]")?.addEventListener("click", () => {
-    markChallengeReviewStatus(currentChallengeTradeRecord(), "declined");
-    advanceChallengeTrade();
+  elements.challengeRoute.querySelector("[data-challenge-decline]")?.addEventListener("click", async () => {
+    await declineCurrentChallengeTrade();
   });
   elements.challengeRoute.querySelector("[data-challenge-accept]")?.addEventListener("click", async () => {
     await acceptCurrentChallengeTrade();
@@ -3525,6 +3645,101 @@ function advanceChallengeTrade() {
   renderAll();
 }
 
+function openChallengeDeclineSheet() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(6,6,14,0.8)";
+    overlay.style.zIndex = "1200";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "flex-end";
+    overlay.style.justifyContent = "center";
+    overlay.style.padding = "12px";
+
+    const sheet = document.createElement("div");
+    sheet.style.position = "fixed";
+    sheet.style.bottom = "0";
+    sheet.style.left = "50%";
+    sheet.style.transform = "translateX(-50%)";
+    sheet.style.width = "min(640px, 100%)";
+    sheet.style.maxHeight = "calc(100vh - env(keyboard-inset-height, 0px) - 12px)";
+    sheet.style.overflow = "auto";
+    sheet.style.background = "#1A1A2E";
+    sheet.style.border = "1px solid rgba(255,255,255,0.12)";
+    sheet.style.borderRadius = "16px 16px 0 0";
+    sheet.style.padding = "16px 16px calc(16px + env(safe-area-inset-bottom))";
+    sheet.innerHTML = `
+      <h3 style="margin:0;color:#fff;font-size:18px;">Leave a note?</h3>
+      <p style="margin:6px 0 10px;color:rgba(255,255,255,0.7);font-size:13px;">Optional — your mate will see this</p>
+      <textarea data-decline-note maxlength="100" placeholder="e.g. I don't think he'll go big this week…" style="width:100%;min-height:100px;resize:vertical;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:#0D0D1A;color:#fff;padding:10px 12px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;"><span data-char-count style="font-size:11px;color:rgba(255,255,255,0.62);">100 left</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;position:sticky;bottom:0;padding-top:10px;background:linear-gradient(180deg, rgba(26,26,46,0.0) 0%, rgba(26,26,46,1) 34%);">
+        <button type="button" data-confirm-decline style="padding:11px 12px;border-radius:10px;border:1px solid rgba(255,91,91,0.7);background:transparent;color:#ff7d7d;font-weight:700;">Decline challenge</button>
+        <button type="button" data-skip-decline style="padding:6px 12px;border:0;background:transparent;color:rgba(255,255,255,0.62);">Skip — just decline</button>
+      </div>
+    `;
+
+    function close(result) {
+      overlay.remove();
+      sheet.remove();
+      resolve(result);
+    }
+
+    const noteInput = sheet.querySelector("[data-decline-note]");
+    const charCount = sheet.querySelector("[data-char-count]");
+    noteInput?.addEventListener("input", () => {
+      const remaining = Math.max(0, 100 - String(noteInput.value || "").length);
+      if (charCount) {
+        charCount.textContent = `${remaining} left`;
+        charCount.style.color = remaining < 20 ? "#ffb84d" : "rgba(255,255,255,0.62)";
+      }
+    });
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        close({ cancelled: true });
+      }
+    });
+    sheet.querySelector("[data-confirm-decline]")?.addEventListener("click", () => {
+      const note = String(noteInput?.value || "").trim();
+      close({ cancelled: false, note: note || null });
+    });
+    sheet.querySelector("[data-skip-decline]")?.addEventListener("click", () => {
+      close({ cancelled: false, note: null });
+    });
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(sheet);
+    window.setTimeout(() => {
+      noteInput?.focus();
+    }, 20);
+  });
+}
+
+async function declineCurrentChallengeTrade() {
+  const trade = currentChallengeTradeRecord();
+  if (!trade || !uiState.challengeRouteShareId) {
+    markChallengeReviewStatus(trade, "declined");
+    advanceChallengeTrade();
+    return;
+  }
+  const response = await openChallengeDeclineSheet();
+  if (response?.cancelled) {
+    return;
+  }
+  try {
+    await api("/api/share/respond", {
+      share_session_id: uiState.challengeRouteShareId,
+      action: "decline",
+      decline_note: response?.note || null
+    });
+  } catch (error) {
+    void error;
+  }
+  markChallengeReviewStatus(trade, "declined");
+  advanceChallengeTrade();
+}
+
 async function submitQuickTake(marketId, side, card) {
   const activeCardId = getActiveQuickTakeMarketId();
   if (!marketId || marketId !== activeCardId || uiState.quickPickPendingRequestId) return;
@@ -3548,6 +3763,7 @@ async function submitQuickTake(marketId, side, card) {
     const response = await executeQuickTakeTrade(marketId, side);
     if (uiState.quickPickPendingRequestId !== requestId) return;
     applyQuickTakeTradeResponse(response, marketId);
+    dispatchTradeCreatedEvent();
     const submittedTrade = response.trade;
     const liveCard = elements.quickPickDeck.querySelector(`.quick-take-card.is-front[data-card-id="${marketId}"]`) || card;
     if (liveCard) {
@@ -4238,7 +4454,8 @@ function renderAdminShell() {
   elements.adminShell.classList.toggle("is-open", uiState.adminOpen);
   elements.adminShell.setAttribute("aria-hidden", String(!uiState.adminOpen));
   elements.adminShell.classList.toggle("shareable-active", uiState.adminShareableView !== "main");
-  if (uiState.adminOpen) {
+  renderAdminTabs();
+  if (uiState.adminOpen && uiState.adminActiveTab === "operations") {
     startAdminAnalyticsPolling();
   } else {
     stopAdminAnalyticsPolling();
@@ -4259,6 +4476,21 @@ function renderAdminShell() {
   if (elements.undoSettlementButton) {
     elements.undoSettlementButton.disabled = !state.lastSettlementBatch;
   }
+}
+
+function renderAdminTabs() {
+  const activeTab = uiState.adminActiveTab === "affiliates" ? "affiliates" : "operations";
+  if (elements.adminTabControls) {
+    [...elements.adminTabControls.querySelectorAll("[data-admin-tab]")].forEach((button) => {
+      const isActive = button.dataset.adminTab === activeTab;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", String(isActive));
+    });
+  }
+  elements.adminTabPanels.forEach((panel) => {
+    const isActive = panel.dataset.adminTabPanel === activeTab;
+    panel.classList.toggle("is-active", isActive);
+  });
 }
 
 function openShareableContentLibrary() {
@@ -5255,6 +5487,76 @@ function formatChartDate(dateValue) {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+async function refreshAdminAffiliates() {
+  if (!uiState.adminOpen || !hasAdminAccess()) return;
+  uiState.adminAffiliatesLoading = true;
+  uiState.adminAffiliatesError = "";
+  renderAdminAffiliates();
+  try {
+    const payload = await apiGet("/api/admin/affiliates");
+    uiState.adminAffiliates = Array.isArray(payload?.affiliates) ? payload.affiliates : [];
+    uiState.adminAffiliateReferrals = Array.isArray(payload?.referrals) ? payload.referrals : [];
+    uiState.adminAffiliatesLoaded = true;
+  } catch (error) {
+    if (String(error.message || "").toLowerCase().includes("admin access")) {
+      window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+      uiState.adminOpen = false;
+      stopAdminAnalyticsPolling();
+    }
+    uiState.adminAffiliatesError = error.message || "Unable to load affiliate data.";
+  } finally {
+    uiState.adminAffiliatesLoading = false;
+    renderAdminAffiliates();
+    renderAdminShell();
+  }
+}
+
+function renderAdminAffiliates() {
+  if (!elements.adminAffiliateSummary || !elements.adminAffiliateReferralsBody || !elements.adminAffiliateFeedback) return;
+  if (!uiState.adminOpen) {
+    elements.adminAffiliateSummary.innerHTML = "";
+    elements.adminAffiliateReferralsBody.innerHTML = "";
+    elements.adminAffiliateFeedback.textContent = "";
+    return;
+  }
+  if (uiState.adminActiveTab !== "affiliates") {
+    return;
+  }
+  if (uiState.adminAffiliatesLoading) {
+    elements.adminAffiliateFeedback.textContent = "Loading affiliate signups…";
+    elements.adminAffiliateSummary.innerHTML = "";
+    elements.adminAffiliateReferralsBody.innerHTML = "";
+    return;
+  }
+  if (uiState.adminAffiliatesError) {
+    elements.adminAffiliateFeedback.textContent = uiState.adminAffiliatesError;
+    elements.adminAffiliateSummary.innerHTML = "";
+    elements.adminAffiliateReferralsBody.innerHTML = "";
+    return;
+  }
+  elements.adminAffiliateFeedback.textContent = "";
+  const affiliates = Array.isArray(uiState.adminAffiliates) ? uiState.adminAffiliates : [];
+  const referrals = Array.isArray(uiState.adminAffiliateReferrals) ? uiState.adminAffiliateReferrals : [];
+  const totalReferredSignups = referrals.length;
+  elements.adminAffiliateSummary.innerHTML = [
+    adminDashboardCard("Tracked affiliates", String(affiliates.length), "Affiliate codes currently registered"),
+    adminDashboardCard("Total referred signups", String(totalReferredSignups), "Users permanently linked at signup"),
+    ...affiliates.map((affiliate) => adminDashboardCard(affiliate.name || affiliate.code, String(Number(affiliate.total_signups) || 0), `${affiliate.code || "unknown"} signups`))
+  ].join("");
+  elements.adminAffiliateReferralsBody.innerHTML = referrals.length
+    ? referrals
+      .map((referral) => `<tr><td>${escapeHtml(referral.affiliate_name || referral.affiliate_code || "")}</td><td>${escapeHtml(referral.username || "(unknown user)")}</td><td>${escapeHtml(formatAffiliateSignupDate(referral.referred_at))}</td></tr>`)
+      .join("")
+    : `<tr><td colspan="3" class="section-meta">No referred signups have been captured yet.</td></tr>`;
+}
+
+function formatAffiliateSignupDate(value) {
+  if (!value) return "—";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "—";
+  return formatTimestamp(value);
+}
+
 function trackMarketViewed(marketId, source = "markets") {
   const market = findMarket(marketId);
   if (!market) return;
@@ -5547,7 +5849,10 @@ function getAdminTrades() {
 function isBotTrade(trade) {
   if (!trade) return false;
   if (trade.botId || trade.botSource || trade.archetype) return true;
-  return getBotRosterMap().has(trade.userName) || trade.userName?.startsWith("Bot ") || trade.userName?.includes(" Bot ");
+  return getBotRosterMap().has(trade.userName)
+    || isGeneratedBotName(trade.userName)
+    || trade.userName?.startsWith("Bot ")
+    || trade.userName?.includes(" Bot ");
 }
 
 function getAdminDashboardSummary() {
@@ -5606,6 +5911,21 @@ function getBotPerformanceSummary() {
       userName,
       archetype: bot.archetype || "random-prob",
       archetypeLabel: labelForBotArchetype(bot.archetype, bot),
+      bankroll: getDisplayedCash(userName),
+      settledTrades: 0,
+      wins: 0,
+      realizedProfit: 0,
+      settledStake: 0,
+      openExposure: 0,
+      loggedEdges: []
+    });
+  });
+  getLikelyBotUserNames().forEach((userName) => {
+    if (botRows.has(userName)) return;
+    botRows.set(userName, {
+      userName,
+      archetype: "random-prob",
+      archetypeLabel: "Random Prob",
       bankroll: getDisplayedCash(userName),
       settledTrades: 0,
       wins: 0,
@@ -5721,6 +6041,24 @@ function getBotRosterMap() {
   return new Map((state.botSimulation?.bots || []).map((bot) => [bot.userName, bot]));
 }
 
+function isGeneratedBotName(userName) {
+  const trimmed = String(userName || "").trim();
+  if (!trimmed) return false;
+  const [first, second, ...rest] = trimmed.split(/\s+/);
+  if (rest.length) return false;
+  return BOT_NAME_PREFIXES.has(String(first || "").toLowerCase()) && BOT_NAME_SUFFIXES.has(String(second || "").toLowerCase());
+}
+
+function getLikelyBotUserNames() {
+  const names = new Set();
+  Object.keys(state.bankrolls || {}).forEach((userName) => {
+    if (isGeneratedBotName(userName)) {
+      names.add(userName);
+    }
+  });
+  return [...names];
+}
+
 function getTradeExposureStake(trade) {
   const matchedStake = Number(trade.matchedStake) || 0;
   const refundedStake = Number(trade.refundedStake) || 0;
@@ -5832,6 +6170,24 @@ async function createSimulationBot() {
     const botName = response.bot?.userName || "Random Prob bot";
     elements.botRunFeedback.textContent = `${botName} created with $200 and started auto-playing as a 50/50 random-probability bot.`;
     showToast("Bot created", `${botName} joined the Quick Pick market.`);
+  } catch (error) {
+    elements.botRunFeedback.textContent = error.message;
+  }
+}
+
+async function purgeLegacyBots() {
+  const confirmed = window.confirm("Delete legacy bot users (excluding currently active bots) from data and leaderboard?");
+  if (!confirmed) return;
+  try {
+    const response = await api("/api/admin/bots/purge", { includeActiveBots: false });
+    applySharedSnapshot({ ...response, backend: backendState, prizePool: response.prizePool ?? prizePoolState });
+    renderAll();
+    const preview = (response.deletedUsers || []).slice(0, 4).join(", ");
+    const suffix = response.deletedUsers?.length > 4 ? " ..." : "";
+    elements.botRunFeedback.textContent = response.deletedCount
+      ? `Deleted ${response.deletedCount} legacy bots${preview ? `: ${preview}${suffix}` : ""}.`
+      : "No legacy bot users found.";
+    refreshSharedState();
   } catch (error) {
     elements.botRunFeedback.textContent = error.message;
   }
@@ -6277,6 +6633,13 @@ function renderHome() {
     headingTitle: "Overpriced",
     emptyMessage: "Overpriced players will appear here once official Fantasy prices are available."
   }));
+  safelyRender("home challenge friends", () => {
+    if (typeof window.renderChallengeHomeSection === "function" && elements.homeChallengeSection) {
+      window.renderChallengeHomeSection(elements.homeChallengeSection);
+    } else if (elements.homeChallengeSection) {
+      elements.homeChallengeSection.innerHTML = "";
+    }
+  });
 
   safelyRender("home user leaderboard", () => renderHomeUserLeaderboard(elements.homeUserLeaderboard, leaderboardRows));
 

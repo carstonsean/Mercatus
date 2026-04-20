@@ -6997,6 +6997,11 @@ label {
   color: inherit;
 }
 
+.nav-button.prize-pool.active i,
+.nav-button.prize-pool.active .nav-label {
+  color: #FFFFFF;
+}
+
 .prize-pool-strip {
   display: grid;
   gap: 18px;

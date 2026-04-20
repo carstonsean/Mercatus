@@ -15,3 +15,8 @@ npm-debug.log*
 # OS / editor noise
 .DS_Store
 Thumbs.db
+# Prevent duplicate/stale local app copies
+_railway_ui_deploy/
+.hotfix-main/
+.main-hotfix/
+
