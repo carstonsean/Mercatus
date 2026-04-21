@@ -1136,7 +1136,7 @@ async function handleApi(req,res,url,sessionContext){
     return json(res,200,affiliates,sessionContext);
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/contact-messages"){
-    const contacts=buildAdminContactMessagesPayload();
+    const contacts=await buildAdminContactMessages(useSupabase);
     return json(res,200,{contacts},sessionContext);
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/live-sessions"){
@@ -1243,18 +1243,34 @@ async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
   if(!useSupabase){
     return buildLocalAffiliateAdminPayload();
   }
-  const affiliatesRows=await supabaseRequestAll("affiliates",{
-    query:{
-      select:"code,name,created_at",
-      order:"name.asc"
+  let affiliatesRows=[];
+  let referralRows=[];
+  try{
+    affiliatesRows=await supabaseRequestAll("affiliates",{
+      query:{
+        select:"code,name,created_at",
+        order:"name.asc"
+      }
+    });
+  }catch(error){
+    if(!isAffiliateTableMissing(error)){
+      throw error;
     }
-  });
-  const referralRows=await supabaseRequestAll("user_affiliate_referrals",{
-    query:{
-      select:"user_id,affiliate_code,referred_at",
-      order:"referred_at.desc"
+    affiliatesRows=[];
+  }
+  try{
+    referralRows=await supabaseRequestAll("user_affiliate_referrals",{
+      query:{
+        select:"user_id,affiliate_code,referred_at",
+        order:"referred_at.desc"
+      }
+    });
+  }catch(error){
+    if(!isAffiliateTableMissing(error)){
+      throw error;
     }
-  });
+    referralRows=[];
+  }
   const referredUserIds=[...new Set((referralRows||[]).map((row)=>row?.user_id).filter(Boolean))];
   const usersById=new Map();
   if(referredUserIds.length){
@@ -1317,9 +1333,32 @@ async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
   };
 }
 
-function buildAdminContactMessagesPayload(){
-  return Array.isArray(state?.contactMessages)
-    ? state.contactMessages
+function isAffiliateTableMissing(error){
+  const message=String(error?.message||"");
+  return /affiliates/i.test(message)
+    || /user_affiliate_referrals/i.test(message)
+    || /relation .* does not exist/i.test(message)
+    || /42p01/.test(message);
+}
+
+async function buildAdminContactMessages(useSupabase=SUPABASE_ENABLED){
+  if(useSupabase){
+    try{
+      const runtimeState=await fetchSupabaseRuntimeState();
+      const runtimeContacts=runtimeState?.contactMessages;
+      if(Array.isArray(runtimeContacts)){
+        return buildAdminContactMessagesPayload(runtimeContacts);
+      }
+    }catch(error){
+      console.warn("Contact inbox runtime fetch failed",error.message||error);
+    }
+  }
+  return buildAdminContactMessagesPayload(state?.contactMessages);
+}
+
+function buildAdminContactMessagesPayload(rawContacts){
+  return Array.isArray(rawContacts)
+    ? rawContacts
       .slice()
       .sort((left,right)=>new Date(right?.submittedAt||0)-new Date(left?.submittedAt||0))
       .map((entry)=>({
@@ -5489,6 +5528,8 @@ function mergeSupabaseState(supabaseState,runtimeState,currentState=state,active
     activeRoundLabel:buildRoundLabel(activeRoundNumber),
     forceOpenGameIds:Array.isArray(overlay.forceOpenGameIds)?overlay.forceOpenGameIds:(currentState?.forceOpenGameIds||[]),
     walletTransactions:Array.isArray(overlay.walletTransactions)?overlay.walletTransactions:(currentState?.walletTransactions||[]),
+    contactMessages:Array.isArray(overlay.contactMessages)?overlay.contactMessages:(currentState?.contactMessages||[]),
+    affiliateReferrals:Array.isArray(overlay.affiliateReferrals)?overlay.affiliateReferrals:(currentState?.affiliateReferrals||[]),
     shareSessions:Array.isArray(overlay.shareSessions)?overlay.shareSessions:(currentState?.shareSessions||[]),
     lastSettlementBatch:overlay.lastSettlementBatch??currentState?.lastSettlementBatch??null,
     roundMetricsHistory:Array.isArray(overlay.roundMetricsHistory)?overlay.roundMetricsHistory:(currentState?.roundMetricsHistory||[]),
