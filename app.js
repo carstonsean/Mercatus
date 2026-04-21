@@ -5630,6 +5630,9 @@ async function submitContactForm() {
       message: uiState.contactMessageDraft
     });
     applySharedSnapshot({ ...response, backend: backendState, prizePool: prizePoolState });
+    if (uiState.adminOpen && hasAdminAccess()) {
+      await refreshAdminContactMessages();
+    }
     uiState.contactFormSubmitted = true;
     uiState.contactFormFeedback = "";
     uiState.contactMessageDraft = "";
