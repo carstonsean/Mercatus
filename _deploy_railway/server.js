@@ -205,16 +205,22 @@ function handleAffiliateLanding(req,res,url,sessionContext){
   if(req.method!=="GET"){
     return false;
   }
-  const affiliate=resolveAffiliateFromPath(url.pathname);
-  if(!affiliate){
+  if(url.pathname==="/api"||url.pathname.startsWith("/api/")){
     return false;
   }
-  setCookie(sessionContext,AFFILIATE_COOKIE_NAME,affiliate.code,{
+  const landing=resolveAffiliateFromLanding(url);
+  if(!landing?.affiliate){
+    return false;
+  }
+  setCookie(sessionContext,AFFILIATE_COOKIE_NAME,landing.affiliate.code,{
     maxAgeMs:AFFILIATE_COOKIE_MAX_AGE_MS,
     httpOnly:true
   });
+  const redirectPath=landing.source==="path"
+    ? "/"
+    : buildAffiliateQueryRedirectPath(url);
   const headers={
-    Location:"/",
+    Location:redirectPath,
     "Cache-Control":"no-store, no-cache, must-revalidate, proxy-revalidate",
     "Pragma":"no-cache",
     "Expires":"0",
@@ -224,6 +230,36 @@ function handleAffiliateLanding(req,res,url,sessionContext){
   res.writeHead(302,headers);
   res.end();
   return true;
+}
+
+const AFFILIATE_QUERY_PARAM_KEYS=["ref","affiliate","affiliate_code","referral","invite"];
+
+function resolveAffiliateFromLanding(url){
+  const affiliateFromPath=resolveAffiliateFromPath(url?.pathname);
+  if(affiliateFromPath){
+    return {
+      affiliate:affiliateFromPath,
+      source:"path"
+    };
+  }
+  for(const key of AFFILIATE_QUERY_PARAM_KEYS){
+    const candidate=resolveAffiliateCode(url?.searchParams?.get(key));
+    if(candidate){
+      return {
+        affiliate:candidate,
+        source:"query"
+      };
+    }
+  }
+  return null;
+}
+
+function buildAffiliateQueryRedirectPath(url){
+  const pathname=String(url?.pathname||"/").trim()||"/";
+  const redirectUrl=new URL(`http://internal${pathname}${url?.search||""}`);
+  AFFILIATE_QUERY_PARAM_KEYS.forEach((key)=>redirectUrl.searchParams.delete(key));
+  const search=redirectUrl.searchParams.toString();
+  return search?`${pathname}?${search}`:pathname;
 }
 
 function refreshSupabaseStateInBackground(label="Supabase"){
@@ -484,7 +520,10 @@ async function handleApi(req,res,url,sessionContext){
   }
   if(req.method==="POST"&&(url.pathname==="/api/session"||url.pathname==="/api")){
     const body=await parseJson(req);
-    const username=ensureUser(body.userName||"Demo Trader");
+    const submittedUserName=String(body.userName||"Demo Trader");
+    const normalizedUserName=submittedUserName.trim()||"Demo Trader";
+    const localUserExists=typeof state.bankrolls?.[normalizedUserName]==="number";
+    const username=ensureUser(submittedUserName);
     const shouldLogAuthEvent=body.logUserAuthEvent!==false;
     if(useSupabase){
       if(Array.isArray(state?.markets)&&state.markets.length){
@@ -502,7 +541,18 @@ async function handleApi(req,res,url,sessionContext){
     syncPrizePoolState(state);
     const backendUser=await syncBackendUser(username,useSupabase);
     if(useSupabase&&backendUser?.created&&backendUser?.id){
-      await applyPendingAffiliateReferral(backendUser.id,sessionContext);
+      await applyPendingAffiliateReferral({
+        userId:backendUser.id,
+        userName:username,
+        useSupabase,
+        sessionContext
+      });
+    }else if(!useSupabase&&!localUserExists){
+      await applyPendingAffiliateReferral({
+        userName:username,
+        useSupabase:false,
+        sessionContext
+      });
     }
     if(useSupabase&&shouldLogAuthEvent&&backendUser?.id){
       await logAnalyticsEvent({
@@ -1085,6 +1135,10 @@ async function handleApi(req,res,url,sessionContext){
     const affiliates=await buildAffiliateAdminPayload(useSupabase);
     return json(res,200,affiliates,sessionContext);
   }
+  if(req.method==="GET"&&url.pathname==="/api/admin/contact-messages"){
+    const contacts=buildAdminContactMessagesPayload();
+    return json(res,200,{contacts},sessionContext);
+  }
   if(req.method==="GET"&&url.pathname==="/api/admin/live-sessions"){
     pruneLiveSessions();
     return json(res,200,{
@@ -1136,36 +1190,45 @@ async function handleApi(req,res,url,sessionContext){
   json(res,404,{error:"Not found"});
 }
 
-async function applyPendingAffiliateReferral(userId,sessionContext){
+async function applyPendingAffiliateReferral({
+  userId=null,
+  userName="",
+  useSupabase=SUPABASE_ENABLED,
+  sessionContext=null
+}={}){
   const affiliate=resolveAffiliateCode(sessionContext?.cookies?.[AFFILIATE_COOKIE_NAME]);
-  if(!affiliate||!userId){
+  if(!affiliate){
     return;
   }
   try{
-    await supabaseRequest("affiliates",{
-      method:"POST",
-      query:{
-        on_conflict:"code",
-        select:"code,name"
-      },
-      headers:{Prefer:"return=representation,resolution=merge-duplicates"},
-      body:{
-        code:affiliate.code,
-        name:affiliate.name
-      }
-    });
-    await supabaseRequest("user_affiliate_referrals",{
-      method:"POST",
-      query:{
-        on_conflict:"user_id",
-        select:"user_id,affiliate_code,referred_at"
-      },
-      headers:{Prefer:"return=representation,resolution=ignore-duplicates"},
-      body:{
-        user_id:userId,
-        affiliate_code:affiliate.code
-      }
-    });
+    if(useSupabase&&userId){
+      await supabaseRequest("affiliates",{
+        method:"POST",
+        query:{
+          on_conflict:"code",
+          select:"code,name"
+        },
+        headers:{Prefer:"return=representation,resolution=merge-duplicates"},
+        body:{
+          code:affiliate.code,
+          name:affiliate.name
+        }
+      });
+      await supabaseRequest("user_affiliate_referrals",{
+        method:"POST",
+        query:{
+          on_conflict:"user_id",
+          select:"user_id,affiliate_code,referred_at"
+        },
+        headers:{Prefer:"return=representation,resolution=ignore-duplicates"},
+        body:{
+          user_id:userId,
+          affiliate_code:affiliate.code
+        }
+      });
+    }else if(!useSupabase&&userName){
+      recordLocalAffiliateReferral(userName,affiliate);
+    }
   }catch(error){
     console.warn("Affiliate referral capture failed",error.message||error);
   }finally{
@@ -1178,10 +1241,7 @@ async function applyPendingAffiliateReferral(userId,sessionContext){
 
 async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
   if(!useSupabase){
-    return {
-      affiliates:[],
-      referrals:[]
-    };
+    return buildLocalAffiliateAdminPayload();
   }
   const affiliatesRows=await supabaseRequestAll("affiliates",{
     query:{
@@ -1251,6 +1311,85 @@ async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
       referred_at:row?.referred_at||user?.created_at||null
     };
   });
+  return {
+    affiliates,
+    referrals
+  };
+}
+
+function buildAdminContactMessagesPayload(){
+  return Array.isArray(state?.contactMessages)
+    ? state.contactMessages
+      .slice()
+      .sort((left,right)=>new Date(right?.submittedAt||0)-new Date(left?.submittedAt||0))
+      .map((entry)=>({
+        id:String(entry?.id||""),
+        email:String(entry?.email||""),
+        message:String(entry?.message||""),
+        userName:entry?.userName?String(entry.userName):null,
+        submittedAt:entry?.submittedAt||null,
+        status:String(entry?.status||"NEW")
+      }))
+    : [];
+}
+
+function recordLocalAffiliateReferral(userName,affiliate,targetState=state){
+  const normalizedUserName=String(userName||"").trim();
+  const code=String(affiliate?.code||"").trim().toLowerCase();
+  if(!normalizedUserName||!code){
+    return false;
+  }
+  targetState.affiliateReferrals=Array.isArray(targetState.affiliateReferrals)?targetState.affiliateReferrals:[];
+  const alreadyReferred=targetState.affiliateReferrals.some((entry)=>String(entry?.user_name||"").trim().toLowerCase()===normalizedUserName.toLowerCase());
+  if(alreadyReferred){
+    return false;
+  }
+  targetState.affiliateReferrals.push({
+    user_name:normalizedUserName,
+    affiliate_code:code,
+    referred_at:new Date().toISOString()
+  });
+  persistState();
+  return true;
+}
+
+function buildLocalAffiliateAdminPayload(){
+  const localReferrals=Array.isArray(state?.affiliateReferrals)?state.affiliateReferrals:[];
+  const totalsByCode=localReferrals.reduce((totals,entry)=>{
+    const code=String(entry?.affiliate_code||"").trim().toLowerCase();
+    if(!code){
+      return totals;
+    }
+    totals.set(code,(totals.get(code)||0)+1);
+    return totals;
+  },new Map());
+  const allCodes=[...new Set([
+    ...AFFILIATE_REGISTRY.map((affiliate)=>affiliate.code),
+    ...localReferrals.map((entry)=>String(entry?.affiliate_code||"").trim().toLowerCase()).filter(Boolean)
+  ])];
+  const affiliates=allCodes
+    .map((code)=>{
+      const affiliate=AFFILIATE_REGISTRY_BY_CODE.get(code);
+      return {
+        code,
+        name:affiliate?.name||code,
+        total_signups:totalsByCode.get(code)||0
+      };
+    })
+    .sort((left,right)=>right.total_signups-left.total_signups||left.name.localeCompare(right.name));
+  const referrals=localReferrals
+    .map((entry)=>{
+      const code=String(entry?.affiliate_code||"").trim().toLowerCase();
+      const affiliate=AFFILIATE_REGISTRY_BY_CODE.get(code);
+      return {
+        affiliate_code:code,
+        affiliate_name:affiliate?.name||code,
+        user_id:"",
+        username:String(entry?.user_name||""),
+        referred_at:entry?.referred_at||null
+      };
+    })
+    .sort((left,right)=>String(right.referred_at||"").localeCompare(String(left.referred_at||"")));
   return {
     affiliates,
     referrals
@@ -2248,6 +2387,15 @@ function isShareSessionExpiryColumnMissing(error){
     || /column .*expires_at .* does not exist/i.test(message);
 }
 
+function isShareInviteTableMissing(error){
+  const message=String(error?.message||"");
+  return /share_invites/i.test(message)
+    && (
+      /Could not find the table/i.test(message)
+      || /schema cache/i.test(message)
+      || /relation .*share_invites/i.test(message)
+    );
+}
 function normalizeShareSessionRequestOptions(options,includeExpiry=true){
   const nextOptions={...options};
   if(nextOptions.query&&typeof nextOptions.query==="object"){
@@ -2716,13 +2864,22 @@ async function buildChallengeStatusFeed({
           order:"created_at.desc"
         }
       });
-      const inboundInviteRows=await supabaseRequestAll("share_invites",{
-        query:{
-          select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
-          responder_user_id:`eq.${user.id}`,
-          order:"responded_at.desc"
+      let inboundInviteRows=[];
+      try{
+        inboundInviteRows=await supabaseRequestAll("share_invites",{
+          query:{
+            select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
+            responder_user_id:`eq.${user.id}`,
+            order:"responded_at.desc"
+          }
+        });
+      }catch(error){
+        if(!isShareInviteTableMissing(error)){
+          throw error;
         }
-      });
+        challengeLifecycleLog("status-share-invites-missing",{reason:error.message});
+        inboundInviteRows=[];
+      }
       const inboundSessionIds=[...new Set((inboundInviteRows||[]).map((row)=>String(row.share_session_id||"")).filter(Boolean))];
       let inboundRows=[];
       if(inboundSessionIds.length){
@@ -3655,6 +3812,7 @@ function buildFreshState(){
     activeRoundLabel:buildRoundLabel(activeRoundNumber),
     forceOpenGameIds:[],
     walletTransactions:[],
+    affiliateReferrals:[],
     shareSessions:[],
     shareInvites:[],
     contactMessages:[],
@@ -4199,6 +4357,16 @@ function normalizeState(rawState,options={}){
     activeRoundLabel:buildRoundLabel(activeRoundNumber),
     forceOpenGameIds:[],
     walletTransactions,
+    affiliateReferrals:Array.isArray(rawState.affiliateReferrals)
+      ? rawState.affiliateReferrals
+          .filter((entry)=>entry&&entry.user_name&&entry.affiliate_code)
+          .map((entry)=>({
+            user_name:String(entry.user_name).trim(),
+            affiliate_code:String(entry.affiliate_code).trim().toLowerCase(),
+            referred_at:entry.referred_at||new Date().toISOString()
+          }))
+          .filter((entry)=>entry.user_name&&entry.affiliate_code)
+      : [],
     shareSessions:Array.isArray(rawState.shareSessions)
       ? rawState.shareSessions
           .filter((entry)=>entry&&entry.id)
@@ -5133,13 +5301,22 @@ async function fetchHostedInviteResponsesBySessionIds(sessionIds){
   if(!validIds.length){
     return [];
   }
-  const rows=await supabaseRequestAll("share_invites",{
-    query:{
-      select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
-      share_session_id:`in.(${validIds.join(",")})`,
-      order:"responded_at.asc"
+  let rows=[];
+  try{
+    rows=await supabaseRequestAll("share_invites",{
+      query:{
+        select:"id,share_session_id,responder_user_id,action,decline_note,responded_at,accepted_trade_id",
+        share_session_id:`in.(${validIds.join(",")})`,
+        order:"responded_at.asc"
+      }
+    });
+  }catch(error){
+    if(!isShareInviteTableMissing(error)){
+      throw error;
     }
-  });
+    challengeLifecycleLog("share-invites-missing",{reason:error.message});
+    rows=[];
+  }
   return Array.isArray(rows)?rows:[];
 }
 
