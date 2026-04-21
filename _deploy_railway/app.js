@@ -270,7 +270,11 @@ const uiState = {
   adminAffiliatesLoaded: false,
   adminAffiliatesError: "",
   adminAffiliates: [],
-  adminAffiliateReferrals: []
+  adminAffiliateReferrals: [],
+  adminContactMessagesLoading: false,
+  adminContactMessagesLoaded: false,
+  adminContactMessagesError: "",
+  adminContactMessages: []
 };
 
 const elements = {
@@ -975,7 +979,10 @@ async function handleOpenAdminTools() {
   uiState.adminOpen = true;
   uiState.adminActiveTab = "operations";
   renderAdminShell();
-  await refreshAdminAnalytics(true);
+  await Promise.all([
+    refreshAdminAnalytics(true),
+    refreshAdminContactMessages()
+  ]);
 }
 
 async function setActiveAdminTab(nextTab) {
@@ -989,7 +996,10 @@ async function setActiveAdminTab(nextTab) {
     await refreshAdminAffiliates();
     return;
   }
-  await refreshAdminAnalytics(true);
+  await Promise.all([
+    refreshAdminAnalytics(true),
+    refreshAdminContactMessages()
+  ]);
 }
 
 function startAdminAnalyticsPolling() {
@@ -5511,6 +5521,30 @@ async function refreshAdminAffiliates() {
   }
 }
 
+async function refreshAdminContactMessages() {
+  if (!uiState.adminOpen || !hasAdminAccess()) return;
+  uiState.adminContactMessagesLoading = true;
+  uiState.adminContactMessagesError = "";
+  renderAdminContactInbox();
+  try {
+    const payload = await apiGet("/api/admin/contact-messages");
+    uiState.adminContactMessages = Array.isArray(payload?.contacts) ? payload.contacts : [];
+    uiState.adminContactMessagesLoaded = true;
+  } catch (error) {
+    if (String(error.message || "").toLowerCase().includes("admin access")) {
+      window.sessionStorage.removeItem(ADMIN_ACCESS_KEY);
+      uiState.adminOpen = false;
+      stopAdminAnalyticsPolling();
+    }
+    uiState.adminContactMessagesError = error.message || "Unable to load contact messages.";
+  } finally {
+    uiState.adminContactMessagesLoading = false;
+    renderAdminContactInbox();
+    renderAdminDashboard();
+    renderAdminShell();
+  }
+}
+
 function renderAdminAffiliates() {
   if (!elements.adminAffiliateSummary || !elements.adminAffiliateReferralsBody || !elements.adminAffiliateFeedback) return;
   if (!uiState.adminOpen) {
@@ -5728,6 +5762,18 @@ function currentChallengeTradeRecord() {
 
 function renderAdminContactInbox() {
   if (!elements.adminContactList) return;
+  if (!uiState.adminOpen) {
+    elements.adminContactList.innerHTML = "";
+    return;
+  }
+  if (uiState.adminContactMessagesLoading) {
+    elements.adminContactList.innerHTML = `<div class="section-meta">Loading contact messages…</div>`;
+    return;
+  }
+  if (uiState.adminContactMessagesError) {
+    elements.adminContactList.innerHTML = `<div class="section-meta">${escapeHtml(uiState.adminContactMessagesError)}</div>`;
+    return;
+  }
   const messages = getContactMessages();
   if (!messages.length) {
     elements.adminContactList.innerHTML = `<div class="section-meta">No contact messages have been submitted yet.</div>`;
@@ -6378,8 +6424,11 @@ function normalizeStakeInputValue(value) {
 }
 
 function getContactMessages() {
-  return Array.isArray(state.contactMessages)
-    ? state.contactMessages.slice().sort((left, right) => new Date(right.submittedAt || 0) - new Date(left.submittedAt || 0))
+  const source = Array.isArray(uiState.adminContactMessages) && uiState.adminContactMessagesLoaded
+    ? uiState.adminContactMessages
+    : state.contactMessages;
+  return Array.isArray(source)
+    ? source.slice().sort((left, right) => new Date(right.submittedAt || 0) - new Date(left.submittedAt || 0))
     : [];
 }
 

@@ -583,16 +583,7 @@
         this.adminState.bots.stalling = this.adminState.bots.lastRunMinutesAgo != null && this.adminState.bots.lastRunMinutesAgo > BOT_STALL_THRESHOLD_MIN;
         this.adminState.bots.logs = Array.isArray(status.logs) ? status.logs : [];
         this.adminState.bots.leaderboard = Array.isArray(perf.bots) ? perf.bots : [];
-
-        const coverage = markets.map((market) => {
-          const hasBot = (market.trades || []).some((trade) => this.isBotTrade(trade));
-          return {
-            playerId: market.id,
-            name: market.playerName,
-            hasBotActivity: hasBot
-          };
-        });
-        this.adminState.bots.coverageByMarket = coverage;
+        this.adminState.bots.coverageByMarket = [];
 
         this.adminState.vitals.botTradeSharePct = this.adminState.bots.botTradeSharePct;
         this.markUpdated("bots");
@@ -647,11 +638,11 @@
       try {
         const [affiliates, contacts] = await Promise.all([
           this.apiGet("/api/admin/affiliates").catch(() => ({ affiliates: [], referrals: [] })),
-          Promise.resolve(this.call("getContactMessages") || [])
+          this.apiGet("/api/admin/contact-messages").catch(() => ({ contacts: [] }))
         ]);
         this.adminState.growth.affiliates = Array.isArray(affiliates?.affiliates) ? affiliates.affiliates : [];
         this.adminState.growth.referrals = Array.isArray(affiliates?.referrals) ? affiliates.referrals : [];
-        this.adminState.growth.contacts = Array.isArray(contacts) ? contacts : [];
+        this.adminState.growth.contacts = Array.isArray(contacts?.contacts) ? contacts.contacts : [];
       } finally {
         if (forceRender) this.render();
       }
@@ -1214,7 +1205,6 @@
     },
 
     renderBots() {
-      const coverage = this.adminState.bots.coverageByMarket;
       const logs = this.adminState.bots.logs;
       const showAllLogs = this.adminState.ui.expandedBotLogs;
       const leaderboard = this.adminState.bots.leaderboard;
@@ -1227,13 +1217,8 @@
             ${this.statusText("Last run", this.adminState.bots.lastRunMinutesAgo == null ? "No run yet" : this.minutesToAge(this.adminState.bots.lastRunMinutesAgo), this.adminState.bots.stalling ? "dot-warn" : "dot-ok")}
             ${this.statusText("Trades today", String(this.adminState.bots.tradesToday), "dot-neu")}
             ${this.statusText("Bot trade share", `${this.adminState.bots.botTradeSharePct}%`, "dot-neu")}
+            ${this.statusText("Leaderboard rows", String(leaderboard.length), "dot-neu")}
             <div class="cq-inline-row"><button class="secondary-button" type="button" data-cq-run-bots>Run all bots</button><button class="secondary-button" type="button" data-cq-create-bot>Create bot</button></div>
-          </article>
-          <article class="cq-card">
-            <div class="cq-card-head"><h4>Coverage map</h4><span class="section-meta">${coverage.filter((entry) => entry.hasBotActivity).length}/${coverage.length}</span></div>
-            <div class="cq-coverage-grid">
-              ${coverage.map((entry) => `<div class="cq-coverage-cell ${entry.hasBotActivity ? "has-bot" : "no-bot"}"><strong>${this.escape(entry.name)}</strong><span>${entry.hasBotActivity ? "Active" : "No bots"}</span></div>`).join("")}
-            </div>
           </article>
         </section>
 
