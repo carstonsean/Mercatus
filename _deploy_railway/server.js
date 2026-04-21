@@ -1136,7 +1136,7 @@ async function handleApi(req,res,url,sessionContext){
     return json(res,200,affiliates,sessionContext);
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/contact-messages"){
-    const contacts=buildAdminContactMessagesPayload();
+    const contacts=await buildAdminContactMessages(useSupabase);
     return json(res,200,{contacts},sessionContext);
   }
   if(req.method==="GET"&&url.pathname==="/api/admin/live-sessions"){
@@ -1341,9 +1341,24 @@ function isAffiliateTableMissing(error){
     || /42p01/.test(message);
 }
 
-function buildAdminContactMessagesPayload(){
-  return Array.isArray(state?.contactMessages)
-    ? state.contactMessages
+async function buildAdminContactMessages(useSupabase=SUPABASE_ENABLED){
+  if(useSupabase){
+    try{
+      const runtimeState=await fetchSupabaseRuntimeState();
+      const runtimeContacts=runtimeState?.contactMessages;
+      if(Array.isArray(runtimeContacts)){
+        return buildAdminContactMessagesPayload(runtimeContacts);
+      }
+    }catch(error){
+      console.warn("Contact inbox runtime fetch failed",error.message||error);
+    }
+  }
+  return buildAdminContactMessagesPayload(state?.contactMessages);
+}
+
+function buildAdminContactMessagesPayload(rawContacts){
+  return Array.isArray(rawContacts)
+    ? rawContacts
       .slice()
       .sort((left,right)=>new Date(right?.submittedAt||0)-new Date(left?.submittedAt||0))
       .map((entry)=>({
