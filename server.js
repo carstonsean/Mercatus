@@ -181,6 +181,14 @@ const server=http.createServer(async (req,res)=>{
   }
 });
 
+process.on("uncaughtException",(error)=>{
+  console.error("Uncaught exception",error?.stack||error?.message||error);
+});
+
+process.on("unhandledRejection",(reason)=>{
+  console.error("Unhandled rejection",reason?.stack||reason?.message||reason);
+});
+
 async function startServer(){
   if(SUPABASE_ENABLED){
     try{
