@@ -6,25 +6,6 @@
     return String(window.localStorage.getItem(USER_NAME_KEY) || "").trim();
   }
 
-  async function readJsonResponse(response, fallbackMessage) {
-    const raw = await response.text();
-    let payload = null;
-    if (raw) {
-      try {
-        payload = JSON.parse(raw);
-      } catch (error) {
-        if (!response.ok) {
-          throw new Error(`${fallbackMessage} (${response.status})`);
-        }
-        throw new Error("Challenge service returned an invalid response");
-      }
-    }
-    if (!response.ok) {
-      throw new Error(payload?.error || `${fallbackMessage} (${response.status})`);
-    }
-    return payload;
-  }
-
   async function fetchChallengeStatus(status) {
     const response = await fetch(`/api/challenges/status?status=${encodeURIComponent(status || "all")}`, {
       method: "GET",
@@ -32,7 +13,10 @@
         "X-User-Name": currentUserName()
       }
     });
-    const payload = await readJsonResponse(response, "Unable to load challenge status");
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.error || "Unable to load challenge status");
+    }
     return {
       outbound: Array.isArray(payload?.outbound) ? payload.outbound : [],
       inbound: Array.isArray(payload?.inbound) ? payload.inbound : [],
