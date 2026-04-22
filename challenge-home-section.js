@@ -71,6 +71,25 @@
     return Boolean(homeScreen && homeScreen.classList.contains("active"));
   }
 
+  async function readJsonResponse(response, fallbackMessage) {
+    const raw = await response.text();
+    let payload = null;
+    if (raw) {
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        if (!response.ok) {
+          throw new Error(`${fallbackMessage} (${response.status})`);
+        }
+        throw new Error("Challenge service returned an invalid response");
+      }
+    }
+    if (!response.ok) {
+      throw new Error(payload?.error || `${fallbackMessage} (${response.status})`);
+    }
+    return payload;
+  }
+
   async function fetchEligibleTrades() {
     const response = await fetch("/api/challenges/eligible", {
       method: "GET",
@@ -78,10 +97,7 @@
         "X-User-Name": currentUserName()
       }
     });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload?.error || "Unable to load challenge trades");
-    }
+    const payload = await readJsonResponse(response, "Unable to load challenge trades");
     return Array.isArray(payload) ? payload : [];
   }
 
