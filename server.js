@@ -79,8 +79,6 @@ const SUPABASE_SEED_READY_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_S
 const SUPABASE_BACKEND_USER_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_BACKEND_USER_TIMEOUT_MS)||15000);
 const SHARE_SESSION_CREATE_TIMEOUT_MS=4000;
 const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
-const SHARE_SESSION_FETCH_TIMEOUT_MS=Math.max(3000,Number(process.env.SHARE_SESSION_FETCH_TIMEOUT_MS)||8000);
-const SHARE_METADATA_FETCH_TIMEOUT_MS=Math.max(1000,Number(process.env.SHARE_METADATA_FETCH_TIMEOUT_MS)||2500);
 const SHARE_DECLINE_NOTE_MAX_LENGTH=100;
 const POPULAR_PLAYERS_REFRESH_MS=6*60*60*1000;
 const SESSION_COOKIE_NAME="crowdiq_session_id";
@@ -165,15 +163,11 @@ const server=http.createServer(async (req,res)=>{
       return;
     }
     if(isChallengePath(url.pathname)){
-      trackPageViewRequest(req,url,sessionContext).catch((error)=>{
-        console.warn("Page view tracking failed",error.message);
-      });
+      await trackPageViewRequest(req,url,sessionContext);
       await serveChallengePage(res,url.pathname,shouldUseSupabaseForRequest(req),sessionContext);
       return;
     }
-    trackPageViewRequest(req,url,sessionContext).catch((error)=>{
-      console.warn("Page view tracking failed",error.message);
-    });
+    await trackPageViewRequest(req,url,sessionContext);
     serveStatic(res,url.pathname,sessionContext);
   }catch(error){
     res.writeHead(500,{"Content-Type":"application/json; charset=utf-8"});
@@ -416,17 +410,9 @@ async function handleApi(req,res,url,sessionContext){
       return json(res,404,{error:"Not found"});
     }
     try{
-      const sessionPayload=await withTimeout(
-        fetchChallengeSharePayload(shareId,useSupabase),
-        SHARE_SESSION_FETCH_TIMEOUT_MS,
-        "Challenge lookup timed out"
-      );
+      const sessionPayload=await fetchChallengeSharePayload(shareId,useSupabase);
       return json(res,200,sessionPayload);
     }catch(error){
-      const timeoutMessage=String(error?.message||"").toLowerCase();
-      if(timeoutMessage.includes("timed out")){
-        return json(res,504,{error:"Challenge lookup timed out. Please try again."});
-      }
       const statusCode=Number(error?.statusCode)||400;
       return json(res,statusCode,{error:error.message||"This challenge link is no longer valid"});
     }
@@ -3787,11 +3773,7 @@ async function buildChallengeMetadata(shareId,useSupabase=SUPABASE_ENABLED){
     image:`${publicOrigin}/social-preview.svg`
   };
   try{
-    const session=await withTimeout(
-      fetchChallengeSharePayload(shareId,useSupabase),
-      SHARE_METADATA_FETCH_TIMEOUT_MS,
-      "Challenge metadata lookup timed out"
-    );
+    const session=await fetchChallengeSharePayload(shareId,useSupabase);
     const firstTrade=session.trades[0];
     if(!firstTrade){
       return fallback;
@@ -4995,15 +4977,6 @@ function buildPrizePoolBotEntry(userName,targetState=state,now=Date.now()){
 
 function isChallengePath(pathname){
   return /^\/challenge\/[^/]+\/?$/.test(String(pathname||""));
-}
-
-function withTimeout(promise,timeoutMs,errorMessage){
-  return Promise.race([
-    promise,
-    new Promise((_,reject)=>{
-      setTimeout(()=>reject(new Error(errorMessage||"Operation timed out")),timeoutMs);
-    })
-  ]);
 }
 
 async function serveChallengePage(res,pathname,useSupabase=SUPABASE_ENABLED,sessionContext=null){
