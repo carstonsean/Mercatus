@@ -122,7 +122,7 @@ if(SUPABASE_LOCAL_SAFETY_ERROR){
 }
 
 if(HOSTED_ENVIRONMENT&&!SUPABASE_ENABLED){
-  throw new Error("Hosted environment requires Supabase. Refusing to start with ephemeral file-backed state.");
+  console.error("Hosted environment detected without Supabase. Falling back to file-backed state to preserve availability.");
 }
 
 let popularPlayersCache=null;
