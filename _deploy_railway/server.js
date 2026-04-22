@@ -1310,7 +1310,7 @@ async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
       const persisted=affiliatesByCode.get(code);
       return {
         code,
-        name:persisted?.name||seeded?.name||code,
+        name:persisted?.name||seeded?.name||formatAffiliateDisplayName(code)||code,
         total_signups:totalByCode.get(code)||0
       };
     })
@@ -1321,7 +1321,7 @@ async function buildAffiliateAdminPayload(useSupabase=SUPABASE_ENABLED){
     const affiliate=affiliatesByCode.get(code)||AFFILIATE_REGISTRY_BY_CODE.get(code)||null;
     return {
       affiliate_code:code,
-      affiliate_name:affiliate?.name||code,
+      affiliate_name:affiliate?.name||formatAffiliateDisplayName(code)||code,
       user_id:row?.user_id||"",
       username:user?.username||"",
       referred_at:row?.referred_at||user?.created_at||null
@@ -1411,7 +1411,7 @@ function buildLocalAffiliateAdminPayload(){
       const affiliate=AFFILIATE_REGISTRY_BY_CODE.get(code);
       return {
         code,
-        name:affiliate?.name||code,
+        name:affiliate?.name||formatAffiliateDisplayName(code)||code,
         total_signups:totalsByCode.get(code)||0
       };
     })
@@ -1422,7 +1422,7 @@ function buildLocalAffiliateAdminPayload(){
       const affiliate=AFFILIATE_REGISTRY_BY_CODE.get(code);
       return {
         affiliate_code:code,
-        affiliate_name:affiliate?.name||code,
+        affiliate_name:affiliate?.name||formatAffiliateDisplayName(code)||code,
         user_id:"",
         username:String(entry?.user_name||""),
         referred_at:entry?.referred_at||null
@@ -1444,11 +1444,38 @@ function resolveAffiliateFromPath(pathname){
 }
 
 function resolveAffiliateCode(rawCode){
-  const code=String(rawCode||"").trim().toLowerCase();
+  const code=normalizeAffiliateCode(rawCode);
   if(!code){
     return null;
   }
-  return AFFILIATE_REGISTRY_BY_CODE.get(code)||null;
+  const seededAffiliate=AFFILIATE_REGISTRY_BY_CODE.get(code);
+  if(seededAffiliate){
+    return seededAffiliate;
+  }
+  return {
+    code,
+    name:formatAffiliateDisplayName(code)
+  };
+}
+
+function normalizeAffiliateCode(rawCode){
+  const code=String(rawCode||"").trim().toLowerCase();
+  if(!code){
+    return "";
+  }
+  if(!/^[a-z0-9](?:[a-z0-9_-]{0,63})$/.test(code)){
+    return "";
+  }
+  return code;
+}
+
+function formatAffiliateDisplayName(code){
+  return String(code||"")
+    .trim()
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map((part)=>part.charAt(0).toUpperCase()+part.slice(1))
+    .join(" ");
 }
 
 function ensureSessionContext(req,res){
