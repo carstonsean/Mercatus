@@ -177,7 +177,17 @@ const server=http.createServer(async (req,res)=>{
 
 async function startServer(){
   if(SUPABASE_ENABLED){
-    await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
+    try{
+      await syncStateFromSupabase({force:true,validateHostedState:HOSTED_ENVIRONMENT});
+    }catch(error){
+      console.error("Initial Supabase sync failed",error.message||error);
+      try{
+        await syncStateFromSupabase({force:true,validateHostedState:false});
+      }catch(retryError){
+        console.error("Fallback Supabase sync failed",retryError.message||retryError);
+        console.warn("Starting with in-memory state snapshot due Supabase startup errors.");
+      }
+    }
   }
   server.listen(PORT,"0.0.0.0",()=>{
     console.log(`Mercatus server running on http://0.0.0.0:${PORT}`);
