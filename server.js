@@ -201,7 +201,18 @@ async function startServer(){
       console.warn("Initial popular players fetch failed",error.message);
     });
   });
-  setInterval(runAutonomousBots,BOT_AUTOPLAY_INTERVAL_MS);
+  setInterval(()=>{
+    try{
+      const result=runAutonomousBots();
+      if(result&&typeof result.then==="function"){
+        result.catch((error)=>{
+          console.warn("Autonomous bot loop failed",error?.message||error);
+        });
+      }
+    }catch(error){
+      console.warn("Autonomous bot loop failed",error?.message||error);
+    }
+  },BOT_AUTOPLAY_INTERVAL_MS);
   setInterval(()=>{
     fetchPopularPlayers(true).catch((error)=>{
       console.warn("Scheduled popular players fetch failed",error.message);
