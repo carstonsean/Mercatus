@@ -163,11 +163,15 @@ const server=http.createServer(async (req,res)=>{
       return;
     }
     if(isChallengePath(url.pathname)){
-      await trackPageViewRequest(req,url,sessionContext);
+      trackPageViewRequest(req,url,sessionContext).catch((error)=>{
+        console.warn("Page view tracking failed",error.message);
+      });
       await serveChallengePage(res,url.pathname,shouldUseSupabaseForRequest(req),sessionContext);
       return;
     }
-    await trackPageViewRequest(req,url,sessionContext);
+    trackPageViewRequest(req,url,sessionContext).catch((error)=>{
+      console.warn("Page view tracking failed",error.message);
+    });
     serveStatic(res,url.pathname,sessionContext);
   }catch(error){
     res.writeHead(500,{"Content-Type":"application/json; charset=utf-8"});
