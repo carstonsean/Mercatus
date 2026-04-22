@@ -77,6 +77,8 @@ const SUPABASE_STATE_SYNC_TTL_MS=30000;
 const SUPABASE_UNAVAILABLE_BACKOFF_MS=2*60*1000;
 const SUPABASE_SEED_READY_TIMEOUT_MS=Math.max(8000,Number(process.env.SUPABASE_SEED_READY_TIMEOUT_MS)||30000);
 const SUPABASE_BACKEND_USER_TIMEOUT_MS=Math.max(1500,Number(process.env.SUPABASE_BACKEND_USER_TIMEOUT_MS)||2500);
+const TRADE_SUPABASE_READY_TIMEOUT_MS=Math.max(500,Number(process.env.TRADE_SUPABASE_READY_TIMEOUT_MS)||1500);
+const TRADE_PERSIST_TIMEOUT_MS=Math.max(500,Number(process.env.TRADE_PERSIST_TIMEOUT_MS)||1200);
 const SHARE_SESSION_CREATE_TIMEOUT_MS=4000;
 const SHARE_SESSION_ACCEPT_TIMEOUT_MS=4000;
 const SHARE_DECLINE_NOTE_MAX_LENGTH=100;
@@ -749,7 +751,11 @@ async function handleApi(req,res,url,sessionContext){
     }
     if(tradeUseSupabase){
       try{
-        await ensureSupabaseReady();
+        await withTimeout(
+          ensureSupabaseReady(),
+          TRADE_SUPABASE_READY_TIMEOUT_MS,
+          "Supabase trade readiness timed out"
+        );
       }catch(error){
         console.warn("Supabase unavailable for trade request; falling back to in-memory trade handling",error.message);
         tradeUseSupabase=false;
@@ -782,7 +788,11 @@ async function handleApi(req,res,url,sessionContext){
       syncPrizePoolState(state);
       if(tradeUseSupabase){
         try{
-          await enqueueSupabaseMarketPersistence(market,state);
+          await withTimeout(
+            enqueueSupabaseMarketPersistence(market,state),
+            TRADE_PERSIST_TIMEOUT_MS,
+            "Supabase trade persistence timed out"
+          );
           enqueueSupabaseRuntimeSnapshot().catch((error)=>{
             console.warn("Supabase runtime snapshot failed after durable trade persist",error.message);
           });
